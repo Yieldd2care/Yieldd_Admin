@@ -16,7 +16,7 @@ export function AuthLeftPanel() {
   const isWide = width >= 1024;
 
   return (
-    <View className="relative bg-navy overflow-hidden px-8 py-10 lg:px-14 lg:py-11 lg:flex-1 lg:justify-between gap-10 lg:gap-0">
+    <View className="hidden lg:flex relative bg-navy overflow-hidden px-8 py-10 lg:px-14 lg:py-11 lg:flex-1 lg:justify-between gap-10 lg:gap-0">
       <RadialGlow color="#1D3F8A" size={620} className="-right-32 -bottom-40" />
 
       <Pressable onPress={() => router.push('/(web)')}>
