@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --navy-elevated:#101C3E; --blue:#1D3F8A;
+      --gold:#F4B000; --gold-hover:#FFC53D;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --label:#8A98B0; --ink-muted:#3C4C68; --success:#4ED17F; --placeholder:#97A3B8;
+      --r-sm:6px; --r-md:10px; --r-lg:16px; --r-xl:24px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    a{color:var(--gold);text-decoration:none;} a:hover{color:var(--gold-hover);}
+    .t-heading-lg{font-size:20px;line-height:1.3;font-weight:700;letter-spacing:-0.01em;margin:0;}
+    .t-body-md{font-size:14.5px;line-height:1.5;font-weight:400;margin:0;}
+    .t-body-sm{font-size:13px;line-height:1.4;font-weight:500;margin:0;}
+    .t-caption{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--section);overflow:hidden;position:relative;}
+    .header{flex:0 0 auto;background:#fff;border-bottom:1px solid var(--hairline);padding:18px 20px 16px;display:flex;align-items:center;gap:12px;}
+    .back-btn{width:36px;height:36px;border-radius:var(--r-md);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;}
+    .status-chip{margin:14px 20px 0;display:inline-flex;align-items:center;gap:7px;background:var(--surface);border-radius:100px;padding:6px 12px;}
+    .dot{width:6px;height:6px;border-radius:50%;background:var(--success);flex-shrink:0;}
+
+    .segmented{display:flex;gap:4px;background:var(--surface);border-radius:var(--r-md);padding:4px;margin:16px 20px 0;}
+    .segment{flex:1;text-align:center;padding:10px 4px;border-radius:var(--r-sm);font-size:13px;font-weight:700;cursor:pointer;color:var(--slate);}
+    .segment.active{background:var(--navy);color:#fff;box-shadow:0 4px 10px rgba(11,19,43,0.20);}
+
+    .scroll{flex:1 1 auto;overflow-y:auto;}
+
+    /* scan */
+    .viewfinder{margin:22px 20px 0;height:280px;background:var(--navy);border-radius:var(--r-lg);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+    .guide{width:220px;height:140px;border:2px dashed var(--gold);border-radius:var(--r-md);position:relative;}
+    .corner{position:absolute;width:16px;height:16px;border-color:#fff;}
+    .c-tl{top:-2px;left:-2px;border-top:2px solid #fff;border-left:2px solid #fff;border-radius:4px 0 0 0;}
+    .c-tr{top:-2px;right:-2px;border-top:2px solid #fff;border-right:2px solid #fff;border-radius:0 4px 0 0;}
+    .c-bl{bottom:-2px;left:-2px;border-bottom:2px solid #fff;border-left:2px solid #fff;border-radius:0 0 0 4px;}
+    .c-br{bottom:-2px;right:-2px;border-bottom:2px solid #fff;border-right:2px solid #fff;border-radius:0 0 4px 0;}
+    .scan-hint{margin-top:18px;font-size:12.5px;color:rgba(255,255,255,0.65);}
+    .type-in-row{margin:14px 20px 0;text-align:center;}
+    .shutter-wrap{display:flex;justify-content:center;margin-top:26px;}
+    .shutter-ring{width:76px;height:76px;border-radius:50%;border:4px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+    .shutter-inner{width:58px;height:58px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;}
+    .shutter-caption{text-align:center;margin-top:10px;font-size:11.5px;color:var(--slate);font-weight:600;}
+
+    /* manual */
+    .form{padding:22px 20px 28px;display:flex;flex-direction:column;gap:16px;}
+    .field label{display:block;font-size:13px;font-weight:600;color:var(--navy);margin-bottom:6px;}
+    .field input, .field textarea{width:100%;border:1px solid var(--hairline);border-radius:var(--r-md);padding:0 16px;height:50px;font-size:14.5px;font-family:'Inter',sans-serif;color:var(--navy);background:#fff;}
+    .field input::placeholder, .field textarea::placeholder{color:var(--placeholder);}
+    .field textarea{padding:14px 16px;height:84px;resize:none;}
+
+    /* voice */
+    .voice{display:flex;flex-direction:column;align-items:center;padding:52px 32px 0;}
+    .record-btn{width:96px;height:96px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 14px 32px rgba(244,176,0,0.38);cursor:pointer;}
+    .duration{margin-top:22px;font-size:30px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums;}
+    .waveform{display:flex;align-items:flex-end;gap:3px;height:48px;margin-top:18px;}
+    .bar{width:3px;border-radius:2px;background:var(--hairline);}
+    .voice-hint{margin-top:22px;text-align:center;font-size:13px;color:var(--slate);line-height:1.55;max-width:260px;}
+
+    .btn-primary{height:56px;border-radius:var(--r-md);background:var(--gold);color:var(--navy);font-weight:700;font-size:16px;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px rgba(244,176,0,0.34);cursor:pointer;}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="header">
+    <div class="back-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div>
+      <div class="t-heading-lg" style="color:var(--navy);">Add a lead</div>
+      <div class="t-body-sm" style="color:var(--slate);font-weight:400;margin-top:2px;">IMTEX 2026 &middot; B-42</div>
+    </div>
+  </div>
+
+  <div class="status-chip">
+    <span class="dot"></span>
+    <span class="t-caption" style="color:var(--ink-muted);letter-spacing:0.10em;">Works offline &middot; syncs later</span>
+  </div>
+
+  <div class="segmented">
+    <sc-for list="{{tabs}}" as="tab" hint-placeholder-count="3">
+      <div class="segment {{tab.activeClass}}" onClick="{{tab.select}}">{{tab.label}}</div>
+    </sc-for>
+  </div>
+
+  <div class="scroll">
+    <sc-if value="{{isScan}}" hint-placeholder-val="{{true}}">
+      <div class="viewfinder">
+        <div class="guide">
+          <div class="corner c-tl"></div>
+          <div class="corner c-tr"></div>
+          <div class="corner c-bl"></div>
+          <div class="corner c-br"></div>
+        </div>
+        <div class="scan-hint">Align the card inside the frame</div>
+      </div>
+      <div class="type-in-row">
+        <span class="t-body-sm" style="color:var(--slate);font-weight:400;">Can't scan it? </span>
+        <a href="#" class="t-body-sm" style="font-weight:700;">Type it in manually</a>
+      </div>
+      <div class="shutter-wrap">
+        <div class="shutter-ring">
+          <div class="shutter-inner">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 012-2h2l1.4-2h5.2L16 6h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="shutter-caption">Tap to scan the card</div>
+    </sc-if>
+
+    <sc-if value="{{isManual}}" hint-placeholder-val="{{false}}">
+      <div class="form">
+        <div class="field">
+          <label>Full name</label>
+          <input type="text" placeholder="Rajesh Menon" />
+        </div>
+        <div class="field">
+          <label>Company</label>
+          <input type="text" placeholder="Northline Engineering" />
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="text" placeholder="+91 98204 41720" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="text" placeholder="name@company.com" />
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <textarea placeholder="What do they need? Any follow-up promised?"></textarea>
+        </div>
+        <button class="btn-primary" style="margin-top:6px;">Save lead</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isVoice}}" hint-placeholder-val="{{false}}">
+      <div class="voice">
+        <div class="record-btn">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0"/><path d="M12 19v3"/></svg>
+        </div>
+        <div class="duration">00:14</div>
+        <div class="waveform">
+          <sc-for list="{{waveform}}" as="bar" hint-placeholder-count="24">
+            <div class="bar" style="height:{{bar.h}}px;background:{{bar.color}};"></div>
+          </sc-for>
+        </div>
+        <div class="voice-hint">Speak the name, company and what they need — Yieldd transcribes and tags it automatically.</div>
+        <button class="btn-primary" style="width:100%;margin-top:26px;">Save recording</button>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'scan' };
+  }
+  renderVals() {
+    const defs = [
+      { key: 'scan', label: 'Scan card' },
+      { key: 'manual', label: 'Manual' },
+      { key: 'voice', label: 'Voice note' },
+    ];
+    const tabs = defs.map((t) => ({
+      ...t,
+      activeClass: t.key === this.state.tab ? 'active' : '',
+      select: () => this.setState({ tab: t.key }),
+    }));
+    const heights = [14, 22, 30, 18, 40, 26, 48, 20, 34, 16, 44, 24, 38, 12, 28, 46, 18, 32, 22, 40, 16, 30, 20, 14];
+    const waveform = heights.map((h, i) => ({
+      h,
+      color: i === 6 || i === 15 ? '#F4B000' : i % 3 === 0 ? '#0B132B' : '#E3E7EF',
+    }));
+    return {
+      tabs,
+      isScan: this.state.tab === 'scan',
+      isManual: this.state.tab === 'manual',
+      isVoice: this.state.tab === 'voice',
+      waveform,
+    };
+  }
+}
+</script>
+</body>
+</html>

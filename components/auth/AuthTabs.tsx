@@ -2,7 +2,7 @@ import { Pressable, View } from 'react-native';
 
 import { Typography } from '../ui/Typography';
 
-export type AuthMode = 'signup' | 'signin';
+export type AuthMode = 'create' | 'signin';
 
 interface Props {
   mode: AuthMode;
@@ -10,29 +10,22 @@ interface Props {
 }
 
 export function AuthTabs({ mode, onChange }: Props) {
+  const isCreate = mode === 'create';
   return (
-    <View className="flex-row gap-[6px] p-[5px] border border-hairline rounded-md bg-section">
+    <View className="flex-row gap-[2px] bg-white/[0.08] rounded-full p-1">
       <Pressable
-        onPress={() => onChange('signup')}
-        className={`flex-1 h-11 rounded-[9px] items-center justify-center transition-all duration-200 ${
-          mode === 'signup' ? 'bg-navy' : 'bg-transparent'
-        }`}
+        onPress={() => onChange('create')}
+        className={`flex-1 py-[11px] rounded-full items-center ${isCreate ? 'bg-gold' : ''}`}
       >
-        <Typography
-          className={`text-[14.5px] font-semibold ${mode === 'signup' ? 'text-white' : 'text-slate'}`}
-        >
+        <Typography className={`text-[13px] font-bold ${isCreate ? 'text-navy' : 'text-white/[0.65]'}`}>
           Create account
         </Typography>
       </Pressable>
       <Pressable
         onPress={() => onChange('signin')}
-        className={`flex-1 h-11 rounded-[9px] items-center justify-center transition-all duration-200 ${
-          mode === 'signin' ? 'bg-navy' : 'bg-transparent'
-        }`}
+        className={`flex-1 py-[11px] rounded-full items-center ${!isCreate ? 'bg-gold' : ''}`}
       >
-        <Typography
-          className={`text-[14.5px] font-semibold ${mode === 'signin' ? 'text-white' : 'text-slate'}`}
-        >
+        <Typography className={`text-[13px] font-bold ${!isCreate ? 'text-navy' : 'text-white/[0.65]'}`}>
           Sign in
         </Typography>
       </Pressable>

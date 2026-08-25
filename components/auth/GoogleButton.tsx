@@ -29,11 +29,11 @@ function GoogleG() {
 export function GoogleButton(props: PressableProps) {
   return (
     <Pressable
-      className="w-full h-[52px] flex-row items-center justify-center gap-[10px] bg-white border border-hairline rounded-md hover:border-navy transition-all duration-200"
+      className="w-full h-[52px] flex-row items-center justify-center gap-[10px] bg-white rounded-full active:opacity-80 transition-all duration-200"
       {...props}
     >
       <GoogleG />
-      <Typography className="text-navy text-[15.5px] font-semibold">Continue with Google</Typography>
+      <Typography className="text-navy text-[14px] font-semibold">Continue with Google</Typography>
     </Pressable>
   );
 }

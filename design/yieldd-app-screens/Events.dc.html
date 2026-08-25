@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --navy-elevated:#101C3E; --blue:#1D3F8A;
+      --gold:#F4B000; --gold-hover:#FFC53D;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --label:#8A98B0; --ink-muted:#3C4C68; --success:#4ED17F; --placeholder:#97A3B8;
+      --r-sm:6px; --r-md:10px; --r-lg:16px; --r-xl:24px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    a{color:var(--gold);text-decoration:none;} a:hover{color:var(--gold-hover);}
+    .t-display-md{font-size:23px;line-height:1.18;font-weight:800;letter-spacing:-0.01em;margin:0;}
+    .t-heading-md{font-size:17px;line-height:1.3;font-weight:600;margin:0;}
+    .t-body-sm{font-size:13px;line-height:1.4;font-weight:500;margin:0;}
+    .t-caption{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--section);overflow:hidden;position:relative;}
+    .top{flex:0 0 auto;background:var(--section);padding:22px 20px 4px;display:flex;align-items:center;justify-content:space-between;}
+    .add-btn{width:44px;height:44px;border-radius:var(--r-md);background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(244,176,0,0.34);flex-shrink:0;}
+
+    .scroll{flex:1 1 auto;overflow-y:auto;}
+    .section-label{padding:22px 20px 10px;}
+
+    .live-card{margin:0 20px;background:var(--navy);border-radius:var(--r-lg);padding:18px;box-shadow:0 18px 40px rgba(11,19,43,0.22);}
+    .live-top{display:flex;align-items:center;justify-content:space-between;}
+    .live-chip{background:var(--gold);color:var(--navy);border-radius:100px;padding:4px 11px;font-size:10.5px;font-weight:800;letter-spacing:0.05em;}
+    .live-name{color:#fff;margin-top:12px;}
+    .live-venue{color:rgba(255,255,255,0.72);font-weight:400;margin-top:6px;}
+    .live-dates{color:rgba(255,255,255,0.48);font-size:11px;font-weight:600;letter-spacing:0.04em;margin-top:8px;}
+    .live-divider{height:1px;background:rgba(255,255,255,0.12);margin:14px 0 12px;}
+    .live-stats{display:flex;align-items:center;gap:8px;}
+    .live-stats .num{color:#fff;font-weight:800;font-size:14.5px;}
+    .live-stats .num.gold{color:var(--gold);}
+    .live-stats .sep{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,0.30);}
+
+    .past-list{margin:0 20px;display:flex;flex-direction:column;gap:12px;padding-bottom:24px;}
+    .past-card{background:#fff;border:1px solid var(--hairline);border-radius:var(--r-lg);padding:16px;display:flex;align-items:center;gap:12px;}
+    .past-body{flex:1;min-width:0;}
+    .past-venue{color:var(--slate);font-weight:400;margin-top:4px;}
+    .past-dates{color:var(--slate);font-size:11px;font-weight:600;letter-spacing:0.03em;margin-top:6px;}
+    .past-leads{color:var(--ink-muted);font-weight:700;font-size:13px;text-align:right;flex-shrink:0;}
+    .past-leads .n{font-size:15px;color:var(--navy);}
+
+    .tabbar{flex:0 0 auto;display:flex;background:#fff;border-top:1px solid var(--hairline);height:64px;}
+    .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
+    .tab-label{font-size:10.5px;font-weight:700;}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="top">
+    <h1 class="t-display-md" style="color:var(--navy);">Events</h1>
+    <div class="add-btn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <div class="section-label">
+      <span class="t-caption" style="color:var(--gold);">Live now</span>
+    </div>
+    <div class="live-card">
+      <div class="live-top">
+        <span class="live-chip">Live &middot; Day 2</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="t-heading-md live-name">IMTEX 2026</div>
+      <div class="t-body-sm live-venue">Bombay Exhibition Centre &middot; Booth B-42</div>
+      <div class="live-dates">18&ndash;22 FEB 2026</div>
+      <div class="live-divider"></div>
+      <div class="live-stats">
+        <span class="num">248 leads</span>
+        <span class="sep"></span>
+        <span class="num gold">61 hot</span>
+      </div>
+    </div>
+
+    <div class="section-label">
+      <span class="t-caption" style="color:var(--label);">Past events</span>
+    </div>
+    <div class="past-list">
+      <sc-for list="{{pastEvents}}" as="ev" hint-placeholder-count="2">
+        <div class="past-card">
+          <div class="past-body">
+            <div class="t-heading-md" style="color:var(--navy);">{{ev.name}}</div>
+            <div class="t-body-sm past-venue">{{ev.venue}}</div>
+            <div class="past-dates">{{ev.dates}}</div>
+          </div>
+          <div class="past-leads"><span class="n">{{ev.leadCount}}</span><br/>leads</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      <span class="tab-label" style="color:var(--slate);">Home</span>
+    </div>
+    <div class="tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+      <span class="tab-label" style="color:var(--navy);">Events</span>
+    </div>
+    <div class="tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>
+      <span class="tab-label" style="color:var(--slate);">Profile</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const pastEvents = [
+      { name: 'Auto Expo 2025', venue: 'Pragati Maidan, Delhi · Hall 3', dates: '12–16 NOV 2025', leadCount: 312 },
+      { name: 'ChemTech India 2025', venue: 'Chennai Trade Centre · Booth C-18', dates: '4–6 SEP 2025', leadCount: 189 },
+    ];
+    return { pastEvents };
+  }
+}
+</script>
+</body>
+</html>

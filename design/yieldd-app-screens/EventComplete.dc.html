@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --navy-elevated:#101C3E; --blue:#1D3F8A; --gold:#F4B000;
+      --slate:#5A6B87; --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-caption{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--navy);overflow:hidden;position:relative;}
+    .glow{position:absolute;pointer-events:none;width:420px;height:420px;border-radius:50%;background:var(--blue);opacity:0.18;top:-190px;left:50%;transform:translateX(-50%);}
+    .scroll{position:relative;z-index:1;flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:76px 32px 0;}
+
+    .badge{width:76px;height:76px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 16px 34px rgba(244,176,0,0.32);}
+    .headline{margin-top:24px;font-size:25px;font-weight:800;letter-spacing:-0.01em;color:#fff;text-align:center;line-height:1.28;}
+    .sub{margin-top:10px;font-size:14px;color:rgba(255,255,255,0.62);text-align:center;max-width:270px;line-height:1.5;}
+
+    .summary{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:var(--r-lg);margin-top:32px;overflow:hidden;}
+    .sum-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.08);}
+    .sum-row:last-child{border-bottom:none;}
+    .sum-label{font-size:12.5px;color:rgba(255,255,255,0.55);}
+    .sum-value{font-size:13.5px;font-weight:700;color:#fff;}
+
+    .offline-note{display:flex;align-items:center;gap:8px;margin-top:20px;}
+    .offline-note span{font-size:12.5px;font-weight:600;color:var(--gold);}
+
+    .footer{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 32px 34px;margin-top:auto;position:relative;z-index:1;}
+    .cta{width:100%;height:56px;border-radius:100px;background:var(--gold);color:var(--navy);font-weight:700;font-size:16px;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(244,176,0,0.36);}
+    .link{color:rgba(255,255,255,0.75);font-size:13px;font-weight:600;}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="glow"></div>
+  <div class="scroll">
+    <div class="badge">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+    <div class="headline">You're set up for<br>IMTEX 2026</div>
+    <p class="sub">Your team can start scanning the moment they sign in &mdash; nothing here needs a network.</p>
+
+    <div class="summary">
+      <div class="sum-row"><span class="sum-label">EVENT</span><span class="sum-value">IMTEX 2026 &middot; Bengaluru</span></div>
+      <div class="sum-row"><span class="sum-label">DATES</span><span class="sum-value">18&ndash;22 Feb 2026</span></div>
+      <div class="sum-row"><span class="sum-label">TEAM</span><span class="sum-value">3 reps invited</span></div>
+      <div class="sum-row"><span class="sum-label">EVENT COST</span><span class="sum-value">&#8377;8,40,000</span></div>
+    </div>
+
+    <div class="offline-note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F4B000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a11 11 0 0114 0"/><path d="M8.5 16a6 6 0 017 0"/><circle cx="12" cy="19.5" r="1"/></svg>
+      <span>Works fully offline from here on</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="cta">Go to home</button>
+    <a href="#" class="link">Invite more reps</a>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

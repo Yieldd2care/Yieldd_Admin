@@ -5,29 +5,14 @@ import { router } from 'expo-router';
 
 import { Typography } from '../../components/ui/Typography';
 import { Button } from '../../components/ui/Button';
-import { TextInput } from '../../components/ui/TextInput';
-import { AuthLeftPanel } from '../../components/auth/AuthLeftPanel';
+import { AuthPillInput } from '../../components/auth/AuthPillInput';
 import { AuthTabs, type AuthMode } from '../../components/auth/AuthTabs';
 import { GoogleButton } from '../../components/auth/GoogleButton';
+import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
 import { useSessionStore } from '../../stores/useSessionStore';
 
-const COPY: Record<AuthMode, { heading: string; subheading: string; submitLabel: string; footnote: string }> = {
-  signup: {
-    heading: 'Create your account',
-    subheading: '',
-    submitLabel: 'Create account',
-    footnote: 'By creating an account you agree to our Terms and Privacy Policy.',
-  },
-  signin: {
-    heading: 'Welcome back',
-    subheading: 'Sign in to your leads, events and reports.',
-    submitLabel: 'Sign in',
-    footnote: 'New to Yieldd? Switch to Create account above.',
-  },
-};
-
 export default function AuthScreen() {
-  const [mode, setMode] = useState<AuthMode>('signup');
+  const [mode, setMode] = useState<AuthMode>('create');
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
@@ -36,15 +21,14 @@ export default function AuthScreen() {
   const signUp = useSessionStore((s) => s.signUp);
   const signIn = useSessionStore((s) => s.signIn);
 
-  const isSignup = mode === 'signup';
-  const copy = COPY[mode];
-  const canSubmit = isSignup
+  const isCreate = mode === 'create';
+  const canSubmit = isCreate
     ? name.trim() && company.trim() && email.trim() && password.trim()
     : email.trim() && password.trim();
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    if (isSignup) {
+    if (isCreate) {
       signUp({ name, company, email, password });
       router.replace('/(auth)/fork');
     } else {
@@ -53,115 +37,115 @@ export default function AuthScreen() {
     }
   };
 
+  const handleDevBypass = () => {
+    signIn({ email: 'dev@yieldd.co', password: '' });
+    router.replace('/(app)');
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+    <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <NavyGlowBackdrop />
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
-          contentContainerClassName="flex-grow lg:flex-row"
+          contentContainerClassName="flex-grow"
           bounces={false}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <AuthLeftPanel />
-
-          <View className="flex-1 items-center justify-center px-6 py-6 lg:px-14">
-            <View className="w-full max-w-[420px] gap-0">
-              <Pressable
-                className="flex-row items-center justify-center gap-[10px] mb-6 lg:hidden"
-                onPress={() => router.push('/(web)')}
-              >
-                <Image
-                  source={require('../../assets/brand/yieldd-mark-transparent.png')}
-                  style={{ width: 30, height: 36 }}
-                  resizeMode="contain"
-                />
-                <Typography className="text-[22px] font-extrabold tracking-[0.02em] text-navy">
-                  YIELDD
-                </Typography>
-              </Pressable>
-
-              <AuthTabs mode={mode} onChange={setMode} />
-
-              <Typography variant="display-md" className="text-navy mt-6">
-                {copy.heading}
-              </Typography>
-              {copy.subheading ? (
-                <Typography variant="body-md" className="text-slate mt-[8px]">
-                  {copy.subheading}
-                </Typography>
-              ) : null}
-
-              <View className="mt-5">
-                <GoogleButton />
-              </View>
-
-              <View className="flex-row items-center gap-[14px] my-5">
-                <View className="flex-1 h-px bg-hairline" />
-                <Typography className="text-[11.5px] font-semibold tracking-[0.16em] text-placeholder">
-                  OR
-                </Typography>
-                <View className="flex-1 h-px bg-hairline" />
-              </View>
-
-              <View className="gap-3">
-                {isSignup ? (
-                  <>
-                    <TextInput
-                      label="Full name"
-                      placeholder="Priya Sharma"
-                      value={name}
-                      onChangeText={setName}
-                      autoCapitalize="words"
-                    />
-                    <TextInput
-                      label="Company name"
-                      placeholder="Acme Industries Pvt Ltd"
-                      value={company}
-                      onChangeText={setCompany}
-                      autoCapitalize="words"
-                    />
-                  </>
-                ) : null}
-                <TextInput
-                  label="Work email"
-                  placeholder="you@company.com"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                />
-                <TextInput
-                  label="Password"
-                  placeholder="At least 8 characters"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoComplete="password"
-                />
-              </View>
-
-              {!isSignup ? (
-                <Pressable className="self-end mt-3">
-                  <Typography className="text-[14px] text-gold">Forgot password?</Typography>
-                </Pressable>
-              ) : null}
-
-              <Button
-                label={copy.submitLabel}
-                onPress={handleSubmit}
-                disabled={!canSubmit}
-                className={`w-full mt-6 ${!canSubmit ? 'opacity-50' : ''}`}
-              />
-
-              <Typography className="text-[13.5px] text-label mt-4 text-center">
-                {copy.footnote}
-              </Typography>
-            </View>
+          <View className="items-center pt-8 px-8">
+            <Image
+              source={require('../../assets/brand/yieldd-lockup-transparent.png')}
+              style={{ width: 130, height: 43 }}
+              resizeMode="contain"
+            />
           </View>
+
+          <View className="mx-8 mt-[38px]">
+            <AuthTabs mode={mode} onChange={setMode} />
+          </View>
+
+          <View className="px-8 pt-6">
+            <GoogleButton />
+
+            <View className="flex-row items-center gap-3 my-[18px]">
+              <View className="flex-1 h-px bg-white/[0.14]" />
+              <Typography className="text-[10.5px] font-bold tracking-[0.14em] text-white/[0.50]">OR</Typography>
+              <View className="flex-1 h-px bg-white/[0.14]" />
+            </View>
+
+            <View className="gap-3">
+              {isCreate ? (
+                <>
+                  <AuthPillInput placeholder="Priya Sharma" value={name} onChangeText={setName} autoCapitalize="words" />
+                  <AuthPillInput
+                    placeholder="Acme Industries Pvt Ltd"
+                    value={company}
+                    onChangeText={setCompany}
+                    autoCapitalize="words"
+                  />
+                </>
+              ) : null}
+              <AuthPillInput
+                placeholder="you@company.com"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+              />
+              <AuthPillInput
+                placeholder="At least 8 characters"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoComplete="password"
+              />
+            </View>
+
+            {!isCreate ? (
+              <Pressable className="self-end mt-3">
+                <Typography className="text-[12.5px] font-bold text-gold">Forgot password?</Typography>
+              </Pressable>
+            ) : null}
+
+            <Button
+              label={isCreate ? 'Create account' : 'Sign in'}
+              onPress={handleSubmit}
+              disabled={!canSubmit}
+              shape="pill"
+              className={`w-full mt-5 ${!canSubmit ? 'opacity-50' : ''}`}
+            />
+
+            {isCreate ? (
+              <View className="flex-row items-center justify-center gap-[6px] mt-4">
+                <Typography className="text-[12px] font-semibold text-white/[0.72]">
+                  Free to start &mdash; no credit card needed
+                </Typography>
+              </View>
+            ) : null}
+          </View>
+
+          <View className="flex-row items-center justify-center gap-[10px] py-8 mt-auto">
+            <Pressable className="bg-white/[0.08] rounded-full px-4 py-2">
+              <Typography className="text-[11.5px] font-semibold text-white/[0.85] underline">
+                Privacy Policy
+              </Typography>
+            </Pressable>
+            <View className="w-[3px] h-[3px] rounded-full bg-white/[0.30]" />
+            <Pressable className="bg-white/[0.08] rounded-full px-4 py-2">
+              <Typography className="text-[11.5px] font-semibold text-white/[0.85] underline">
+                Terms of Service
+              </Typography>
+            </Pressable>
+          </View>
+
+          {__DEV__ ? (
+            <Pressable onPress={handleDevBypass} className="items-center pb-6">
+              <Typography className="text-[12px] font-semibold text-white/[0.45]">
+                Continue without an account (dev)
+              </Typography>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

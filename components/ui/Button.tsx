@@ -1,17 +1,25 @@
+import type { ReactNode } from 'react';
 import { Pressable, type PressableProps } from 'react-native';
 
 import { Typography } from './Typography';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
+type Shape = 'default' | 'pill';
 
 interface Props extends PressableProps {
   label: string;
   variant?: Variant;
+  shape?: Shape;
+  icon?: ReactNode;
   className?: string;
 }
 
-const BASE =
-  'h-14 px-7 rounded-md items-center justify-center flex-row transition-all duration-200';
+const BASE = 'h-14 px-7 items-center justify-center flex-row transition-all duration-200';
+
+const SHAPE_CLASSES: Record<Shape, string> = {
+  default: 'rounded-md',
+  pill: 'rounded-full',
+};
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
@@ -26,9 +34,10 @@ const TEXT_CLASSES: Record<Variant, string> = {
   ghost: 'text-gold font-semibold text-base',
 };
 
-export function Button({ label, variant = 'primary', className = '', ...rest }: Props) {
+export function Button({ label, variant = 'primary', shape = 'default', icon, className = '', ...rest }: Props) {
   return (
-    <Pressable className={`${BASE} ${VARIANT_CLASSES[variant]} ${className}`} {...rest}>
+    <Pressable className={`${BASE} ${SHAPE_CLASSES[shape]} ${VARIANT_CLASSES[variant]} gap-[9px] ${className}`} {...rest}>
+      {icon}
       <Typography className={TEXT_CLASSES[variant]}>{label}</Typography>
     </Pressable>
   );

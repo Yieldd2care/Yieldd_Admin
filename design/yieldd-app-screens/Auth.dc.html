@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --navy-elevated:#101C3E; --blue:#1D3F8A;
+      --gold:#F4B000; --gold-hover:#FFC53D;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --label:#8A98B0; --ink-muted:#3C4C68; --success:#4ED17F; --placeholder:#97A3B8;
+      --r-sm:6px; --r-md:10px; --r-lg:16px; --r-xl:24px;
+      /* proposed for this screen only: a warm cream ground in place of white/section */
+      --cream:#FBF4E7; --cream-pill:#F3E7D2; --cream-divider:rgba(11,19,43,0.10);
+      --warm-placeholder:rgba(11,19,43,0.36);
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    a{color:var(--gold);text-decoration:none;}
+
+    .t-body-sm{font-size:13px;line-height:1.4;font-weight:500;margin:0;}
+    .t-caption{font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--cream);overflow:hidden;position:relative;}
+    .scroll{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;}
+
+    .hero{display:flex;flex-direction:column;align-items:center;padding:56px 32px 0;flex-shrink:0;}
+    .badge{width:84px;height:84px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;box-shadow:0 16px 34px rgba(11,19,43,0.28);flex-shrink:0;}
+    .wordmark{margin-top:20px;font-size:29px;font-weight:800;letter-spacing:-0.02em;color:var(--navy);}
+    .tagline{margin-top:6px;color:var(--gold);}
+    .pitch{margin-top:16px;font-size:15px;line-height:1.5;color:var(--slate);text-align:center;max-width:250px;}
+
+    .tabswitch{display:flex;gap:2px;background:var(--cream-pill);border-radius:100px;padding:4px;margin:26px 32px 0;flex-shrink:0;}
+    .tabseg{flex:1;text-align:center;padding:11px 4px;border-radius:100px;font-size:13px;font-weight:700;cursor:pointer;color:var(--slate);}
+    .tabseg.active{background:var(--navy);color:#fff;box-shadow:0 6px 14px rgba(11,19,43,0.22);}
+
+    .form{padding:24px 32px 0;display:flex;flex-direction:column;}
+    .g-btn{height:52px;border-radius:100px;background:#fff;border:1px solid rgba(11,19,43,0.08);display:flex;align-items:center;justify-content:center;gap:10px;font-size:14px;font-weight:600;color:var(--navy);cursor:pointer;}
+    .divider{display:flex;align-items:center;gap:12px;margin:18px 0;}
+    .divider .line{flex:1;height:1px;background:var(--cream-divider);}
+    .divider .word{font-size:10.5px;font-weight:700;letter-spacing:0.14em;color:var(--slate);}
+
+    .fields{display:flex;flex-direction:column;gap:12px;}
+    .pill-input{width:100%;height:52px;border-radius:100px;border:none;background:var(--cream-pill);padding:0 22px;font-size:14.5px;font-family:'Inter',sans-serif;color:var(--navy);}
+    .pill-input::placeholder{color:var(--warm-placeholder);}
+
+    .forgot{align-self:flex-end;margin-top:12px;font-size:12.5px;font-weight:700;color:var(--gold);}
+
+    .cta{width:100%;height:56px;border-radius:100px;background:var(--gold);color:var(--navy);font-weight:700;font-size:16px;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(244,176,0,0.36);cursor:pointer;margin-top:20px;}
+
+    .trust{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px;}
+    .trust span{font-size:12px;font-weight:600;color:var(--slate);}
+
+    .footer{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:28px 32px 34px;margin-top:auto;}
+    .foot-pill{background:var(--cream-pill);border-radius:100px;padding:8px 16px;font-size:11.5px;font-weight:600;color:var(--navy);text-decoration:underline;text-underline-offset:2px;}
+    .foot-dot{width:3px;height:3px;border-radius:50%;background:var(--cream-divider);}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="scroll">
+    <div class="hero">
+      <div class="badge">
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+          <path d="M8 16.5L15 23L26 9" stroke="#FBF4E7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+          <path d="M9 24L17 8L25 24" stroke="#F4B000" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="wordmark">YIELDD</div>
+      <div class="t-caption tagline">Cards in &middot; Deals out</div>
+      <p class="pitch">{{pitch}}</p>
+    </div>
+
+    <div class="tabswitch">
+      <sc-for list="{{tabs}}" as="tab" hint-placeholder-count="2">
+        <div class="tabseg {{tab.activeClass}}" onClick="{{tab.select}}">{{tab.label}}</div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{isCreate}}" hint-placeholder-val="{{true}}">
+      <div class="form">
+        <div class="g-btn">
+          <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 6 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 19 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6 29.5 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.4 26.7 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.5 5C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C40.9 36.5 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+          Continue with Google
+        </div>
+        <div class="divider"><div class="line"></div><span class="word">OR</span><div class="line"></div></div>
+        <div class="fields">
+          <input class="pill-input" type="text" placeholder="Priya Sharma" />
+          <input class="pill-input" type="text" placeholder="Acme Industries Pvt Ltd" />
+          <input class="pill-input" type="text" placeholder="you@company.com" />
+          <input class="pill-input" type="password" placeholder="At least 8 characters" />
+        </div>
+        <button class="cta">Create account</button>
+        <div class="trust">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="#F4B000"><path d="M12 2l2.2 6.8H21l-5.6 4.1 2.2 6.9L12 15.8l-5.6 4 2.2-6.9L3 8.8h6.8z"/></svg>
+          <span>Free to start &mdash; no credit card needed</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isSignin}}" hint-placeholder-val="{{false}}">
+      <div class="form">
+        <div class="g-btn">
+          <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 6 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 19 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6 29.5 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.4 26.7 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.5 5C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C40.9 36.5 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+          Continue with Google
+        </div>
+        <div class="divider"><div class="line"></div><span class="word">OR</span><div class="line"></div></div>
+        <div class="fields">
+          <input class="pill-input" type="text" placeholder="you@company.com" />
+          <input class="pill-input" type="password" placeholder="At least 8 characters" />
+        </div>
+        <div class="forgot">Forgot password?</div>
+        <button class="cta">Sign in</button>
+      </div>
+    </sc-if>
+
+    <div class="footer">
+      <a class="foot-pill" href="#">Privacy Policy</a>
+      <div class="foot-dot"></div>
+      <a class="foot-pill" href="#">Terms of Service</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'create' };
+  }
+  renderVals() {
+    const defs = [
+      { key: 'create', label: 'Create account' },
+      { key: 'signin', label: 'Sign in' },
+    ];
+    const tabs = defs.map((t) => ({
+      ...t,
+      activeClass: t.key === this.state.tab ? 'active' : '',
+      select: () => this.setState({ tab: t.key }),
+    }));
+    const isCreate = this.state.tab === 'create';
+    return {
+      tabs,
+      isCreate,
+      isSignin: !isCreate,
+      pitch: isCreate ? 'Scan a card. We handle the rest.' : 'Sign in to your leads, events and reports.',
+    };
+  }
+}
+</script>
+</body>
+</html>

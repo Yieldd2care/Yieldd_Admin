@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --blue:#1D3F8A; --gold:#F4B000; --slate:#5A6B87;
+      --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--navy);overflow:hidden;position:relative;}
+    .glow{position:absolute;pointer-events:none;width:420px;height:420px;border-radius:50%;background:var(--blue);opacity:0.18;top:-190px;left:50%;transform:translateX(-50%);}
+    .scroll{position:relative;z-index:1;flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:88px 32px 0;}
+
+    .viewfinder{width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.14);display:flex;align-items:center;justify-content:center;position:relative;}
+    .guide{width:130px;height:82px;border:2px dashed var(--gold);border-radius:10px;}
+
+    .headline{margin-top:32px;font-size:23px;font-weight:800;letter-spacing:-0.01em;color:#fff;text-align:center;line-height:1.3;}
+    .sub{margin-top:10px;font-size:14px;color:rgba(255,255,255,0.62);text-align:center;max-width:270px;line-height:1.5;}
+
+    .footer{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 32px 34px;margin-top:auto;position:relative;z-index:1;}
+    .cta{width:100%;height:56px;border-radius:100px;background:var(--gold);color:var(--navy);font-weight:700;font-size:16px;border:none;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 12px 28px rgba(244,176,0,0.36);}
+    .link{color:rgba(255,255,255,0.75);font-size:13px;font-weight:600;}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="glow"></div>
+  <div class="scroll">
+    <div class="viewfinder">
+      <div class="guide"></div>
+    </div>
+    <div class="headline">Try it on a real card</div>
+    <p class="sub">Grab any business card from your wallet and see Yieldd turn it into a lead in seconds.</p>
+  </div>
+
+  <div class="footer">
+    <button class="cta">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 012-2h2l1.4-2h5.2L16 6h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      Scan a card
+    </button>
+    <a href="#" class="link">Skip to home</a>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

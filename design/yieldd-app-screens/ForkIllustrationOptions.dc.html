@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{ --navy:#0B132B; --navy-elevated:#101C3E; --blue:#1D3F8A; --gold:#F4B000; --r-lg:16px; }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .board{width:900px;height:320px;background:var(--navy);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:24px;padding:0 32px;}
+    .glow{position:absolute;pointer-events:none;width:500px;height:500px;border-radius:50%;background:var(--blue);opacity:0.14;top:-190px;left:50%;transform:translateX(-50%);}
+    .swatch{position:relative;z-index:1;width:184px;height:236px;background:var(--navy-elevated);border:1px solid rgba(255,255,255,0.10);border-radius:var(--r-lg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;flex-shrink:0;}
+    .badge-letter{position:absolute;top:12px;left:12px;width:22px;height:22px;border-radius:6px;background:rgba(244,176,0,0.16);color:var(--gold);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+    .caption{font-size:11.5px;font-weight:600;color:rgba(255,255,255,0.65);text-align:center;padding:0 12px;}
+  </style>
+</helmet>
+
+<div class="board">
+  <div class="glow"></div>
+
+  <div class="swatch">
+    <div class="badge-letter">A</div>
+    <svg width="120" height="112" viewBox="0 0 160 150" fill="none">
+      <ellipse cx="80" cy="15" rx="13" ry="8" stroke="rgba(255,255,255,0.55)" stroke-width="3"/>
+      <line x1="69" y1="21" x2="56" y2="44" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="91" y1="21" x2="104" y2="44" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-linecap="round"/>
+      <rect x="40" y="44" width="80" height="94" rx="12" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.30)" stroke-width="1.5"/>
+      <rect x="54" y="58" width="20" height="20" rx="6" fill="#F4B000"/>
+      <rect x="54" y="86" width="52" height="5" rx="2.5" fill="rgba(255,255,255,0.32)"/>
+      <rect x="54" y="96" width="36" height="5" rx="2.5" fill="rgba(255,255,255,0.20)"/>
+      <rect x="54" y="114" width="28" height="5" rx="2.5" fill="#F4B000" opacity="0.85"/>
+      <path d="M118 116a12 12 0 0116 16" stroke="#F4B000" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+      <path d="M112 122a20 20 0 0126 26" stroke="#F4B000" stroke-width="2" stroke-linecap="round" opacity="0.30"/>
+      <line x1="92" y1="121" x2="130" y2="97" stroke="#F4B000" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="132" cy="95.5" r="3" fill="#F4B000"/>
+    </svg>
+    <div class="caption">Badge &amp; scan<br/><span style="opacity:0.6;">(current)</span></div>
+  </div>
+
+  <div class="swatch">
+    <div class="badge-letter">B</div>
+    <svg width="120" height="112" viewBox="0 0 160 150" fill="none">
+      <path d="M32 40v-8a6 6 0 016-6h10" stroke="rgba(255,255,255,0.45)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M128 40v-8a6 6 0 00-6-6h-10" stroke="rgba(255,255,255,0.45)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M32 110v8a6 6 0 006 6h10" stroke="rgba(255,255,255,0.45)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M128 110v8a6 6 0 01-6 6h-10" stroke="rgba(255,255,255,0.45)" stroke-width="3" stroke-linecap="round"/>
+      <rect x="50" y="46" width="60" height="58" rx="7" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+      <rect x="58" y="55" width="14" height="14" rx="4" fill="#F4B000"/>
+      <rect x="58" y="75" width="36" height="4.5" rx="2.25" fill="rgba(255,255,255,0.32)"/>
+      <rect x="58" y="84" width="26" height="4.5" rx="2.25" fill="rgba(255,255,255,0.20)"/>
+      <rect x="50" y="80" width="60" height="4" fill="#F4B000" opacity="0.75"/>
+      <rect x="50" y="80" width="60" height="10" fill="url(#scanfade)" opacity="0.5"/>
+      <defs>
+        <linearGradient id="scanfade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#F4B000" stop-opacity="0"/>
+          <stop offset="0.5" stop-color="#F4B000" stop-opacity="0.6"/>
+          <stop offset="1" stop-color="#F4B000" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div class="caption">Card scan<br/>viewfinder</div>
+  </div>
+
+  <div class="swatch">
+    <div class="badge-letter">C</div>
+    <svg width="120" height="112" viewBox="0 0 160 150" fill="none">
+      <rect x="34" y="86" width="62" height="42" rx="8" transform="rotate(-8 34 86)" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.28)" stroke-width="1.5"/>
+      <rect x="44" y="94" width="62" height="42" rx="8" transform="rotate(-2 44 94)" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.32)" stroke-width="1.5"/>
+      <rect x="52" y="100" width="62" height="42" rx="8" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.40)" stroke-width="1.5"/>
+      <rect x="62" y="112" width="24" height="5" rx="2.5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="62" y="122" width="16" height="5" rx="2.5" fill="rgba(255,255,255,0.20)"/>
+      <path d="M90 108L120 34L150 6" stroke="#F4B000" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M132 8l18-4-2 18" stroke="#F4B000" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+    <div class="caption">Growth arrow<br/>&amp; card stack</div>
+  </div>
+
+  <div class="swatch">
+    <div class="badge-letter">D</div>
+    <svg width="120" height="112" viewBox="0 0 160 150" fill="none">
+      <rect x="62" y="10" width="36" height="14" rx="5" fill="var(--navy-elevated)" stroke="rgba(255,255,255,0.40)" stroke-width="2"/>
+      <rect x="40" y="20" width="80" height="112" rx="12" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.30)" stroke-width="1.5"/>
+      <rect x="54" y="42" width="16" height="16" rx="4" fill="#F4B000"/>
+      <path d="M58 50l3 3 6-7" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="76" y="46" width="30" height="5" rx="2.5" fill="rgba(255,255,255,0.30)"/>
+      <rect x="54" y="70" width="16" height="16" rx="4" fill="#F4B000"/>
+      <path d="M58 78l3 3 6-7" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="76" y="74" width="30" height="5" rx="2.5" fill="rgba(255,255,255,0.30)"/>
+      <rect x="54" y="98" width="16" height="16" rx="4" fill="none" stroke="rgba(255,255,255,0.30)" stroke-width="1.5"/>
+      <rect x="76" y="102" width="24" height="5" rx="2.5" fill="rgba(255,255,255,0.18)"/>
+      <line x1="98" y1="118" x2="128" y2="98" stroke="#F4B000" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="130" cy="96.5" r="3" fill="#F4B000"/>
+    </svg>
+    <div class="caption">Setup<br/>checklist</div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
