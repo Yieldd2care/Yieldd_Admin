@@ -61,7 +61,7 @@ field type-selector, D5's template edit toggle, D6's missing "edit event"
 link). These `.dc.html` files remain the design source of truth for visual
 changes — edit them first, then port the change into the real component.
 
-## Status (as of this snapshot — 2026-08-22)
+## Status (as of this snapshot — 2026-08-25, updated via Impeccable)
 
 **Approved:**
 - Sign up / Sign in — `AuthNavy.dc.html` (interactive tabs, both states)
@@ -113,16 +113,153 @@ changes — edit them first, then port the change into the real component.
   no single "Events" screen quite like this one — closest match is H1 Event
   list + H2 Event dashboard, two separate screens. Worth splitting next)
 
-**Not designed yet:** E2–E7 (camera, confirm lead, duplicate detail, manual
-entry, voice recording, save confirmation), F1/F3–F5 (lead list, evening
-review, bulk send, send handoff), G1–G4 (follow-ups, log outcome, status
-change, deal value), H1–H4 (event list, event dashboard, ROI dashboard,
-export), I1–I4 (monetization — build once as a variable-headline sheet per
-the flow diagram doc, not 4 screens), J1–J3 (settings, profile edit, team
-management).
+**Designed, needs review (added 2026-08-25, via the Impeccable skill):**
+- **Core capture loop (E2–E7)** — `Camera.dc.html`, `ConfirmLead.dc.html`,
+  `DuplicateDetail.dc.html`, `ManualEntry.dc.html`, `VoiceNote.dc.html`,
+  `SaveConfirmation.dc.html`. Built directly against the established
+  navy/gold system as a precise extension (per Impeccable's own rule: no
+  concept tournament for a narrow, already-spec'd request), matching
+  `flow-diagram-text.txt`'s structural point exactly — the duplicate flag
+  surfaces inline on Confirm (a tappable banner), and `DuplicateDetail` is
+  the read-only sheet it opens, not a separate flow branch. E2 has no fake
+  status bar/keyboard per the design skill's mobile-prototype rule and
+  simulates a camera feed with a layered gradient (not a literal photo)
+  since no real capture exists yet. E7 uses the same navy hero-moment
+  treatment as Auth/Fork/D6 for the celebratory save. Sample data continues
+  the Rajesh Menon / Northline Engineering person already used on the
+  landing page's hero and "How it works" mockups, for cross-surface
+  continuity. `PRODUCT.md` (project root) now records durable product
+  context for the Impeccable skill — read there before another init round.
 
-**Suggested next batch:** the core capture loop (E2–E7) — it's what both
-planning docs call "the product," and Home's FAB now points at it directly.
+- **F3. Evening review** — `EveningReview.dc.html` — a card-stack, one
+  incomplete lead at a time (not a list), with the "closeable number" tally
+  (captured today / need a note / remaining) fixed above it. Hot/Warm/Cold
+  stays inside the existing token set (gold-filled / outline) rather than
+  introducing a new traffic-light palette. Two ghost cards peek behind the
+  active one, reusing the layered-card depth motif already established on
+  the landing page's hero art.
+- **H3. ROI dashboard** — `ROIDashboard.dc.html` — deliberately
+  screenshot-forward per spec (it's what the admin forwards to their MD):
+  a dark navy-elevated hero card carries the headline ROI% and cost-per-lead
+  in gold-on-navy, echoing the same dashboard-mockup treatment already used
+  in the landing page's Hero.tsx card. Pipeline-by-status uses one color
+  per status (grey/blue/gold/green/red) reserved for that purpose only.
+
+With these two, all three screens `ui-development-plan-v1.md`'s "Build
+order note" calls out as deciding the product (E2/E3, F3, H3) are now
+designed.
+- **F1. Lead list** — `LeadList.dc.html` — the "Leads" tab, reusing
+  `Main.dc.html`'s tabbar/topbar chrome exactly. Reverse-chronological rows
+  with a status pill, a voice-note mic badge, and a small gold dot flagging
+  "needs a note" rows, plus search, status filter chips, and an
+  event-switcher in the header.
+- **G1. Today's follow-ups** — `TodaysFollowUps.dc.html` — overdue items
+  surfaced in their own section above today's, each entry showing the
+  transcript-summary quote (same visual pattern as `DuplicateDetail.dc.html`'s
+  note card) so the call feels informed rather than cold, per spec. Call is
+  the dominant action per row; WhatsApp and defer are secondary icon buttons.
+
+**Fixed after an Impeccable review pass (2026-08-25):** the six Group E
+files initially used the `--label` token (`#8A98B0`) for field/section
+labels, which fails WCAG AA contrast on white/`--section` backgrounds
+(~2.9:1, needs 4.5:1) — none of the already-approved screens actually use
+that token for readable text (`EventCreate.dc.html` uses `--navy` for plain
+field labels, `Main.dc.html`/`EventCreate.dc.html` use `--slate` for
+tracked-caption microcopy). All new files now follow that same split.
+Also added: the consent toggle `ManualEntry.dc.html` was missing (spec
+lists it as shared between Confirm lead and Manual entry), a discard
+control on `ConfirmLead.dc.html`'s footer, and `VoiceNote.dc.html`'s
+central button now shows Play (not an ambiguous stop-square) since the
+depicted state is post-recording review.
+
+- **I1+I2. Upgrade sheet** — `UpgradeSheet.dc.html` — deliberately ONE file
+  for both spec entries, per `flow-diagram-text.txt`'s explicit instruction
+  not to design four upsell screens. Shows the strongest/primary trigger
+  (lead 101 saved) as the drawn example; the headline block is the only
+  piece meant to vary per trigger in the real build.
+- **I3. Payment success** — `PaymentSuccess.dc.html` — navy hero-moment
+  treatment (same family as Auth/Fork/D6/E7), what's unlocked as a
+  checklist, single dominant return-to-scanning CTA, GST invoice note.
+- **I4. Payment failure** — `PaymentFailure.dc.html` — deliberately NOT the
+  celebratory navy treatment (a failure shouldn't look triumphant); light
+  background, calm icon, an explicit green reassurance card ("nothing was
+  lost, no money was taken") before any retry action.
+- **J1. Settings** — `Settings.dc.html` — profile card, plan/billing status,
+  grouped rows (account, preferences, sync &amp; storage, support), logout
+  as its own visually distinct row.
+
+- **F2. Lead detail** — `LeadDetailNew.dc.html` (the old `LeadDetail.dc.html`
+  stays on the canvas as reference, superseded — swap it out once this is
+  approved and ported). Now includes everything the old version was missing
+  per spec: voice player with mini-waveform + transcript link + summary,
+  full captured-fields list, consent status, activity timeline, and an
+  admin-only reassign row, plus a call/WhatsApp/email/save-to-contacts
+  action row up top.
+- **G2. Log outcome** — `LogOutcome.dc.html` — 4 outcome cards
+  (Connected/No answer/Not interested/Meeting set), optional note, and the
+  same follow-up date quick-picks as `EveningReview.dc.html`, as a sheet.
+- **G3. Status change** — `StatusChange.dc.html` — 5-state list, current
+  state highlighted. Selecting Won shows an inline hint that it opens G4
+  next rather than silently jumping (spec: "Selecting Won opens G4").
+- **G4. Deal value** — `DealValue.dc.html` — large currency input (required,
+  matches the DB's won-requires-value rule), optional close date/note,
+  Cancel returns to the previous status per spec.
+
+**Fixed after a second Impeccable review pass:** `Settings.dc.html`'s sync
+row showed status but had no way to actually trigger a manual sync (spec
+requires one) — added a "Sync now" link.
+
+- **H1. Event list** — `EventList.dc.html` — events grouped by status
+  (Live/Upcoming/Closed) rather than one flat list, since that's the actual
+  question an admin has ("which show am I in right now"); Live gets a
+  highlighted card treatment.
+- **H2. Event dashboard** — `EventDashboard.dc.html` — today's leads +
+  cumulative as twin stat cards, an hourly capture-rate bar chart, and a
+  rep leaderboard with its own visibility toggle (admin-only per spec), all
+  under an "as of last sync" timestamp row.
+- **H4. Export** — `Export.dc.html` — scope (event/date-range/status-only),
+  a field checklist, Excel called out explicitly as the format (not a
+  generic "choose format" picker, since spec says this customer already
+  lives in Excel).
+- **J3. Team management** — `TeamManagement.dc.html` — seats-used-against-
+  plan-limit as a navy stat card up top, active members with role pills,
+  a deactivated member shown dimmed with "leads retained" (never deleted,
+  per spec), and a separate pending-invites group with resend.
+- **F4. Bulk select and send** — `BulkSend.dc.html` — reuses `LeadList.dc.html`'s
+  row pattern with checkboxes added, channel choice up top (WhatsApp/Email),
+  and the same editable-template-preview pattern as `EventTemplates.dc.html`.
+- **F5. Send handoff** — `SendQueue.dc.html` — one lead at a time with a
+  progress bar (matches the spec's "queue," not a list), skip/cancel always
+  visible, "Open in WhatsApp" as the actual hand-off action.
+
+**All 38 in-app screens from `ui-development-plan-v1.md` are now designed**
+(minus J2, which is intentionally not a separate file — its spec is
+identical to C1/C2's fields+preview+QR, already covered by
+`CardBuilder.dc.html`/`CardPreview.dc.html`; the real code equivalent
+already exists at `app/(app)/settings/card.tsx` reusing `card/edit.tsx` per
+`TASKS.md`). The 3 old pre-navy files (`Capture.dc.html`, `LeadDetail.dc.html`,
+`Events.dc.html`) stay on the canvas as superseded reference — safe to
+delete once their replacements are approved and ported.
+
+**Not designed yet:** A2 (pricing page) and A3 (hosted digital card page) —
+both marketing/public web pages, not app screens, and belong to the same
+code-first pipeline as the already-approved Landing page
+(`components/web/*.tsx`) rather than this `.dc.html` canvas. Worth a
+separate pass through that pipeline rather than squeezing them in here.
+
+**Fixed after a third Impeccable review pass:** `TeamManagement.dc.html`'s
+pending-invite row and `EventDashboard.dc.html`'s #4 leaderboard rep were
+both named "Kavita Rao," reading as the same person simultaneously
+not-yet-joined and actively capturing 57 leads — renamed the pending
+invite to Meera Iyer. `BulkSend.dc.html` showed a "8 selected" badge over
+only 3 checked + 1 unchecked visible rows with no indication the list was
+truncated — added a "+ 5 more selected" row so the math is legible
+(3 shown + 5 more = 8). Also removed two dead CSS rules in
+`TeamManagement.dc.html`.
+
+**Suggested next step:** review this full batch, then start porting
+approved screens into real Expo Router code following the same pattern
+used for the 13 screens already ported (see "Wired into real code" above).
 
 **Alternate (un-chosen) sign-in directions**, kept for reference:
 `Auth.dc.html` (warm cream), `AuthLight.dc.html` (token-safe light),
@@ -171,6 +308,12 @@ planning docs call "the product," and Home's FAB now points at it directly.
      --artboard ForkIllustrationOptions.dc.html \
      --artboard CardBuilder.dc.html --artboard CardPreview.dc.html --artboard ShareSheet.dc.html --artboard FirstScanPrompt.dc.html \
      --artboard EventCreate.dc.html --artboard EventCost.dc.html --artboard EventInvite.dc.html --artboard EventFields.dc.html --artboard EventTemplates.dc.html --artboard EventComplete.dc.html \
+     --artboard Camera.dc.html --artboard ConfirmLead.dc.html --artboard DuplicateDetail.dc.html --artboard ManualEntry.dc.html --artboard VoiceNote.dc.html --artboard SaveConfirmation.dc.html \
+     --artboard EveningReview.dc.html --artboard ROIDashboard.dc.html --artboard LeadList.dc.html --artboard TodaysFollowUps.dc.html \
+     --artboard UpgradeSheet.dc.html --artboard PaymentSuccess.dc.html --artboard PaymentFailure.dc.html --artboard Settings.dc.html \
+     --artboard LeadDetailNew.dc.html --artboard LogOutcome.dc.html --artboard StatusChange.dc.html --artboard DealValue.dc.html \
+     --artboard EventList.dc.html --artboard EventDashboard.dc.html --artboard Export.dc.html --artboard TeamManagement.dc.html \
+     --artboard BulkSend.dc.html --artboard SendQueue.dc.html \
      --image yieldd-lockup-transparent-sm.png --image yieldd-mark-transparent-sm.png \
      --canvas canvas.json
    ```

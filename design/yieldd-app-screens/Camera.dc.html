@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --gold:#F4B000; --gold-hover:#FFC53D;
+      --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-body-sm{font-size:13px;line-height:1.4;font-weight:600;margin:0;}
+
+    .screen{width:390px;height:844px;position:relative;overflow:hidden;background:#0d1220;}
+    .feed{position:absolute;inset:0;background:
+      radial-gradient(600px 500px at 30% 20%, rgba(29,63,138,0.30), transparent 60%),
+      radial-gradient(500px 420px at 75% 70%, rgba(20,26,46,0.9), transparent 55%),
+      linear-gradient(160deg, #171d30 0%, #0b0f1c 55%, #05070d 100%);
+    }
+    .grain{position:absolute;inset:0;opacity:0.05;background-image:radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px);background-size:3px 3px;}
+
+    .topbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;z-index:2;}
+    .icon-btn{width:38px;height:38px;border-radius:50%;background:rgba(11,19,43,0.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.14);display:flex;align-items:center;justify-content:center;}
+
+    .mask{position:absolute;inset:0;background:rgba(5,7,13,0.52);z-index:1;
+      -webkit-mask:radial-gradient(0px 0px, transparent, transparent);}
+    .guide-wrap{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:322px;height:203px;z-index:2;}
+    .guide-cut{position:absolute;inset:0;border-radius:14px;box-shadow:0 0 0 2000px rgba(5,8,15,0.58);}
+    .corner{position:absolute;width:28px;height:28px;border:3px solid var(--gold);}
+    .c-tl{top:-3px;left:-3px;border-right:none;border-bottom:none;border-top-left-radius:10px;}
+    .c-tr{top:-3px;right:-3px;border-left:none;border-bottom:none;border-top-right-radius:10px;}
+    .c-bl{bottom:-3px;left:-3px;border-right:none;border-top:none;border-bottom-left-radius:10px;}
+    .c-br{bottom:-3px;right:-3px;border-left:none;border-top:none;border-bottom-right-radius:10px;}
+
+    .hint{position:absolute;left:0;right:0;top:calc(44% + 122px);text-align:center;z-index:2;}
+    .hint span{background:rgba(11,19,43,0.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:9px 18px;color:#fff;font-size:12.5px;font-weight:600;}
+
+    .bottom{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;gap:22px;padding-bottom:44px;z-index:2;}
+    .manual-link{color:rgba(255,255,255,0.80);text-decoration:none;}
+    .shutter-row{display:flex;align-items:center;justify-content:center;gap:52px;width:100%;}
+    .side-slot{width:44px;height:44px;}
+    .shutter{width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,0.10);border:3px solid #fff;display:flex;align-items:center;justify-content:center;}
+    .shutter-core{width:60px;height:60px;border-radius:50%;background:var(--gold);}
+    .torch-badge{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.20);display:flex;align-items:center;justify-content:center;}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="feed"></div>
+  <div class="grain"></div>
+
+  <div class="guide-wrap">
+    <div class="guide-cut"></div>
+    <div class="corner c-tl"></div>
+    <div class="corner c-tr"></div>
+    <div class="corner c-bl"></div>
+    <div class="corner c-br"></div>
+  </div>
+
+  <div class="hint"><span>Align the card within the frame</span></div>
+
+  <div class="topbar">
+    <div class="icon-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </div>
+    <div class="icon-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="shutter-row">
+      <div class="side-slot"></div>
+      <div class="shutter"><div class="shutter-core"></div></div>
+      <div class="torch-badge">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="7" rx="1"/><path d="M9 9v3H7l5 10v-8h2L9 9z"/></svg>
+      </div>
+    </div>
+    <a class="manual-link t-body-sm" href="#">Enter manually instead</a>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --gold:#F4B000; --blue:#1D3F8A;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --r-sm:6px; --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-heading-lg{font-size:20px;line-height:1.3;font-weight:700;letter-spacing:-0.01em;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--section);overflow:hidden;position:relative;}
+    .header{flex:0 0 auto;padding:18px 20px 0;display:flex;justify-content:flex-end;}
+    .close-btn{width:34px;height:34px;border-radius:var(--r-md);background:var(--surface);display:flex;align-items:center;justify-content:center;}
+
+    .body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 34px;text-align:center;}
+    .icon-wrap{width:72px;height:72px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;}
+    .title{margin-top:22px;color:var(--navy);}
+    .sub{margin-top:8px;font-size:13.5px;line-height:1.5;color:var(--slate);}
+
+    .reassure{margin-top:22px;display:flex;align-items:flex-start;gap:10px;background:rgba(78,209,127,0.08);border:1px solid rgba(78,209,127,0.25);border-radius:var(--r-md);padding:14px 16px;text-align:left;}
+    .reassure svg{flex-shrink:0;margin-top:1px;}
+    .reassure span{font-size:12.5px;line-height:1.5;color:var(--navy);font-weight:500;}
+    .reassure b{font-weight:700;}
+
+    .actions{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:26px;}
+    .btn-retry{width:100%;height:54px;border-radius:var(--r-md);background:var(--gold);color:var(--navy);font-weight:700;font-size:15px;border:none;box-shadow:0 10px 24px rgba(244,176,0,0.30);}
+    .btn-switch{width:100%;height:50px;border-radius:var(--r-md);background:#fff;border:1px solid var(--hairline);color:var(--navy);font-weight:700;font-size:14px;}
+    .btn-whatsapp{width:100%;height:50px;border-radius:var(--r-md);background:#fff;border:1px solid var(--hairline);color:var(--navy);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;}
+
+    .dismiss-link{margin-top:16px;}
+    .dismiss-link a{font-size:13px;font-weight:700;color:var(--slate);}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="header">
+    <div class="close-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="icon-wrap">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+    </div>
+    <div class="t-heading-lg title">Payment didn't go through</div>
+    <p class="sub">Your bank or network dropped the connection before it confirmed. This happens more often on venue Wi-Fi.</p>
+
+    <div class="reassure">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2E9C61" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      <span><b>Nothing was lost.</b> No money was taken, and your leads are all still saved and syncing normally.</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn-retry">Try again</button>
+      <button class="btn-switch">Switch payment method</button>
+      <button class="btn-whatsapp">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        Contact sales
+      </button>
+    </div>
+    <div class="dismiss-link"><a href="#">Not now</a></div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

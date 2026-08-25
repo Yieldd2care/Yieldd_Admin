@@ -194,3 +194,130 @@ export function LinkIcon({ size = 17, color = '#0B132B', strokeWidth = 1.75 }: I
     </Svg>
   );
 }
+
+export function MicIcon({ size = 15, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z" />
+      <Path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4" />
+    </Svg>
+  );
+}
+
+export function TrashIcon({ size = 16, color = '#C23B3B', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+    </Svg>
+  );
+}
+
+export function PlayIcon({ size = 13, color = '#fff' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Path d="M8 5v14l11-7z" />
+    </Svg>
+  );
+}
+
+export function RewindIcon({ size = 16, color = '#5A6B87', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M1 4v6h6M23 20v-6h-6" />
+      <Path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" />
+    </Svg>
+  );
+}
+
+export function EditIcon({ size = 15, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 20h9" />
+      <Path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z" />
+    </Svg>
+  );
+}
+
+export function FlashIcon({ size = 17, color = '#fff', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+    </Svg>
+  );
+}
+
+export function AlertCircleIcon({ size = 15, color = '#5A6B87', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx="12" cy="12" r="10" />
+      <Path d="M12 8v5M12 16h.01" />
+    </Svg>
+  );
+}
+
+export function BarChartIcon({ size = 15, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M1 4v6h6M23 20v-6h-6" opacity={0} />
+      <Rect x="3" y="12" width="4" height="9" rx="1" />
+      <Rect x="10" y="7" width="4" height="14" rx="1" />
+      <Rect x="17" y="3" width="4" height="18" rx="1" />
+    </Svg>
+  );
+}
+
+export function StorageIcon({ size = 15, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+      <Path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
+      <Path d="M21 5c0 1.66-4 3-9 3S3 6.66 3 5s4-3 9-3 9 1.34 9 3z" />
+    </Svg>
+  );
+}
+
+export function LogoutIcon({ size = 16, color = '#C23B3B', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+      <Path d="M16 17l5-5-5-5M21 12H9" />
+    </Svg>
+  );
+}
+
+export function RefreshIcon({ size = 15, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M1 4v6h6M23 20v-6h-6" />
+      <Path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" />
+    </Svg>
+  );
+}
+
+export function SearchIcon({ size = 15, color = '#97A3B8', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx="11" cy="11" r="8" />
+      <Path d="M21 21l-4.3-4.3" />
+    </Svg>
+  );
+}
+
+export function FileIcon({ size = 18, color = '#2E8C40', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <Path d="M14 2v6h6M8 13h2m4 0h2M8 17h2m4 0h2" />
+    </Svg>
+  );
+}
+
+export function ContactsIcon({ size = 16, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <Circle cx="12" cy="7" r="4" />
+      <Path d="M16 3.5a4 4 0 010 7" />
+    </Svg>
+  );
+}

@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --gold:#F4B000; --blue:#1D3F8A;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --success:#4ED17F; --r-sm:6px; --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-caption{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;margin:0;}
+    .t-heading-lg{font-size:21px;line-height:1.28;font-weight:800;letter-spacing:-0.01em;margin:0;}
+
+    .screen{width:390px;height:844px;position:relative;overflow:hidden;background:var(--section);}
+    .backdrop{position:absolute;inset:0;background:rgba(11,19,43,0.55);}
+    .backdrop-hint{position:absolute;top:56px;left:20px;right:20px;height:80px;background:#fff;border-radius:16px;opacity:0.5;display:flex;align-items:center;gap:12px;padding:0 16px;}
+    .backdrop-check{width:32px;height:32px;border-radius:50%;background:rgba(78,209,127,0.20);flex-shrink:0;}
+
+    .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:10px 24px 30px;box-shadow:0 -20px 50px rgba(11,19,43,0.35);}
+    .handle{width:36px;height:4px;border-radius:100px;background:var(--hairline);margin:0 auto 18px;}
+
+    .saved-row{display:flex;align-items:center;gap:8px;margin-top:2px;}
+    .saved-dot{width:16px;height:16px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .saved-row span{font-size:12px;font-weight:700;color:#2E9C61;}
+
+    .headline{margin-top:12px;color:var(--navy);}
+    .sub{margin-top:8px;font-size:13.5px;line-height:1.5;color:var(--slate);}
+
+    .feature-list{margin-top:20px;display:flex;flex-direction:column;gap:11px;}
+    .feature-row{display:flex;align-items:center;gap:10px;}
+    .feature-row span{font-size:13.5px;font-weight:600;color:var(--navy);}
+
+    .price-card{margin-top:20px;background:var(--section);border-radius:var(--r-lg);padding:16px 18px;display:flex;align-items:center;justify-content:space-between;}
+    .price-num{font-size:22px;font-weight:800;color:var(--navy);letter-spacing:-0.01em;}
+    .price-per{font-size:12.5px;color:var(--slate);font-weight:600;}
+    .price-framing{font-size:11.5px;color:var(--slate);text-align:right;max-width:150px;line-height:1.4;}
+
+    .actions{display:flex;flex-direction:column;gap:10px;margin-top:22px;}
+    .btn-pay{width:100%;height:54px;border-radius:var(--r-md);background:var(--gold);color:var(--navy);font-weight:700;font-size:15px;border:none;box-shadow:0 10px 24px rgba(244,176,0,0.30);}
+    .btn-whatsapp{width:100%;height:52px;border-radius:var(--r-md);background:#fff;border:1px solid var(--hairline);color:var(--navy);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .dismiss-link{text-align:center;margin-top:14px;}
+    .dismiss-link a{font-size:13px;font-weight:700;color:var(--slate);}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="backdrop">
+    <div class="backdrop-hint">
+      <div class="backdrop-check"></div>
+    </div>
+  </div>
+
+  <div class="sheet">
+    <div class="handle"></div>
+
+    <div class="saved-row">
+      <div class="saved-dot">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <span>Lead 101 saved</span>
+    </div>
+
+    <div class="t-heading-lg headline">You've outgrown the free plan</div>
+    <p class="sub">100 leads was generous for one show. Pro removes the cap, unlocks follow-ups, and shows you the ROI number your MD actually wants.</p>
+
+    <div class="feature-list">
+      <div class="feature-row">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F4B000" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        <span>Unlimited leads, every event</span>
+      </div>
+      <div class="feature-row">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F4B000" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        <span>Follow-up pipeline &amp; reminders</span>
+      </div>
+      <div class="feature-row">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F4B000" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        <span>Live ROI dashboard</span>
+      </div>
+    </div>
+
+    <div class="price-card">
+      <div>
+        <span class="price-num">&#8377;10,000</span>
+        <div class="price-per">per event</div>
+      </div>
+      <div class="price-framing">Less than half a day of stall staffing</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-pay">Pay with UPI</button>
+      <button class="btn-whatsapp">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        Talk to sales
+      </button>
+    </div>
+    <div class="dismiss-link"><a href="#">Keep scanning on Free</a></div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

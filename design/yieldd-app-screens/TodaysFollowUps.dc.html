@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --gold:#F4B000; --blue:#1D3F8A;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --label:#8A98B0; --danger:#C23B3B;
+      --r-sm:6px; --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-heading-lg{font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-0.01em;margin:0;}
+    .t-caption{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--section);overflow:hidden;position:relative;}
+    .header{flex:0 0 auto;background:#fff;border-bottom:1px solid var(--hairline);padding:18px 20px 16px;display:flex;align-items:center;gap:12px;}
+    .back-btn{width:34px;height:34px;border-radius:var(--r-md);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .count-badge{margin-left:auto;background:var(--gold);color:var(--navy);font-size:12px;font-weight:800;padding:5px 11px;border-radius:100px;}
+
+    .scroll{flex:1 1 auto;overflow-y:auto;padding:18px 20px 20px;}
+    .section-label{display:flex;align-items:center;gap:8px;margin:0 0 12px;}
+    .section-label.overdue span{color:var(--danger);}
+    .section-label span{font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:var(--slate);}
+
+    .follow-card{background:#fff;border:1px solid var(--hairline);border-radius:var(--r-lg);padding:16px;margin-bottom:12px;}
+    .follow-card.overdue{border-color:rgba(194,59,59,0.30);}
+    .fc-head{display:flex;align-items:center;gap:10px;}
+    .fc-avatar{width:38px;height:38px;border-radius:11px;background:var(--surface);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;}
+    .fc-name{font-size:14.5px;font-weight:700;color:var(--navy);}
+    .fc-company{font-size:11.5px;color:var(--slate);margin-top:1px;}
+    .fc-when{margin-left:auto;font-size:11px;font-weight:700;color:var(--slate);}
+    .fc-when.overdue-text{color:var(--danger);}
+
+    .fc-note{display:flex;gap:8px;background:var(--section);border-radius:10px;padding:11px 12px;margin-top:12px;}
+    .fc-note svg{flex-shrink:0;margin-top:1px;}
+    .fc-note-text{font-size:12.5px;line-height:1.5;color:var(--navy);font-weight:500;}
+
+    .fc-actions{display:flex;gap:8px;margin-top:14px;}
+    .call-btn{flex:1;height:44px;border-radius:var(--r-md);background:var(--navy);color:#fff;font-weight:700;font-size:13.5px;border:none;display:flex;align-items:center;justify-content:center;gap:7px;}
+    .icon-action{width:44px;height:44px;border-radius:var(--r-md);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="header">
+    <div class="back-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div class="t-heading-lg" style="color:var(--navy);">Today's follow-ups</div>
+    <div class="count-badge">6</div>
+  </div>
+
+  <div class="scroll">
+    <div class="section-label overdue">
+      <span>Overdue &middot; 1</span>
+    </div>
+    <div class="follow-card overdue">
+      <div class="fc-head">
+        <div class="fc-avatar">V</div>
+        <div>
+          <div class="fc-name">Vikram Nair</div>
+          <div class="fc-company">Delta Precision</div>
+        </div>
+        <div class="fc-when overdue-text">2 days overdue</div>
+      </div>
+      <div class="fc-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A98B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4"/></svg>
+        <div class="fc-note-text">Wants pricing for a 3-unit order, comparing against two other vendors before month-end.</div>
+      </div>
+      <div class="fc-actions">
+        <button class="call-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.06 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.12.81.31 1.6.57 2.36a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.72-1.14a2 2 0 012.11-.45c.76.26 1.55.45 2.36.57A2 2 0 0122 16.92z"/></svg>
+          Call
+        </button>
+        <div class="icon-action">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        </div>
+        <div class="icon-action">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:20px;">
+      <span>Today &middot; 5</span>
+    </div>
+    <div class="follow-card">
+      <div class="fc-head">
+        <div class="fc-avatar">R</div>
+        <div>
+          <div class="fc-name">Rajesh Menon</div>
+          <div class="fc-company">Northline Engineering</div>
+        </div>
+        <div class="fc-when">Due today</div>
+      </div>
+      <div class="fc-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A98B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4"/></svg>
+        <div class="fc-note-text">Evaluating three vendors for the new plant line &mdash; wants a formal quote with lead times.</div>
+      </div>
+      <div class="fc-actions">
+        <button class="call-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.06 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.12.81.31 1.6.57 2.36a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.72-1.14a2 2 0 012.11-.45c.76.26 1.55.45 2.36.57A2 2 0 0122 16.92z"/></svg>
+          Call
+        </button>
+        <div class="icon-action">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        </div>
+        <div class="icon-action">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="follow-card">
+      <div class="fc-head">
+        <div class="fc-avatar">K</div>
+        <div>
+          <div class="fc-name">Kavita Rao</div>
+          <div class="fc-company">Suntech Moulds</div>
+        </div>
+        <div class="fc-when">Due today</div>
+      </div>
+      <div class="fc-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A98B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4"/></svg>
+        <div class="fc-note-text">Asked for catalog and MOQ &mdash; open to a call after 5pm this week.</div>
+      </div>
+      <div class="fc-actions">
+        <button class="call-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.06 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.12.81.31 1.6.57 2.36a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.72-1.14a2 2 0 012.11-.45c.76.26 1.55.45 2.36.57A2 2 0 0122 16.92z"/></svg>
+          Call
+        </button>
+        <div class="icon-action">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        </div>
+        <div class="icon-action">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

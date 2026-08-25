@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --gold:#F4B000; --blue:#1D3F8A;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --label:#8A98B0; --r-sm:6px; --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-heading-lg{font-size:20px;line-height:1.3;font-weight:700;letter-spacing:-0.01em;margin:0;}
+    .t-body-sm{font-size:13px;line-height:1.4;font-weight:500;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--section);overflow:hidden;position:relative;}
+    .header{flex:0 0 auto;background:#fff;border-bottom:1px solid var(--hairline);padding:18px 20px 16px;display:flex;align-items:center;gap:12px;}
+    .back-btn{width:34px;height:34px;border-radius:var(--r-md);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    .body{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 32px;gap:34px;}
+
+    .timer{font-size:44px;font-weight:800;color:var(--navy);letter-spacing:-0.01em;font-variant-numeric:tabular-nums;}
+    .timer-label{font-size:12px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;color:var(--slate);margin-top:-22px;}
+
+    .wave{display:flex;align-items:center;gap:4px;height:56px;}
+    .bar{width:4px;border-radius:3px;background:var(--hairline);}
+    .bar.on{background:var(--gold);}
+
+    .rec-wrap{position:relative;width:100px;height:100px;display:flex;align-items:center;justify-content:center;}
+    .rec-ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(244,176,0,0.25);}
+    .rec-btn{width:76px;height:76px;border-radius:50%;background:var(--gold);box-shadow:0 14px 30px rgba(244,176,0,0.38);display:flex;align-items:center;justify-content:center;}
+
+    .controls{display:flex;align-items:center;gap:28px;}
+    .ctrl{width:46px;height:46px;border-radius:50%;background:#fff;border:1px solid var(--hairline);display:flex;align-items:center;justify-content:center;}
+
+    .footer{flex:0 0 auto;padding:14px 20px 24px;background:#fff;border-top:1px solid var(--hairline);}
+    .cta{width:100%;height:54px;border-radius:var(--r-md);background:var(--gold);color:var(--navy);font-weight:700;font-size:16px;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(244,176,0,0.30);}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="header">
+    <div class="back-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div class="t-heading-lg" style="color:var(--navy);">Voice note</div>
+  </div>
+
+  <div class="body">
+    <div style="text-align:center;">
+      <div class="timer">00:14</div>
+      <div class="timer-label">Recorded</div>
+    </div>
+
+    <div class="wave">
+      <sc-for list="{{bars}}" as="bar" hint-placeholder-count="28">
+        <div class="bar {{bar.onClass}}" style="height:{{bar.height}}px;"></div>
+      </sc-for>
+    </div>
+
+    <div class="rec-wrap">
+      <div class="rec-ring"></div>
+      <div class="rec-btn"><svg width="26" height="26" viewBox="0 0 24 24" fill="#0B132B"><path d="M8 5v14l11-7z"/></svg></div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+      </div>
+      <div class="ctrl">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C23B3B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="cta">Attach to lead</button>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const pattern = [18,30,22,44,26,56,34,20,40,28,50,24,32,46,20,38,54,26,30,42,18,36,48,22,28,34,20,26];
+    const bars = pattern.map((h) => ({ height: h, onClass: h > 26 ? 'on' : '' }));
+    return { bars };
+  }
+}
+</script>
+</body>
+</html>

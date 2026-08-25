@@ -22,7 +22,37 @@
     { "file": "EventInvite.dc.html", "x": 470, "y": 924, "w": 390, "h": 844, "title": "D3. Invite reps" },
     { "file": "EventFields.dc.html", "x": 940, "y": 924, "w": 390, "h": 844, "title": "D4. Custom fields" },
     { "file": "EventTemplates.dc.html", "x": 1410, "y": 924, "w": 390, "h": 844, "title": "D5. Message templates" },
-    { "file": "EventComplete.dc.html", "x": 1880, "y": 924, "w": 390, "h": 844, "title": "D6. Setup complete" }
+    { "file": "EventComplete.dc.html", "x": 1880, "y": 924, "w": 390, "h": 844, "title": "D6. Setup complete" },
+
+    { "file": "Camera.dc.html", "x": -940, "y": 1848, "w": 390, "h": 844, "title": "E2. Camera capture" },
+    { "file": "ConfirmLead.dc.html", "x": -470, "y": 1848, "w": 390, "h": 844, "title": "E3. Confirm lead" },
+    { "file": "DuplicateDetail.dc.html", "x": 0, "y": 1848, "w": 390, "h": 844, "title": "E4. Duplicate detail" },
+    { "file": "ManualEntry.dc.html", "x": 470, "y": 1848, "w": 390, "h": 844, "title": "E5. Manual entry" },
+    { "file": "VoiceNote.dc.html", "x": 940, "y": 1848, "w": 390, "h": 844, "title": "E6. Voice note" },
+    { "file": "SaveConfirmation.dc.html", "x": 1410, "y": 1848, "w": 390, "h": 844, "title": "E7. Save confirmation" },
+
+    { "file": "EveningReview.dc.html", "x": -470, "y": 2772, "w": 390, "h": 844, "title": "F3. Evening review" },
+    { "file": "ROIDashboard.dc.html", "x": 0, "y": 2772, "w": 390, "h": 844, "title": "H3. ROI dashboard" },
+    { "file": "LeadList.dc.html", "x": 470, "y": 2772, "w": 390, "h": 844, "title": "F1. Lead list" },
+    { "file": "TodaysFollowUps.dc.html", "x": 940, "y": 2772, "w": 390, "h": 844, "title": "G1. Today's follow-ups" },
+
+    { "file": "UpgradeSheet.dc.html", "x": -470, "y": 3696, "w": 390, "h": 844, "title": "I1/I2. Upgrade sheet (lead-101 trigger)" },
+    { "file": "PaymentSuccess.dc.html", "x": 0, "y": 3696, "w": 390, "h": 844, "title": "I3. Payment success" },
+    { "file": "PaymentFailure.dc.html", "x": 470, "y": 3696, "w": 390, "h": 844, "title": "I4. Payment failure" },
+    { "file": "Settings.dc.html", "x": 940, "y": 3696, "w": 390, "h": 844, "title": "J1. Settings" },
+
+    { "file": "LeadDetailNew.dc.html", "x": -470, "y": 4620, "w": 390, "h": 844, "title": "F2. Lead detail" },
+    { "file": "LogOutcome.dc.html", "x": 0, "y": 4620, "w": 390, "h": 844, "title": "G2. Log outcome" },
+    { "file": "StatusChange.dc.html", "x": 470, "y": 4620, "w": 390, "h": 844, "title": "G3. Status change" },
+    { "file": "DealValue.dc.html", "x": 940, "y": 4620, "w": 390, "h": 844, "title": "G4. Deal value" },
+
+    { "file": "EventList.dc.html", "x": -470, "y": 5544, "w": 390, "h": 844, "title": "H1. Event list" },
+    { "file": "EventDashboard.dc.html", "x": 0, "y": 5544, "w": 390, "h": 844, "title": "H2. Event dashboard" },
+    { "file": "Export.dc.html", "x": 470, "y": 5544, "w": 390, "h": 844, "title": "H4. Export" },
+    { "file": "TeamManagement.dc.html", "x": 940, "y": 5544, "w": 390, "h": 844, "title": "J3. Team management" },
+
+    { "file": "BulkSend.dc.html", "x": -470, "y": 6468, "w": 390, "h": 844, "title": "F4. Bulk select and send" },
+    { "file": "SendQueue.dc.html", "x": 0, "y": 6468, "w": 390, "h": 844, "title": "F5. Send handoff" }
   ],
   "launch": { "view": "canvas" }
 }

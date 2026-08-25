@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --gold:#F4B000; --blue:#1D3F8A;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --label:#8A98B0; --placeholder:#97A3B8; --success:#4ED17F;
+      --r-sm:6px; --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-display{font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-0.01em;margin:0;}
+    .t-caption{font-size:11px;letter-spacing:0.10em;text-transform:uppercase;font-weight:700;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--section);overflow:hidden;position:relative;}
+
+    .header{flex:0 0 auto;background:#fff;padding:18px 20px 0;}
+    .header-row{display:flex;align-items:center;justify-content:space-between;}
+    .event-switch{display:flex;align-items:center;gap:5px;}
+    .event-switch span{font-size:11px;font-weight:700;color:var(--slate);letter-spacing:0.06em;text-transform:uppercase;}
+    .select-link{font-size:13px;font-weight:700;color:var(--gold);}
+
+    .search-row{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:var(--r-md);padding:12px 14px;margin-top:14px;}
+    .search-row input{border:none;background:transparent;flex:1;font-size:14px;font-family:'Inter',sans-serif;color:var(--navy);}
+    .search-row input::placeholder{color:var(--placeholder);}
+
+    .chip-row{display:flex;gap:8px;overflow-x:auto;padding:14px 20px 14px;background:#fff;border-bottom:1px solid var(--hairline);}
+    .chip{flex-shrink:0;border-radius:100px;padding:8px 14px;font-size:12.5px;font-weight:700;background:var(--surface);color:var(--navy);white-space:nowrap;}
+    .chip.active{background:var(--navy);color:#fff;}
+
+    .scroll{flex:1 1 auto;overflow-y:auto;}
+    .lead-row{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--hairline);background:#fff;}
+    .lead-avatar{width:40px;height:40px;border-radius:11px;background:var(--surface);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14.5px;flex-shrink:0;}
+    .lead-mid{flex:1;min-width:0;}
+    .lead-name-row{display:flex;align-items:center;gap:6px;}
+    .lead-name{font-size:14.5px;font-weight:700;color:var(--navy);}
+    .mic-badge{width:15px;height:15px;flex-shrink:0;}
+    .lead-company{font-size:12px;color:var(--slate);margin-top:1px;}
+    .lead-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
+    .lead-time{font-size:11px;color:var(--slate);font-weight:600;}
+    .status-pill{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:100px;}
+    .status-new{background:var(--surface);color:var(--slate);}
+    .status-contacted{background:rgba(29,63,138,0.10);color:var(--blue);}
+    .status-qualified{background:rgba(244,176,0,0.14);color:#8A6100;}
+    .status-won{background:rgba(78,209,127,0.14);color:#1F8A50;}
+    .note-flag{width:7px;height:7px;border-radius:50%;background:var(--gold);position:absolute;top:12px;left:12px;}
+
+    .tabbar{flex:0 0 auto;display:flex;background:#fff;border-top:1px solid var(--hairline);height:64px;}
+    .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
+    .tab-label{font-size:10.5px;font-weight:700;}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <div class="t-display" style="color:var(--navy);">Leads</div>
+        <div class="event-switch" style="margin-top:4px;">
+          <span>IMTEX 2026 &middot; B-42</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <a class="select-link" href="#">Select</a>
+    </div>
+    <div class="search-row">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#97A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" placeholder="Search leads" />
+    </div>
+  </div>
+
+  <div class="chip-row">
+    <div class="chip active">All &middot; 64</div>
+    <div class="chip">Needs a note &middot; 14</div>
+    <div class="chip">Qualified</div>
+    <div class="chip">Won</div>
+    <div class="chip">Lost</div>
+  </div>
+
+  <div class="scroll">
+    <sc-for list="{{leads}}" as="lead" hint-placeholder-count="7">
+      <div class="lead-row" style="position:relative;">
+        <div class="note-flag" style="{{lead.flagStyle}}"></div>
+        <div class="lead-avatar">{{lead.initial}}</div>
+        <div class="lead-mid">
+          <div class="lead-name-row">
+            <span class="lead-name">{{lead.name}}</span>
+            <sc-if value="{{lead.hasVoice}}" hint-placeholder-val="{{true}}">
+              <svg class="mic-badge" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A98B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4"/></svg>
+            </sc-if>
+          </div>
+          <div class="lead-company">{{lead.company}}</div>
+        </div>
+        <div class="lead-right">
+          <span class="lead-time">{{lead.time}}</span>
+          <span class="status-pill {{lead.statusClass}}">{{lead.status}}</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      <span class="tab-label" style="color:var(--slate);">Home</span>
+    </div>
+    <div class="tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <span class="tab-label" style="color:var(--navy);">Leads</span>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+      <span class="tab-label" style="color:var(--slate);">Events</span>
+    </div>
+    <div class="tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>
+      <span class="tab-label" style="color:var(--slate);">Profile</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const rows = [
+      { initial: 'R', name: 'Rajesh Menon', company: 'Northline Engineering', time: '4:12 PM', status: 'Qualified', statusClass: 'status-qualified', hasVoice: true, flagged: false },
+      { initial: 'S', name: 'Sneha Kulkarni', company: 'Vertex Industries', time: '3:40 PM', status: 'New', statusClass: 'status-new', hasVoice: false, flagged: true },
+      { initial: 'A', name: 'Amit Shah', company: 'Prime Fabtech', time: '3:05 PM', status: 'Contacted', statusClass: 'status-contacted', hasVoice: true, flagged: false },
+      { initial: 'K', name: 'Kavita Rao', company: 'Suntech Moulds', time: '2:48 PM', status: 'New', statusClass: 'status-new', hasVoice: false, flagged: true },
+      { initial: 'V', name: 'Vikram Nair', company: 'Delta Precision', time: '2:20 PM', status: 'Won', statusClass: 'status-won', hasVoice: true, flagged: false },
+      { initial: 'P', name: 'Priyanka Iyer', company: 'Orbit Castings', time: '1:55 PM', status: 'Qualified', statusClass: 'status-qualified', hasVoice: false, flagged: false },
+      { initial: 'D', name: 'Deepak Verma', company: 'Gharda Alloys', time: '1:10 PM', status: 'New', statusClass: 'status-new', hasVoice: false, flagged: true },
+    ];
+    const leads = rows.map((l) => ({ ...l, flagStyle: l.flagged ? '' : 'display:none;' }));
+    return { leads };
+  }
+}
+</script>
+</body>
+</html>

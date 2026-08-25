@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { router } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 import { Typography } from '../ui/Typography';
@@ -18,10 +19,6 @@ const TAB_LABELS: Record<string, string> = {
   events: 'Events',
   profile: 'Profile',
 };
-
-function stubComingSoon() {
-  Alert.alert('Coming soon', 'Camera capture is being designed next.');
-}
 
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const isHome = state.routes[state.index].name === 'index';
@@ -56,12 +53,12 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
       {isHome ? (
         <View className="absolute left-0 right-0 -top-[52px] items-center gap-2 z-10">
           <Pressable
-            onPress={stubComingSoon}
+            onPress={() => router.push('/(app)/capture/camera')}
             className="w-[68px] h-[68px] rounded-full bg-gold items-center justify-center shadow-[0_14px_30px_rgba(244,176,0,0.42)] active:scale-95"
           >
             <CameraIcon size={27} strokeWidth={2} />
           </Pressable>
-          <Pressable onPress={stubComingSoon}>
+          <Pressable onPress={() => router.push('/(app)/capture/manual')}>
             <Typography className="text-[11.5px] font-bold text-slate">Type it in instead</Typography>
           </Pressable>
         </View>

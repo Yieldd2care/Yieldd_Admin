@@ -1,5 +1,6 @@
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { BellIcon, ClockIcon, UsersIcon, WifiIcon } from '../../../components/ui/icons';
@@ -52,7 +53,7 @@ export default function HomeScreen() {
 
         <View className="flex-row gap-3 px-5 pt-8">
           <Pressable
-            onPress={() => stubComingSoon('The lead list')}
+            onPress={() => router.push('/(app)/(tabs)/leads')}
             className="flex-1 bg-white border border-hairline rounded-lg p-4 gap-[10px]"
           >
             <View className="w-9 h-9 rounded-md bg-surface items-center justify-center">
@@ -64,7 +65,7 @@ export default function HomeScreen() {
             </View>
           </Pressable>
           <Pressable
-            onPress={() => stubComingSoon("Today's follow-ups")}
+            onPress={() => router.push('/(app)/follow-ups')}
             className="flex-1 bg-white border border-hairline rounded-lg p-4 gap-[10px]"
           >
             <View className="w-9 h-9 rounded-md bg-surface items-center justify-center">

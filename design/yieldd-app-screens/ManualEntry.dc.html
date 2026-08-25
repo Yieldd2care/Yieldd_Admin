@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --gold:#F4B000; --blue:#1D3F8A;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --label:#8A98B0; --placeholder:#97A3B8; --r-sm:6px; --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-heading-lg{font-size:20px;line-height:1.3;font-weight:700;letter-spacing:-0.01em;margin:0;}
+    .t-body-sm{font-size:13px;line-height:1.4;font-weight:500;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--section);overflow:hidden;position:relative;}
+    .header{flex:0 0 auto;background:#fff;border-bottom:1px solid var(--hairline);padding:18px 20px 16px;display:flex;align-items:center;gap:12px;}
+    .back-btn{width:34px;height:34px;border-radius:var(--r-md);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    .scroll{flex:1 1 auto;overflow-y:auto;padding:26px 20px 20px;}
+    .lede{font-size:13.5px;color:var(--slate);margin:0 0 24px;}
+
+    .big-field{margin-bottom:18px;}
+    .big-field label{display:block;font-size:12.5px;font-weight:700;letter-spacing:0.04em;color:var(--slate);margin-bottom:9px;text-transform:uppercase;}
+    .big-field input{width:100%;height:60px;border:1.5px solid var(--hairline);border-radius:14px;padding:0 18px;font-size:20px;font-weight:600;font-family:'Inter',sans-serif;color:var(--navy);background:#fff;}
+    .big-field input::placeholder{color:var(--placeholder);font-weight:500;}
+    .big-field.focused input{border-color:var(--gold);box-shadow:0 0 0 3px rgba(244,176,0,0.14);}
+
+    .disclosure{display:flex;align-items:center;justify-content:space-between;padding:16px 4px;border-top:1px solid var(--hairline);margin-top:6px;}
+    .disclosure span{font-size:14px;font-weight:600;color:var(--navy);}
+
+    .consent-row{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--hairline);border-radius:var(--r-md);padding:14px 16px;margin-top:18px;}
+    .consent-text{flex:1;padding-right:12px;}
+    .consent-title{font-size:13px;font-weight:600;color:var(--navy);}
+    .consent-sub{font-size:11.5px;color:var(--slate);margin-top:2px;}
+    .toggle{width:44px;height:26px;border-radius:100px;background:var(--gold);position:relative;flex-shrink:0;}
+    .toggle-knob{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.25);}
+
+    .voice-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:var(--r-md);border:1px dashed var(--hairline);background:#fff;margin-top:18px;}
+    .voice-btn span{font-size:13.5px;font-weight:600;color:var(--navy);}
+
+    .footer{flex:0 0 auto;padding:14px 20px 24px;background:#fff;border-top:1px solid var(--hairline);}
+    .cta{width:100%;height:54px;border-radius:var(--r-md);background:var(--gold);color:var(--navy);font-weight:700;font-size:16px;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(244,176,0,0.30);}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="header">
+    <div class="back-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div class="t-heading-lg" style="color:var(--navy);">Manual entry</div>
+  </div>
+
+  <div class="scroll">
+    <p class="lede t-body-sm">No card, no problem. Just a name and number saves the lead.</p>
+
+    <div class="big-field focused">
+      <label>Name</label>
+      <input type="text" placeholder="Full name" value="Sneha Kulkarni" />
+    </div>
+    <div class="big-field">
+      <label>Phone</label>
+      <input type="text" placeholder="98204 41720" />
+    </div>
+
+    <div class="disclosure">
+      <span>+ Add more details</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+
+    <div class="consent-row">
+      <div class="consent-text">
+        <div class="consent-title">Consent to follow up</div>
+        <div class="consent-sub">Confirmed verbally at the stall</div>
+      </div>
+      <div class="toggle"><div class="toggle-knob"></div></div>
+    </div>
+
+    <div class="voice-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4"/></svg>
+      <span>Add a voice note</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="cta">Save lead</button>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

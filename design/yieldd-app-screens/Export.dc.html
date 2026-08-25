@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --gold:#F4B000; --blue:#1D3F8A;
+      --slate:#5A6B87; --hairline:#E3E7EF; --section:#F5F7FB; --surface:#EEF1F7;
+      --r-sm:6px; --r-md:10px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-heading-lg{font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-0.01em;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--section);overflow:hidden;position:relative;}
+    .header{flex:0 0 auto;background:#fff;border-bottom:1px solid var(--hairline);padding:18px 20px 16px;display:flex;align-items:center;gap:12px;}
+    .back-btn{width:34px;height:34px;border-radius:var(--r-md);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    .scroll{flex:1 1 auto;overflow-y:auto;padding:20px 20px 20px;}
+    .section-label{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:var(--slate);margin:0 0 12px;}
+
+    .option-row{display:flex;flex-direction:column;gap:8px;}
+    .option-chip{display:flex;align-items:center;justify-content:space-between;border:1.5px solid var(--hairline);border-radius:var(--r-md);padding:13px 15px;}
+    .option-chip.active{border-color:var(--gold);background:rgba(244,176,0,0.06);}
+    .option-chip span{font-size:13.5px;font-weight:600;color:var(--navy);}
+
+    .field-card{background:#fff;border:1px solid var(--hairline);border-radius:var(--r-lg);padding:6px 16px;}
+    .field-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--section);}
+    .field-row:last-child{border-bottom:none;}
+    .field-row span{font-size:13.5px;font-weight:600;color:var(--navy);}
+    .check-box{width:20px;height:20px;border-radius:6px;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .check-box.off{background:var(--surface);border:1.5px solid var(--hairline);}
+
+    .format-row{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--gold);border-radius:var(--r-md);padding:14px 16px;}
+    .format-icon{width:36px;height:36px;border-radius:9px;background:rgba(46,140,64,0.10);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .format-title{font-size:13.5px;font-weight:700;color:var(--navy);}
+    .format-sub{font-size:11.5px;color:var(--slate);margin-top:1px;}
+
+    .footer{flex:0 0 auto;padding:14px 20px 24px;background:#fff;border-top:1px solid var(--hairline);}
+    .cta{width:100%;height:54px;border-radius:var(--r-md);background:var(--gold);color:var(--navy);font-weight:700;font-size:16px;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(244,176,0,0.30);}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="header">
+    <div class="back-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div class="t-heading-lg" style="color:var(--navy);">Export leads</div>
+  </div>
+
+  <div class="scroll">
+    <div class="section-label">Scope</div>
+    <div class="option-row" style="margin-bottom:22px;">
+      <div class="option-chip active"><span>This event &middot; IMTEX 2026</span></div>
+      <div class="option-chip"><span>Custom date range</span></div>
+      <div class="option-chip"><span>Only Won leads</span></div>
+    </div>
+
+    <div class="section-label">Fields to include</div>
+    <div class="field-card" style="margin-bottom:22px;">
+      <div class="field-row"><span>Name, company, designation</span><div class="check-box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+      <div class="field-row"><span>Phone &amp; email</span><div class="check-box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+      <div class="field-row"><span>Status &amp; follow-up date</span><div class="check-box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+      <div class="field-row"><span>Deal value</span><div class="check-box off"></div></div>
+      <div class="field-row"><span>Voice note transcript</span><div class="check-box off"></div></div>
+    </div>
+
+    <div class="section-label">Format</div>
+    <div class="format-row">
+      <div class="format-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E8C40" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h2m4 0h2M8 17h2m4 0h2"/></svg>
+      </div>
+      <div>
+        <div class="format-title">Excel (.xlsx)</div>
+        <div class="format-sub">Opens directly in the format this team already uses</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="cta">Generate export</button>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

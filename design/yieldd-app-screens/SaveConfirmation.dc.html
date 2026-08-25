@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0B132B; --blue:#1D3F8A; --gold:#F4B000;
+      --r-md:10px;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+    .t-caption{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;margin:0;}
+    .t-display{font-size:26px;line-height:1.25;font-weight:800;letter-spacing:-0.01em;margin:0;}
+
+    .screen{width:390px;height:844px;display:flex;flex-direction:column;background:var(--navy);overflow:hidden;position:relative;}
+    .glow{position:absolute;pointer-events:none;width:480px;height:480px;border-radius:50%;background:var(--gold);opacity:0.10;top:-200px;left:50%;transform:translateX(-50%);}
+
+    .body{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 40px;text-align:center;}
+
+    .check-wrap{width:84px;height:84px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 16px 36px rgba(244,176,0,0.38);}
+    .name{margin-top:26px;color:#fff;}
+    .sub{margin-top:8px;font-size:14px;color:rgba(255,255,255,0.60);font-weight:500;}
+
+    .count-card{margin-top:34px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:16px;padding:18px 28px;display:flex;align-items:center;gap:16px;}
+    .count-num{font-size:30px;font-weight:800;color:var(--gold);letter-spacing:-0.01em;}
+    .count-label{font-size:12.5px;color:rgba(255,255,255,0.65);text-align:left;line-height:1.3;}
+
+    .return-row{display:flex;align-items:center;gap:8px;margin-top:40px;}
+    .return-row span{font-size:12.5px;font-weight:600;color:rgba(255,255,255,0.50);}
+    .return-bar{width:120px;height:2px;border-radius:100px;background:rgba(255,255,255,0.14);overflow:hidden;}
+    .return-bar-fill{width:62%;height:100%;background:var(--gold);}
+
+    .view-link{position:absolute;bottom:44px;left:0;right:0;text-align:center;z-index:1;}
+    .view-link a{color:var(--gold);font-size:13.5px;font-weight:700;text-decoration:none;}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="glow"></div>
+  <div class="body">
+    <div class="check-wrap">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+    <div class="t-display name">Rajesh Menon saved</div>
+    <div class="sub">Enriched, tagged, and ready to follow up</div>
+
+    <div class="count-card">
+      <div class="count-num">19</div>
+      <div class="count-label">leads captured<br/>today at IMTEX 2026</div>
+    </div>
+
+    <div class="return-row">
+      <span>Returning to scan</span>
+      <div class="return-bar"><div class="return-bar-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="view-link"><a href="#">View lead</a></div>
+</div>
+</x-dc>
+
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
