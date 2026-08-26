@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -44,7 +44,7 @@ export default function VoiceNoteScreen() {
 
         <View className="flex-row items-center gap-7">
           <Pressable
-            onPress={() => setRecorded(false)}
+            onPress={() => Alert.alert('Rewind', "Seeking playback isn't wired up yet.")}
             className="w-[46px] h-[46px] rounded-full bg-white border border-hairline items-center justify-center"
           >
             <RewindIcon />

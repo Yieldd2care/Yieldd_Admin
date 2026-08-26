@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -43,7 +43,10 @@ export default function PaymentFailureScreen() {
           >
             <Typography className="text-[14px] font-bold text-navy">Switch payment method</Typography>
           </Pressable>
-          <Pressable className="h-[50px] rounded-md bg-white border border-hairline items-center justify-center flex-row gap-2">
+          <Pressable
+            onPress={() => Alert.alert('Contact sales', "Messaging sales isn't wired up yet.")}
+            className="h-[50px] rounded-md bg-white border border-hairline items-center justify-center flex-row gap-2"
+          >
             <WhatsAppIcon size={16} color="#25D366" />
             <Typography className="text-[14px] font-bold text-navy">Contact sales</Typography>
           </Pressable>

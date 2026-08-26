@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, TextInput as RNTextInput, View } from 'react-native';
+import { Alert, Pressable, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -10,7 +10,7 @@ type Temp = 'Hot' | 'Warm' | 'Cold';
 const DATES = ['Tomorrow', 'In 3 days', 'Next week', 'Custom'] as const;
 
 export default function EveningReviewScreen() {
-  const [remaining, setRemaining] = useState(9);
+  const [remaining, setRemaining] = useState(14);
   const [note, setNote] = useState('Looking to replace their current supplier by Q2 — wants a site visit before deciding.');
   const [temp, setTemp] = useState<Temp>('Hot');
   const [date, setDate] = useState<(typeof DATES)[number]>('Tomorrow');
@@ -54,10 +54,13 @@ export default function EveningReviewScreen() {
             <View className="w-11 h-11 rounded-xl bg-gold items-center justify-center">
               <Typography className="text-[16px] font-extrabold text-navy">S</Typography>
             </View>
-            <View className="flex-row items-center gap-[6px]">
+            <Pressable
+              onPress={() => Alert.alert('Edit name', "Editing the lead name isn't wired up yet.")}
+              className="flex-row items-center gap-[6px]"
+            >
               <Typography className="text-[16px] font-bold text-navy">Sneha Kulkarni</Typography>
               <EditIcon size={12} color="#5A6B87" />
-            </View>
+            </Pressable>
           </View>
           <Typography className="text-[11.5px] text-slate mt-[2px] ml-[56px]">Plant Manager &middot; Vertex Industries</Typography>
 

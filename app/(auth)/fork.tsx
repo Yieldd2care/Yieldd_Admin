@@ -64,11 +64,8 @@ export default function ForkScreen() {
           <ChecklistIllustration />
         </View>
 
-        <View className="px-8 pt-[12px] items-center">
-          <Typography variant="caption" className="text-gold">
-            One quick question
-          </Typography>
-          <Typography className="mt-3 text-[26px] leading-[1.28] font-extrabold tracking-[-0.01em] text-white text-center">
+        <View className="px-8 pt-[20px] items-center">
+          <Typography className="text-[26px] leading-[1.28] font-extrabold tracking-[-0.01em] text-white text-center">
             Setting this up for a team, or just yourself?
           </Typography>
         </View>

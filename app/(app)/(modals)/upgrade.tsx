@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
@@ -50,7 +50,10 @@ export default function UpgradeSheetModal() {
         >
           <Typography className="text-[15px] font-bold text-navy">Pay with UPI</Typography>
         </Pressable>
-        <Pressable className="h-[52px] rounded-md bg-white border border-hairline items-center justify-center flex-row gap-2">
+        <Pressable
+          onPress={() => Alert.alert('Talk to sales', "Messaging sales isn't wired up yet.")}
+          className="h-[52px] rounded-md bg-white border border-hairline items-center justify-center flex-row gap-2"
+        >
           <WhatsAppIcon size={16} color="#25D366" />
           <Typography className="text-[14px] font-bold text-navy">Talk to sales</Typography>
         </Pressable>

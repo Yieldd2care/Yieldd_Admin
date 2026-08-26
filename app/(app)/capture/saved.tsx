@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
 import { CheckIcon } from '../../../components/ui/icons';
 
 export default function SaveConfirmationScreen() {
+  const { name } = useLocalSearchParams<{ name?: string }>();
+
   useEffect(() => {
     const t = setTimeout(() => {
       router.replace('/(app)/(tabs)');
@@ -24,7 +26,7 @@ export default function SaveConfirmationScreen() {
           <CheckIcon size={34} color="#0B132B" strokeWidth={2.5} />
         </View>
         <Typography className="text-[27px] font-extrabold text-white text-center mt-[26px]" style={{ lineHeight: 32 }}>
-          Rajesh Menon saved
+          {name ? `${name} saved` : 'Lead saved'}
         </Typography>
         <Typography className="text-[14px] text-white/[0.60] font-medium mt-2">Enriched, tagged, and ready to follow up</Typography>
 

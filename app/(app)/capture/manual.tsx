@@ -92,7 +92,7 @@ export default function ManualEntryScreen() {
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
         <Pressable
           disabled={!canSave}
-          onPress={() => router.replace('/(app)/capture/saved')}
+          onPress={() => router.replace({ pathname: '/(app)/capture/saved', params: { name } })}
           className={`h-[54px] rounded-md items-center justify-center ${canSave ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface'}`}
         >
           <Typography className={`text-[16px] font-bold ${canSave ? 'text-navy' : 'text-slate'}`}>Save lead</Typography>

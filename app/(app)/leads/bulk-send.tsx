@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -58,7 +58,9 @@ export default function BulkSendScreen() {
               Hi Rajesh, great meeting you at IMTEX 2026. Sharing our brochure &mdash; let us know if you&apos;d like a quote.
             </Typography>
           </View>
-          <Typography className="text-[11.5px] font-bold text-gold mt-2">Edit this message</Typography>
+          <Pressable onPress={() => Alert.alert('Edit message', "Editing the message template isn't wired up yet.")}>
+            <Typography className="text-[11.5px] font-bold text-gold mt-2">Edit this message</Typography>
+          </Pressable>
         </View>
 
         {LEADS.map((lead) => {

@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -42,10 +42,26 @@ export default function LeadDetailScreen() {
         </View>
 
         <View className="flex-row gap-[10px] mt-[18px]">
-          <ActionButton icon={<PhoneIcon size={16} color="#0B132B" strokeWidth={1.75} />} label="Call" />
-          <ActionButton icon={<WhatsAppIcon size={16} color="#25D366" strokeWidth={1.75} />} label="WhatsApp" />
-          <ActionButton icon={<MailIcon size={16} color="#0B132B" strokeWidth={1.75} />} label="Email" />
-          <ActionButton icon={<ContactsIcon size={16} />} label="Contacts" />
+          <ActionButton
+            icon={<PhoneIcon size={16} color="#0B132B" strokeWidth={1.75} />}
+            label="Call"
+            onPress={() => Alert.alert('Call', "Calling isn't wired up yet.")}
+          />
+          <ActionButton
+            icon={<WhatsAppIcon size={16} color="#25D366" strokeWidth={1.75} />}
+            label="WhatsApp"
+            onPress={() => Alert.alert('WhatsApp', "Messaging isn't wired up yet.")}
+          />
+          <ActionButton
+            icon={<MailIcon size={16} color="#0B132B" strokeWidth={1.75} />}
+            label="Email"
+            onPress={() => Alert.alert('Email', "Email isn't wired up yet.")}
+          />
+          <ActionButton
+            icon={<ContactsIcon size={16} />}
+            label="Contacts"
+            onPress={() => Alert.alert('Contacts', "Saving to contacts isn't wired up yet.")}
+          />
         </View>
 
         <View className="bg-white border border-hairline rounded-2xl p-4 mt-[18px]">
@@ -61,7 +77,9 @@ export default function LeadDetailScreen() {
             </View>
             <Typography className="text-[11px] font-bold text-slate">0:14</Typography>
           </View>
-          <Typography className="text-[12px] font-bold text-blue mt-3">View full transcript</Typography>
+          <Pressable onPress={() => Alert.alert('Transcript', "Full transcript view isn't wired up yet.")}>
+            <Typography className="text-[12px] font-bold text-blue mt-3">View full transcript</Typography>
+          </Pressable>
           <View className="bg-section rounded-[10px] px-[14px] py-3 mt-[10px]">
             <Typography className="text-[12.5px] font-medium text-navy" style={{ lineHeight: 19 }}>
               Evaluating three vendors for the new plant line &mdash; wants a formal quote with lead times by next week.
@@ -91,7 +109,10 @@ export default function LeadDetailScreen() {
           </View>
         </View>
 
-        <Pressable className="flex-row items-center justify-between mt-[18px] bg-white border border-hairline rounded-md px-4 py-[14px]">
+        <Pressable
+          onPress={() => Alert.alert('Reassign', "Reassigning leads isn't wired up yet.")}
+          className="flex-row items-center justify-between mt-[18px] bg-white border border-hairline rounded-md px-4 py-[14px]"
+        >
           <Typography className="text-[13px] font-semibold text-navy">Assigned to you</Typography>
           <Typography className="text-[12px] font-bold text-gold">Reassign</Typography>
         </Pressable>
@@ -115,9 +136,9 @@ export default function LeadDetailScreen() {
   );
 }
 
-function ActionButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+function ActionButton({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
   return (
-    <Pressable className="flex-1 h-14 rounded-md bg-white border border-hairline items-center justify-center gap-1">
+    <Pressable onPress={onPress} className="flex-1 h-14 rounded-md bg-white border border-hairline items-center justify-center gap-1">
       {icon}
       <Typography className="text-[10px] font-bold text-navy">{label}</Typography>
     </Pressable>

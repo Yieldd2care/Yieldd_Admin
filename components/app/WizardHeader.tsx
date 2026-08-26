@@ -10,7 +10,7 @@ interface Props {
   totalSteps?: number;
 }
 
-export function WizardHeader({ title, step, totalSteps = 6 }: Props) {
+export function WizardHeader({ title, step, totalSteps = 5 }: Props) {
   const progress = (step / totalSteps) * 100;
 
   return (

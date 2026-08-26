@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -7,7 +7,7 @@ import { Typography } from '../../../components/ui/Typography';
 import { TextInput } from '../../../components/ui/TextInput';
 import { Toggle } from '../../../components/ui/Toggle';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
-import { ChevronRightIcon, MicIcon, TrashIcon } from '../../../components/ui/icons';
+import { AlertCircleIcon, ChevronRightIcon, MicIcon, TrashIcon } from '../../../components/ui/icons';
 
 export default function ConfirmLeadScreen() {
   const [name, setName] = useState('Rajesh Menon');
@@ -48,7 +48,7 @@ export default function ConfirmLeadScreen() {
           className="flex-row items-center gap-[10px] bg-[#FFF6E0] border border-gold/[0.35] rounded-md px-[14px] py-3 mb-[18px]"
         >
           <View className="w-[30px] h-[30px] rounded-full bg-gold items-center justify-center">
-            <Typography className="text-[13px] font-extrabold text-navy">!</Typography>
+            <AlertCircleIcon size={16} color="#0B132B" strokeWidth={2.25} />
           </View>
           <View className="flex-1">
             <Typography className="text-[12.5px] font-bold text-navy">Possible duplicate</Typography>
@@ -74,7 +74,10 @@ export default function ConfirmLeadScreen() {
         <Typography className="text-[10px] font-bold tracking-[0.12em] text-slate mt-6 mb-3" style={{ textTransform: 'uppercase' }}>
           Event fields
         </Typography>
-        <Pressable className="h-[48px] border border-hairline rounded-md px-[14px] bg-white flex-row items-center justify-between">
+        <Pressable
+          onPress={() => Alert.alert('Product interest', "Picking a product interest isn't wired up yet.")}
+          className="h-[48px] border border-hairline rounded-md px-[14px] bg-white flex-row items-center justify-between"
+        >
           <Typography className="text-[14.5px] text-placeholder">Product interest</Typography>
           <ChevronRightIcon size={14} color="#97A3B8" strokeWidth={2} />
         </Pressable>
@@ -104,7 +107,7 @@ export default function ConfirmLeadScreen() {
           <TrashIcon />
         </Pressable>
         <Pressable
-          onPress={() => router.replace('/(app)/capture/saved')}
+          onPress={() => router.replace({ pathname: '/(app)/capture/saved', params: { name } })}
           className="flex-1 h-[54px] rounded-md bg-gold items-center justify-center shadow-[0_10px_24px_rgba(244,176,0,0.30)]"
         >
           <Typography className="text-[16px] font-bold text-navy">Save lead</Typography>

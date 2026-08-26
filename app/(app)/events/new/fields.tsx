@@ -6,6 +6,7 @@ import Svg, { Path, Rect } from 'react-native-svg';
 
 import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
+import { Toggle } from '../../../../components/ui/Toggle';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { ClockIcon, PlusIcon } from '../../../../components/ui/icons';
 
@@ -42,14 +43,6 @@ interface CustomField {
 }
 
 let nextFieldId = 1;
-
-function Toggle({ on }: { on: boolean }) {
-  return (
-    <View className={`w-10 h-6 rounded-full ${on ? 'bg-gold' : 'bg-hairline'} justify-center px-[3px]`}>
-      <View className={`w-[18px] h-[18px] rounded-full bg-white shadow ${on ? 'self-end' : 'self-start'}`} />
-    </View>
-  );
-}
 
 export default function CustomFieldsScreen() {
   const [templates, setTemplates] = useState<Template[]>([
@@ -95,7 +88,7 @@ export default function CustomFieldsScreen() {
               <Typography className="text-[14px] font-bold text-navy">{t.title}</Typography>
               <Typography className="text-[12px] text-slate mt-[2px]">{t.sub}</Typography>
             </View>
-            <Toggle on={t.on} />
+            <Toggle value={t.on} onValueChange={() => toggleTemplate(t.key)} />
           </Pressable>
         ))}
 

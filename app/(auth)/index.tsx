@@ -2,14 +2,27 @@ import { useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { MotiView } from 'moti';
 
 import { Typography } from '../../components/ui/Typography';
 import { Button } from '../../components/ui/Button';
+import { RadialGlow } from '../../components/ui/RadialGlow';
 import { AuthPillInput } from '../../components/auth/AuthPillInput';
 import { AuthTabs, type AuthMode } from '../../components/auth/AuthTabs';
 import { GoogleButton } from '../../components/auth/GoogleButton';
 import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
 import { useSessionStore } from '../../stores/useSessionStore';
+
+const COPY: Record<AuthMode, { headline: string; subhead: string }> = {
+  create: {
+    headline: 'Your next event starts here.',
+    subhead: 'Capture leads in seconds — even with zero signal.',
+  },
+  signin: {
+    headline: 'Welcome back.',
+    subhead: 'Pick up right where the show floor left off.',
+  },
+};
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>('create');
@@ -45,6 +58,7 @@ export default function AuthScreen() {
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
+      <RadialGlow color="#F4B000" size={280} style={{ bottom: -190, right: -90 }} />
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerClassName="flex-grow"
@@ -52,19 +66,36 @@ export default function AuthScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="items-center pt-8 px-8">
+          <MotiView
+            from={{ opacity: 0, translateY: -10 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 520 }}
+            style={{ alignItems: 'center' }}
+            className="pt-8 px-8"
+          >
             <Image
               source={require('../../assets/brand/yieldd-lockup-transparent.png')}
               style={{ width: 130, height: 43 }}
               resizeMode="contain"
             />
-          </View>
+            <Typography className="mt-7 text-[21px] font-extrabold text-white text-center tracking-[-0.01em]">
+              {COPY[mode].headline}
+            </Typography>
+            <Typography className="mt-[6px] text-[13px] leading-[1.5] text-white/[0.55] text-center px-4">
+              {COPY[mode].subhead}
+            </Typography>
+          </MotiView>
 
-          <View className="mx-8 mt-[38px]">
+          <View className="mx-8 mt-7">
             <AuthTabs mode={mode} onChange={setMode} />
           </View>
 
-          <View className="px-8 pt-6">
+          <MotiView
+            from={{ opacity: 0, translateY: 10 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 520, delay: 120 }}
+            className="px-8 pt-6"
+          >
             <GoogleButton />
 
             <View className="flex-row items-center gap-3 my-[18px]">
@@ -123,17 +154,17 @@ export default function AuthScreen() {
                 </Typography>
               </View>
             ) : null}
-          </View>
+          </MotiView>
 
           <View className="flex-row items-center justify-center gap-[10px] py-8 mt-auto">
-            <Pressable className="bg-white/[0.08] rounded-full px-4 py-2">
-              <Typography className="text-[11.5px] font-semibold text-white/[0.85] underline">
+            <Pressable>
+              <Typography className="text-[11.5px] font-medium text-white/[0.55] underline">
                 Privacy Policy
               </Typography>
             </Pressable>
-            <View className="w-[3px] h-[3px] rounded-full bg-white/[0.30]" />
-            <Pressable className="bg-white/[0.08] rounded-full px-4 py-2">
-              <Typography className="text-[11.5px] font-semibold text-white/[0.85] underline">
+            <View className="w-[3px] h-[3px] rounded-full bg-white/[0.25]" />
+            <Pressable>
+              <Typography className="text-[11.5px] font-medium text-white/[0.55] underline">
                 Terms of Service
               </Typography>
             </Pressable>

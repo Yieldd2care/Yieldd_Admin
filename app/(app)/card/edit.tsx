@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import QRCode from 'react-native-qrcode-svg';
 
 import { Typography } from '../../../components/ui/Typography';
 import { Button } from '../../../components/ui/Button';
@@ -9,20 +10,12 @@ import { TextInput } from '../../../components/ui/TextInput';
 import { ChevronLeftIcon, CameraIcon, MailIcon, PhoneIcon, ShareIcon } from '../../../components/ui/icons';
 import { useSessionStore } from '../../../stores/useSessionStore';
 
-const QR_SEED = [
-  1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1,
-  1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0,
-  1, 1, 0,
-];
-
-function QrGrid() {
-  return (
-    <View style={{ width: 9 * 7 + 8 * 2, flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
-      {QR_SEED.map((v, i) => (
-        <View key={i} style={{ width: 7, height: 7, backgroundColor: v ? '#0B132B' : 'transparent' }} />
-      ))}
-    </View>
-  );
+function slugify(name: string) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 }
 
 function CardHeader({ title, right, onBack }: { title: string; right?: ReactNode; onBack: () => void }) {
@@ -47,6 +40,8 @@ export default function CardEditScreen() {
 
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? 'Y';
   const role = [designation || 'Your role', user?.company].filter(Boolean).join(' · ');
+  const cardSlug = slugify(user?.name || 'your-name');
+  const cardUrl = `card.yieldd.co/${cardSlug}`;
 
   if (step === 'preview') {
     return (
@@ -81,11 +76,11 @@ export default function CardEditScreen() {
           </View>
 
           <View className="w-full bg-white border border-hairline rounded-lg p-5 mt-5 items-center">
-            <QrGrid />
+            <QRCode value={`https://${cardUrl}`} size={140} color="#0B132B" backgroundColor="#fff" />
             <Typography className="text-[12px] text-slate text-center mt-[14px]">
               Anyone can scan this to save your details
             </Typography>
-            <Typography className="text-[12.5px] font-bold text-navy mt-1">card.yieldd.co/priya-sharma</Typography>
+            <Typography className="text-[12.5px] font-bold text-navy mt-1">{cardUrl}</Typography>
           </View>
         </ScrollView>
         <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 gap-3 items-center">

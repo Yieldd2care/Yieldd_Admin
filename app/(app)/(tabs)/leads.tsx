@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
-import { ChevronRightIcon, MicIcon, SearchIcon } from '../../../components/ui/icons';
+import { ChevronRightIcon, MicIcon, SearchIcon, WhatsAppIcon } from '../../../components/ui/icons';
 
 type Status = 'New' | 'Contacted' | 'Qualified' | 'Won';
 
@@ -41,11 +41,19 @@ const LEADS: {
   { id: '7', initial: 'D', name: 'Deepak Verma', company: 'Gharda Alloys', time: '1:10 PM', status: 'New', hasVoice: false, needsNote: true },
 ];
 
-const FILTERS = ['All', 'Needs a note', 'Qualified', 'Won', 'Lost'] as const;
+const FILTERS: { key: string; label: string; dot?: string }[] = [
+  { key: 'All', label: 'All' },
+  { key: 'Needs a note', label: 'Needs a note', dot: '#F4B000' },
+  { key: 'Qualified', label: 'Qualified', dot: '#8A6100' },
+  { key: 'Won', label: 'Won', dot: '#1F8A50' },
+];
 
 export default function LeadListScreen() {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All');
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('All');
   const [query, setQuery] = useState('');
+
+  const needsNoteCount = LEADS.filter((l) => l.needsNote).length;
+  const wonCount = LEADS.filter((l) => l.status === 'Won').length;
 
   const filtered = LEADS.filter((l) => {
     if (query && !l.name.toLowerCase().includes(query.toLowerCase()) && !l.company.toLowerCase().includes(query.toLowerCase())) return false;
@@ -55,9 +63,11 @@ export default function LeadListScreen() {
     return true;
   });
 
+  const messageOnWhatsApp = (name: string) => Alert.alert('WhatsApp', `Messaging ${name} isn't wired up yet.`);
+
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top']}>
-      <View className="bg-white px-5 pt-[18px]">
+      <View className="bg-white px-5 pt-[18px] pb-[18px]">
         <View className="flex-row items-center justify-between">
           <View>
             <Typography className="text-[26px] font-extrabold text-navy tracking-[-0.01em]">Leads</Typography>
@@ -69,7 +79,23 @@ export default function LeadListScreen() {
             </Pressable>
           </View>
         </View>
-        <View className="flex-row items-center gap-2 bg-surface rounded-md px-[14px] py-3 mt-[14px]">
+
+        <View className="flex-row items-center bg-navy-elevated rounded-lg px-4 py-3 mt-4">
+          <Typography className="text-[19px] font-extrabold text-white">{LEADS.length}</Typography>
+          <Typography className="text-[12px] text-white/[0.55] ml-[6px]">today</Typography>
+          <View className="w-px h-4 bg-white/[0.14] mx-4" />
+          <View className="w-[6px] h-[6px] rounded-full mr-[7px]" style={{ backgroundColor: '#F4B000' }} />
+          <Typography className="text-[12px] font-semibold text-white/[0.85]">{needsNoteCount} need a note</Typography>
+          {wonCount > 0 ? (
+            <>
+              <View className="w-px h-4 bg-white/[0.14] mx-4" />
+              <View className="w-[6px] h-[6px] rounded-full mr-[7px]" style={{ backgroundColor: '#4ED17F' }} />
+              <Typography className="text-[12px] font-semibold text-white/[0.85]">{wonCount} won</Typography>
+            </>
+          ) : null}
+        </View>
+
+        <View className="flex-row items-center gap-2 bg-surface rounded-full px-[18px] py-3 mt-4">
           <SearchIcon />
           <RNTextInput
             value={query}
@@ -84,23 +110,24 @@ export default function LeadListScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-white border-b border-hairline" contentContainerClassName="px-5 py-[14px] gap-2">
         {FILTERS.map((f) => (
           <Pressable
-            key={f}
-            onPress={() => setFilter(f)}
-            className={`rounded-full px-[14px] py-2 ${filter === f ? 'bg-navy' : 'bg-surface'}`}
+            key={f.key}
+            onPress={() => setFilter(f.key)}
+            className={`flex-row items-center rounded-full px-[14px] py-2 ${filter === f.key ? 'bg-navy' : 'bg-surface'}`}
           >
-            <Typography className={`text-[12.5px] font-bold ${filter === f ? 'text-white' : 'text-navy'}`}>{f}</Typography>
+            {f.dot ? <View className="w-[6px] h-[6px] rounded-full mr-[7px]" style={{ backgroundColor: f.dot }} /> : null}
+            <Typography className={`text-[12.5px] font-bold ${filter === f.key ? 'text-white' : 'text-navy'}`}>{f.label}</Typography>
           </Pressable>
         ))}
       </ScrollView>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pt-4">
         {filtered.map((lead) => (
           <Pressable
             key={lead.id}
             onPress={() => router.push({ pathname: '/(app)/leads/[id]', params: { id: lead.id } })}
-            className="flex-row items-center gap-3 px-5 py-[14px] border-b border-hairline bg-white relative"
+            className="flex-row items-center gap-3 bg-white border border-hairline rounded-2xl px-4 py-[14px] mx-5 mb-3 relative shadow-[0_1px_2px_rgba(11,19,43,0.05)]"
           >
-            {lead.needsNote ? <View className="absolute left-[12px] top-[12px] w-[7px] h-[7px] rounded-full bg-gold" /> : null}
+            {lead.needsNote ? <View className="absolute right-[14px] top-[14px] w-[7px] h-[7px] rounded-full bg-gold" /> : null}
             <View className="w-10 h-10 rounded-[11px] bg-surface items-center justify-center">
               <Typography className="text-[14.5px] font-extrabold text-navy">{lead.initial}</Typography>
             </View>
@@ -110,13 +137,23 @@ export default function LeadListScreen() {
                 {lead.hasVoice ? <MicIcon size={13} color="#8A98B0" strokeWidth={2} /> : null}
               </View>
               <Typography className="text-[12px] text-slate mt-[1px]">{lead.company}</Typography>
-            </View>
-            <View className="items-end gap-[6px]">
-              <Typography className="text-[11px] font-semibold text-slate">{lead.time}</Typography>
-              <View className={`rounded-full px-[9px] py-[4px] ${STATUS_CLASSES[lead.status]}`}>
-                <Typography className={`text-[10.5px] font-bold ${STATUS_TEXT[lead.status]}`}>{lead.status}</Typography>
+              <View className="flex-row items-center gap-[8px] mt-[7px]">
+                <View className={`rounded-full px-[8px] py-[3px] ${STATUS_CLASSES[lead.status]}`}>
+                  <Typography className={`text-[10px] font-bold ${STATUS_TEXT[lead.status]}`}>{lead.status}</Typography>
+                </View>
+                <Typography className="text-[11px] font-semibold text-slate">{lead.time}</Typography>
               </View>
             </View>
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                messageOnWhatsApp(lead.name);
+              }}
+              className="w-9 h-9 rounded-full items-center justify-center"
+              style={{ backgroundColor: '#25D366' }}
+            >
+              <WhatsAppIcon size={17} color="#fff" />
+            </Pressable>
           </Pressable>
         ))}
         <View className="h-24" />

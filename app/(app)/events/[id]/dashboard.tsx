@@ -10,10 +10,10 @@ import { RefreshIcon } from '../../../../components/ui/icons';
 
 const HOURLY = [12, 28, 45, 62, 80, 100, 74, 58, 30];
 const REPS = [
-  { rank: '1', initial: 'R', name: 'Rajesh Menon', count: 142 },
-  { rank: '2', initial: 'S', name: 'Sneha Kulkarni', count: 118 },
-  { rank: '3', initial: 'A', name: 'Amit Shah', count: 96 },
-  { rank: '4', initial: 'K', name: 'Kavita Rao', count: 57 },
+  { rank: '1', initial: 'A', name: 'Arjun Mehta', count: 142 },
+  { rank: '2', initial: 'R', name: 'Ritika Chawla', count: 118 },
+  { rank: '3', initial: 'D', name: 'Rohit Desai', count: 96 },
+  { rank: '4', initial: 'F', name: 'Farhan Sheikh', count: 57 },
 ];
 
 export default function EventDashboardScreen() {

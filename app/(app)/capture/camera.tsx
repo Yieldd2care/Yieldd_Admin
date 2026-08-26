@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -6,6 +7,8 @@ import { CloseIcon, FlashIcon } from '../../../components/ui/icons';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
 
 export default function CameraScreen() {
+  const [flashOn, setFlashOn] = useState(false);
+
   return (
     <View className="flex-1 bg-[#05070d]">
       <RadialGlow color="#1D3F8A" size={600} style={{ top: -180, left: 30, opacity: 0.3 }} />
@@ -38,8 +41,11 @@ export default function CameraScreen() {
         <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-full bg-navy/[0.55] border border-white/[0.14] items-center justify-center">
           <CloseIcon size={14} color="#fff" />
         </Pressable>
-        <Pressable className="w-[38px] h-[38px] rounded-full bg-navy/[0.55] border border-white/[0.14] items-center justify-center">
-          <FlashIcon />
+        <Pressable
+          onPress={() => setFlashOn((v) => !v)}
+          className={`w-[38px] h-[38px] rounded-full border border-white/[0.14] items-center justify-center ${flashOn ? 'bg-gold' : 'bg-navy/[0.55]'}`}
+        >
+          <FlashIcon color={flashOn ? '#0B132B' : '#fff'} />
         </Pressable>
       </View>
 

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -74,8 +74,19 @@ export default function ProfileScreen() {
         <SectionLabel>Account</SectionLabel>
         <Card>
           <Row icon={<UsersIcon size={15} />} label="Team" right={<Typography className="text-[12px] font-semibold text-slate">6 members</Typography>} onPress={() => router.push('/(app)/settings/team')} />
-          <Row icon={<FileIcon color="#0B132B" />} label="Plan & billing" />
-          <Row icon={<FileIcon color="#0B132B" />} label="GST invoices" isLast />
+          <Row
+            icon={<FileIcon color="#0B132B" />}
+            label="Plan & billing"
+            right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
+            onPress={() => Alert.alert('Plan & billing', "Plan & billing isn't wired up yet.")}
+          />
+          <Row
+            icon={<FileIcon color="#0B132B" />}
+            label="GST invoices"
+            right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
+            onPress={() => Alert.alert('GST invoices', "GST invoices aren't wired up yet.")}
+            isLast
+          />
         </Card>
 
         <SectionLabel>Preferences</SectionLabel>
@@ -108,7 +119,13 @@ export default function ProfileScreen() {
 
         <SectionLabel>Support</SectionLabel>
         <Card>
-          <Row icon={<WhatsAppIcon size={15} color="#25D366" />} label="Chat with support" isLast />
+          <Row
+            icon={<WhatsAppIcon size={15} color="#25D366" />}
+            label="Chat with support"
+            right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
+            onPress={() => Alert.alert('Chat with support', "Support chat isn't wired up yet.")}
+            isLast
+          />
         </Card>
 
         <Pressable onPress={signOut} className="flex-row items-center gap-3 bg-white border border-hairline rounded-2xl px-4 py-[14px] mt-[22px]">

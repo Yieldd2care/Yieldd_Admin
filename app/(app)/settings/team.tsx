@@ -4,12 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 
-const MEMBERS = [
+const ACTIVE_MEMBERS = [
   { initial: 'P', name: 'Priya Sharma', role: 'You', badge: 'admin' as const },
-  { initial: 'R', name: 'Rajesh Menon', role: '142 leads captured', badge: 'rep' as const },
-  { initial: 'S', name: 'Sneha Kulkarni', role: '118 leads captured', badge: 'rep' as const },
-  { initial: 'A', name: 'Amit Shah', role: 'Deactivated · leads retained', badge: null, dimmed: true },
+  { initial: 'A', name: 'Arjun Mehta', role: '142 leads captured', badge: 'rep' as const },
+  { initial: 'R', name: 'Ritika Chawla', role: '118 leads captured', badge: 'rep' as const },
 ];
+
+const DEACTIVATED_MEMBERS = [{ initial: 'D', name: 'Rohit Desai', role: 'Deactivated · leads retained' }];
 
 export default function TeamManagementScreen() {
   return (
@@ -38,25 +39,43 @@ export default function TeamManagementScreen() {
           Active
         </Typography>
         <View className="bg-white border border-hairline rounded-2xl px-4">
-          {MEMBERS.map((m, i) => (
+          {ACTIVE_MEMBERS.map((m, i) => (
             <View
               key={m.name}
-              className={`flex-row items-center gap-3 py-[13px] ${i < MEMBERS.length - 1 ? 'border-b border-section' : ''}`}
+              className={`flex-row items-center gap-3 py-[13px] ${i < ACTIVE_MEMBERS.length - 1 ? 'border-b border-section' : ''}`}
             >
-              <View className={`w-9 h-9 rounded-[10px] bg-surface items-center justify-center ${m.dimmed ? 'opacity-50' : ''}`}>
+              <View className="w-9 h-9 rounded-[10px] bg-surface items-center justify-center">
                 <Typography className="text-[13px] font-extrabold text-navy">{m.initial}</Typography>
               </View>
               <View className="flex-1">
-                <Typography className={`text-[13.5px] font-bold ${m.dimmed ? 'text-slate' : 'text-navy'}`}>{m.name}</Typography>
+                <Typography className="text-[13.5px] font-bold text-navy">{m.name}</Typography>
                 <Typography className="text-[11.5px] text-slate mt-[1px]">{m.role}</Typography>
               </View>
-              {m.badge ? (
-                <View className={`rounded-full px-[9px] py-[4px] ${m.badge === 'admin' ? 'bg-gold/[0.16]' : 'bg-surface'}`}>
-                  <Typography className={`text-[10.5px] font-bold ${m.badge === 'admin' ? 'text-[#8A6100]' : 'text-navy'}`}>
-                    {m.badge === 'admin' ? 'Admin' : 'Rep'}
-                  </Typography>
-                </View>
-              ) : null}
+              <View className={`rounded-full px-[9px] py-[4px] ${m.badge === 'admin' ? 'bg-gold/[0.16]' : 'bg-surface'}`}>
+                <Typography className={`text-[10.5px] font-bold ${m.badge === 'admin' ? 'text-[#8A6100]' : 'text-navy'}`}>
+                  {m.badge === 'admin' ? 'Admin' : 'Rep'}
+                </Typography>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <Typography className="text-[10.5px] font-bold tracking-[0.12em] text-slate mt-[22px] mb-[10px]" style={{ textTransform: 'uppercase' }}>
+          Deactivated
+        </Typography>
+        <View className="bg-white border border-hairline rounded-2xl px-4">
+          {DEACTIVATED_MEMBERS.map((m, i) => (
+            <View
+              key={m.name}
+              className={`flex-row items-center gap-3 py-[13px] ${i < DEACTIVATED_MEMBERS.length - 1 ? 'border-b border-section' : ''}`}
+            >
+              <View className="w-9 h-9 rounded-[10px] bg-surface items-center justify-center opacity-50">
+                <Typography className="text-[13px] font-extrabold text-navy">{m.initial}</Typography>
+              </View>
+              <View className="flex-1">
+                <Typography className="text-[13.5px] font-bold text-slate">{m.name}</Typography>
+                <Typography className="text-[11.5px] text-slate mt-[1px]">{m.role}</Typography>
+              </View>
             </View>
           ))}
         </View>

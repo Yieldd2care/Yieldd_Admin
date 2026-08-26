@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -42,11 +42,17 @@ function FollowUpCard({
       </View>
 
       <View className="flex-row gap-2 mt-[14px]">
-        <Pressable className="flex-1 h-11 rounded-md bg-navy flex-row items-center justify-center gap-[7px]">
+        <Pressable
+          onPress={() => Alert.alert('Call', "Calling isn't wired up yet.")}
+          className="flex-1 h-11 rounded-md bg-navy flex-row items-center justify-center gap-[7px]"
+        >
           <PhoneIcon size={14} color="#fff" strokeWidth={2} />
           <Typography className="text-[13.5px] font-bold text-white">Call</Typography>
         </Pressable>
-        <Pressable className="w-11 h-11 rounded-md bg-surface items-center justify-center">
+        <Pressable
+          onPress={() => Alert.alert('WhatsApp', "Messaging isn't wired up yet.")}
+          className="w-11 h-11 rounded-md bg-surface items-center justify-center"
+        >
           <WhatsAppIcon size={16} color="#25D366" strokeWidth={2} />
         </Pressable>
         <Pressable
@@ -67,7 +73,7 @@ export default function TodaysFollowUpsScreen() {
         title="Today's follow-ups"
         right={
           <View className="bg-gold rounded-full px-[11px] py-[5px]">
-            <Typography className="text-[12px] font-extrabold text-navy">6</Typography>
+            <Typography className="text-[12px] font-extrabold text-navy">3</Typography>
           </View>
         }
       />
@@ -86,7 +92,7 @@ export default function TodaysFollowUpsScreen() {
         />
 
         <Typography className="text-[10.5px] font-bold tracking-[0.12em] text-slate mt-5 mb-3" style={{ textTransform: 'uppercase' }}>
-          Today &middot; 5
+          Today &middot; 2
         </Typography>
         <FollowUpCard
           initial="R"

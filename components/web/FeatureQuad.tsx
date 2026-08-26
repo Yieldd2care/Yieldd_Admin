@@ -45,7 +45,7 @@ function FollowUpIcon() {
       </View>
       <View className="self-end flex-row items-center gap-[6px]">
         <View className="w-[6px] h-[6px] rounded-full bg-success" />
-        <Typography className="text-[9px] font-bold tracking-[0.1em] text-label">OPENED</Typography>
+        <Typography className="text-[9px] font-bold tracking-[0.1em] text-slate">OPENED</Typography>
       </View>
       <View className="self-start border border-hairline rounded-[10px] bg-white px-[10px] py-2 flex-row items-center gap-2 shadow-[0_6px_16px_rgba(11,19,43,0.06)]">
         <View className="w-5 h-5 rounded-[5px] bg-gold/[0.16] border border-gold/[0.40]" />

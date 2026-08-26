@@ -78,7 +78,7 @@ function EnrichMock() {
     <View className="w-[200px] rounded-md bg-white px-3 py-[10px] shadow-[0_10px_24px_rgba(11,19,43,0.16)]">
       {rows.map(([label, value]) => (
         <View key={label} className="flex-row items-center justify-between border-b border-surface py-[7px]">
-          <Typography className="font-semibold tracking-[0.06em] text-label" style={{ fontSize: 8.5 }}>
+          <Typography className="font-semibold tracking-[0.06em] text-slate" style={{ fontSize: 8.5 }}>
             {label}
           </Typography>
           <Typography className="font-medium text-navy ml-2" style={{ fontSize: 9.5 }} numberOfLines={1}>
@@ -87,7 +87,7 @@ function EnrichMock() {
         </View>
       ))}
       <View className="flex-row items-center justify-between mt-[7px]">
-        <Typography className="font-semibold tracking-[0.06em] text-label" style={{ fontSize: 8.5 }}>
+        <Typography className="font-semibold tracking-[0.06em] text-slate" style={{ fontSize: 8.5 }}>
           SCORE
         </Typography>
         <View className="bg-gold rounded-[6px] px-[7px] py-[2px]">
