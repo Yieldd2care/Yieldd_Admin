@@ -1,45 +1,11 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
-import { ChevronRightIcon, MicIcon, SearchIcon, WhatsAppIcon } from '../../../components/ui/icons';
-
-type Status = 'New' | 'Contacted' | 'Qualified' | 'Won';
-
-const STATUS_CLASSES: Record<Status, string> = {
-  New: 'bg-surface',
-  Contacted: 'bg-blue/[0.10]',
-  Qualified: 'bg-gold/[0.14]',
-  Won: 'bg-success/[0.14]',
-};
-
-const STATUS_TEXT: Record<Status, string> = {
-  New: 'text-slate',
-  Contacted: 'text-blue',
-  Qualified: 'text-[#8A6100]',
-  Won: 'text-[#1F8A50]',
-};
-
-const LEADS: {
-  id: string;
-  initial: string;
-  name: string;
-  company: string;
-  time: string;
-  status: Status;
-  hasVoice: boolean;
-  needsNote: boolean;
-}[] = [
-  { id: '1', initial: 'R', name: 'Rajesh Menon', company: 'Northline Engineering', time: '4:12 PM', status: 'Qualified', hasVoice: true, needsNote: false },
-  { id: '2', initial: 'S', name: 'Sneha Kulkarni', company: 'Vertex Industries', time: '3:40 PM', status: 'New', hasVoice: false, needsNote: true },
-  { id: '3', initial: 'A', name: 'Amit Shah', company: 'Prime Fabtech', time: '3:05 PM', status: 'Contacted', hasVoice: true, needsNote: false },
-  { id: '4', initial: 'K', name: 'Kavita Rao', company: 'Suntech Moulds', time: '2:48 PM', status: 'New', hasVoice: false, needsNote: true },
-  { id: '5', initial: 'V', name: 'Vikram Nair', company: 'Delta Precision', time: '2:20 PM', status: 'Won', hasVoice: true, needsNote: false },
-  { id: '6', initial: 'P', name: 'Priyanka Iyer', company: 'Orbit Castings', time: '1:55 PM', status: 'Qualified', hasVoice: false, needsNote: false },
-  { id: '7', initial: 'D', name: 'Deepak Verma', company: 'Gharda Alloys', time: '1:10 PM', status: 'New', hasVoice: false, needsNote: true },
-];
+import { LeadRow } from '../../../components/app/LeadRow';
+import { ChevronRightIcon, SearchIcon, WhatsAppIcon } from '../../../components/ui/icons';
+import { useLeadsStore } from '../../../stores/useLeadsStore';
 
 const FILTERS: { key: string; label: string; dot?: string }[] = [
   { key: 'All', label: 'All' },
@@ -51,19 +17,19 @@ const FILTERS: { key: string; label: string; dot?: string }[] = [
 export default function LeadListScreen() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('All');
   const [query, setQuery] = useState('');
+  const allLeads = useLeadsStore((s) => s.leads);
+  const leads = allLeads.filter((l) => l.syncStatus === 'synced');
 
-  const needsNoteCount = LEADS.filter((l) => l.needsNote).length;
-  const wonCount = LEADS.filter((l) => l.status === 'Won').length;
+  const needsNoteCount = leads.filter((l) => l.needsNote).length;
+  const whatsappPendingCount = leads.filter((l) => l.status === 'New').length;
 
-  const filtered = LEADS.filter((l) => {
+  const filtered = leads.filter((l) => {
     if (query && !l.name.toLowerCase().includes(query.toLowerCase()) && !l.company.toLowerCase().includes(query.toLowerCase())) return false;
     if (filter === 'Needs a note') return l.needsNote;
     if (filter === 'Qualified') return l.status === 'Qualified';
     if (filter === 'Won') return l.status === 'Won';
     return true;
   });
-
-  const messageOnWhatsApp = (name: string) => Alert.alert('WhatsApp', `Messaging ${name} isn't wired up yet.`);
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top']}>
@@ -80,19 +46,47 @@ export default function LeadListScreen() {
           </View>
         </View>
 
-        <View className="flex-row items-center bg-navy-elevated rounded-lg px-4 py-3 mt-4">
-          <Typography className="text-[19px] font-extrabold text-white">{LEADS.length}</Typography>
-          <Typography className="text-[12px] text-white/[0.55] ml-[6px]">today</Typography>
-          <View className="w-px h-4 bg-white/[0.14] mx-4" />
-          <View className="w-[6px] h-[6px] rounded-full mr-[7px]" style={{ backgroundColor: '#F4B000' }} />
-          <Typography className="text-[12px] font-semibold text-white/[0.85]">{needsNoteCount} need a note</Typography>
-          {wonCount > 0 ? (
-            <>
-              <View className="w-px h-4 bg-white/[0.14] mx-4" />
-              <View className="w-[6px] h-[6px] rounded-full mr-[7px]" style={{ backgroundColor: '#4ED17F' }} />
-              <Typography className="text-[12px] font-semibold text-white/[0.85]">{wonCount} won</Typography>
-            </>
-          ) : null}
+        <View className="bg-navy-elevated rounded-[14px] mt-4 overflow-hidden">
+          <View className="flex-row">
+            <View className="flex-1 px-4 py-3">
+              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                This event
+              </Typography>
+              <Typography className="text-[16px] font-extrabold text-white mt-[3px]">{leads.length}</Typography>
+            </View>
+            <View className="w-px bg-white/[0.14]" />
+            <View className="flex-1 px-4 py-3">
+              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                Follow-ups
+              </Typography>
+              <View className="flex-row items-center gap-[6px] mt-[5px]">
+                <View className="w-[6px] h-[6px] rounded-full bg-gold" />
+                <Typography className="text-[13px] font-bold text-white">7 due</Typography>
+              </View>
+            </View>
+          </View>
+          <View className="h-px bg-white/[0.14]" />
+          <View className="flex-row">
+            <View className="flex-1 px-4 py-3">
+              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                Needs a note
+              </Typography>
+              <View className="flex-row items-center gap-[6px] mt-[5px]">
+                <View className="w-[6px] h-[6px] rounded-full bg-success" />
+                <Typography className="text-[13px] font-bold text-white">{needsNoteCount}</Typography>
+              </View>
+            </View>
+            <View className="w-px bg-white/[0.14]" />
+            <View className="flex-1 px-4 py-3">
+              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                WhatsApp
+              </Typography>
+              <View className="flex-row items-center gap-[6px] mt-[5px]">
+                <WhatsAppIcon size={11} color="#25D366" />
+                <Typography className="text-[13px] font-bold text-white">{whatsappPendingCount} pending</Typography>
+              </View>
+            </View>
+          </View>
         </View>
 
         <View className="flex-row items-center gap-2 bg-surface rounded-full px-[18px] py-3 mt-4">
@@ -107,54 +101,28 @@ export default function LeadListScreen() {
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-white border-b border-hairline" contentContainerClassName="px-5 py-[14px] gap-2">
-        {FILTERS.map((f) => (
-          <Pressable
-            key={f.key}
-            onPress={() => setFilter(f.key)}
-            className={`flex-row items-center rounded-full px-[14px] py-2 ${filter === f.key ? 'bg-navy' : 'bg-surface'}`}
-          >
-            {f.dot ? <View className="w-[6px] h-[6px] rounded-full mr-[7px]" style={{ backgroundColor: f.dot }} /> : null}
-            <Typography className={`text-[12.5px] font-bold ${filter === f.key ? 'text-white' : 'text-navy'}`}>{f.label}</Typography>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {/* The ScrollView itself must stay free of className/style: NativeWind styling
+          directly on a horizontal ScrollView makes descendant text glyphs not paint
+          (both platforms). Visual styling lives on the wrapper View instead. */}
+      <View className="bg-white border-b border-hairline">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="px-5 py-[14px] gap-2">
+          {FILTERS.map((f) => (
+            <View key={f.key}>
+              <Pressable
+                onPress={() => setFilter(f.key)}
+                className={`flex-row items-center rounded-full px-[14px] py-2 ${filter === f.key ? 'bg-navy' : 'bg-surface'}`}
+              >
+                {f.dot ? <View className="w-[6px] h-[6px] rounded-full mr-[7px]" style={{ backgroundColor: f.dot }} /> : null}
+                <Typography className={`text-[12.5px] font-bold ${filter === f.key ? 'text-white' : 'text-navy'}`}>{f.label}</Typography>
+              </Pressable>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pt-4">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="px-5 pt-4 gap-3">
         {filtered.map((lead) => (
-          <Pressable
-            key={lead.id}
-            onPress={() => router.push({ pathname: '/(app)/leads/[id]', params: { id: lead.id } })}
-            className="flex-row items-center gap-3 bg-white border border-hairline rounded-2xl px-4 py-[14px] mx-5 mb-3 relative shadow-[0_1px_2px_rgba(11,19,43,0.05)]"
-          >
-            {lead.needsNote ? <View className="absolute right-[14px] top-[14px] w-[7px] h-[7px] rounded-full bg-gold" /> : null}
-            <View className="w-10 h-10 rounded-[11px] bg-surface items-center justify-center">
-              <Typography className="text-[14.5px] font-extrabold text-navy">{lead.initial}</Typography>
-            </View>
-            <View className="flex-1 min-w-0">
-              <View className="flex-row items-center gap-[6px]">
-                <Typography className="text-[14.5px] font-bold text-navy">{lead.name}</Typography>
-                {lead.hasVoice ? <MicIcon size={13} color="#8A98B0" strokeWidth={2} /> : null}
-              </View>
-              <Typography className="text-[12px] text-slate mt-[1px]">{lead.company}</Typography>
-              <View className="flex-row items-center gap-[8px] mt-[7px]">
-                <View className={`rounded-full px-[8px] py-[3px] ${STATUS_CLASSES[lead.status]}`}>
-                  <Typography className={`text-[10px] font-bold ${STATUS_TEXT[lead.status]}`}>{lead.status}</Typography>
-                </View>
-                <Typography className="text-[11px] font-semibold text-slate">{lead.time}</Typography>
-              </View>
-            </View>
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                messageOnWhatsApp(lead.name);
-              }}
-              className="w-9 h-9 rounded-full items-center justify-center"
-              style={{ backgroundColor: '#25D366' }}
-            >
-              <WhatsAppIcon size={17} color="#fff" />
-            </Pressable>
-          </Pressable>
+          <LeadRow key={lead.id} lead={lead} />
         ))}
         <View className="h-24" />
       </ScrollView>
