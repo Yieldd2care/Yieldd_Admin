@@ -1,0 +1,11 @@
+-- Local-only seed data. Runs on `supabase db reset` against a LOCAL stack.
+--
+-- This file never reaches a linked remote project: `supabase db push` does not
+-- read it. Anything production actually needs must live in supabase/migrations/.
+--
+-- Intentionally empty. All reference data in this product is either a client
+-- constant (the 20 company categories in stores/useCompanyStore.ts, the event
+-- name suggestions) or created per-organisation at signup by handle_new_user().
+--
+-- config.toml points at this path, so the file exists to stop `db reset` from
+-- erroring — and to document the rule above for whoever looks next.

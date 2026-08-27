@@ -1,7 +1,34 @@
-# Database Schema Proposal — Phase 1
+# Database Schema — Phase 1
 
-**Backend:** Supabase (Postgres + Auth + Storage)
-**Status:** Draft for review — nothing in this document has been applied to a database yet.
+**Backend:** Supabase (Postgres 17 + Auth + Storage)
+**Project:** `Yieldd Production` — `azpanagwuskruelbwtvb`, region `ap-south-1` (Mumbai)
+**Status:** **Deployed.** 11 migrations applied as of 2026-08-27 — 16 tables, 37 table policies, 14 storage-object policies, 4 buckets, 11 functions, 20 enums. `db lint` clean.
+
+> **`supabase/migrations/` is the source of truth, not this document.** The
+> narrative below explains *why* the schema is shaped the way it is and is
+> still worth reading, but it describes the original 14-table design. Since
+> then eight migrations have changed it. The material differences:
+>
+> - `events` carries **7** cost columns (Furniture and Accommodation were
+>   missing), plus `stall_number` and `timezone`. `total_cost_paisa` sums all 7.
+> - New tables **`message_templates`** and **`message_batches`** — the app has an
+>   org-level multi-template manager with attachments, and batch sends need a
+>   parent row for their progress denominator.
+> - The legacy `events.whatsapp_template` / `email_template` and
+>   `event_members.*_override` text columns are **dropped** in favour of FKs.
+> - `leads.card_image_url` → **`card_image_path`**, `voice_notes.audio_url` →
+>   **`audio_path`**, `business_cards.photo_url` → **`photo_path`**. Object keys,
+>   not URLs — a URL breaks the moment the project ref changes, as it did here.
+> - `business_cards` gains 6 card fields; `anon` now has an explicit **column**
+>   grant instead of a table-wide one, so future columns are private by default.
+> - `profiles` has a guard trigger. The original `profiles_update_self` policy
+>   let any rep run `update profiles set role='admin'` on themselves — §7.2 below
+>   still shows that policy, and it is no longer the whole story.
+> - `handle_new_user()` now rejects a supplied-but-invalid invite token instead
+>   of silently creating a stray org.
+> - New: `lead_outcome` enum, `lead_activity.outcome`, `leads.reviewed_at`,
+>   `invites.email`/`full_name`, `payments.event_id`,
+>   `profiles.notifications_enabled`, `organizations.category`.
 
 Grounded in [MVP_PLAN.md](MVP_PLAN.md) (features, monetization, user journey) and [ui-development-plan-v1.md](ui-development-plan-v1.md) (41-screen inventory) plus the screens already built (`app/(auth)`, `app/(app)`).
 
@@ -152,7 +179,8 @@ create type member_status as enum ('invited', 'active', 'deactivated');
 create type org_plan_tier as enum ('free', 'pro');
 
 create type event_status as enum ('upcoming', 'live', 'closed');
-create type custom_field_type as enum ('text', 'number', 'dropdown');
+-- 'checkbox' and 'radio' added 2026-08-27 alongside the app's admin custom-field builder (was: 'text', 'number', 'dropdown' only).
+create type custom_field_type as enum ('text', 'number', 'dropdown', 'checkbox', 'radio');
 
 create type lead_source as enum ('card_scan', 'manual');
 create type extraction_status as enum ('pending', 'completed', 'failed');
@@ -297,11 +325,12 @@ create table public.event_custom_field_defs (
   label text not null,
   field_type custom_field_type not null default 'text',
   options jsonb,
+  is_required boolean not null default false,
   display_order int not null default 0,
   created_at timestamptz not null default now()
 );
 ```
-`options` holds the dropdown choices as a JSON array when `field_type = 'dropdown'`.
+`options` holds the choice list as a JSON array of strings when `field_type` is `'dropdown'` or `'radio'`. `is_required` (added 2026-08-27) is admin-controlled per field — a rep can't save a lead in this event while a required field is empty. Enforced app-side today (the app has no live Supabase connection yet; this document stays ahead of it, as elsewhere).
 
 ### 4.7 `leads`
 The core entity. Values for `event_custom_field_defs` live in `custom_field_values` (jsonb, keyed by field id) rather than a sparse EAV table — five fields max per event, never queried by value, so jsonb is the simpler fit.
@@ -321,6 +350,10 @@ create table public.leads (
   email text,
   card_image_url text,
   extraction_status extraction_status not null default 'pending',
+  company_landline text,
+  company_website text,
+  company_address text,
+  company_summary text,
   custom_field_values jsonb not null default '{}'::jsonb,
   consent_given boolean not null default false,
   consent_at timestamptz,
@@ -340,6 +373,8 @@ create table public.leads (
 The `leads_won_requires_value` check is the DB-level guarantee behind G4's rule: *"Value is required on Won, not optional."*
 
 `captured_by` is `on delete restrict` — deliberately. J3 says deactivating a rep must never delete their leads; `restrict` makes that a hard guarantee at the schema level, not just an app-code convention. `assigned_to` is `on delete set null` since reassignment is expected to happen freely.
+
+`company_landline`/`company_website`/`company_address`/`company_summary` (added 2026-08-27) back the capture screen's Company section. `company_summary` is filled by a button-triggered AI action (visits `company_website`, summarizes it in 2-3 lines) rather than automatically on save — deliberately a distinct user action so it can be gated behind a plan upgrade later without restructuring the flow, matching this product's existing pattern of visible-but-locked Pro features. Not yet wired to a real AI call anywhere (the app has no live Supabase connection at all today); the button currently returns a mocked summary client-side.
 
 ### 4.8 `voice_notes`
 

@@ -28,11 +28,39 @@ Phase 1 unblocks everything (nothing else can write real data without a real sig
 
 ## Phase 0 — Foundation *(Complete)*
 
-Already done this session, no action needed:
-- 14 tables, enums, indexes, RLS policies, helper functions (`is_pro_user()`, `can_use_ai()`, `current_organization_id()`, `is_admin()`, `find_duplicate_lead()`) — see [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)
+- 16 tables, 20 enums, indexes, 37 table policies, 11 helper functions — see [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) and `supabase/migrations/`
 - `handle_new_user()` trigger (signup → `organizations` + `profiles`, or attach to an org via invite token)
 - Auto-confirm enabled on Supabase Auth (no email verification step)
 - Supabase project linked, migrations applied, GitHub repo pushed
+
+### Phase 0b — database completion *(Complete, 2026-08-27)*
+
+**The project moved to `ap-south-1` (Mumbai).** `Yieldd Production` / `azpanagwuskruelbwtvb` replaced the Tokyo project `phsvjnvyugivmfpmknay`, which is paused and retained as a rollback. ~250 ms → ~150 ms per request. `.env` and the CLI link point at Mumbai; **the Vercel env vars still need updating by hand.**
+
+Eight further migrations (`20260827130000`–`20260827130700`), each rehearsed in a rolled-back transaction against the live database before push:
+
+- **Closed a live privilege-escalation hole.** `profiles_update_self` had no column restriction, so any rep could `update profiles set role='admin' where id = auth.uid()`. Now guarded by `enforce_profile_update_rules()`.
+- Hardened `handle_new_user()`: trimmed metadata, `for update` on the invite lookup, and a raise on a supplied-but-invalid token (it used to silently create a stray admin org).
+- Event costs 5 → 7 columns with the generated total widened; `stall_number`; `timezone`.
+- `business_cards` gains 6 card fields; `anon` moved to an explicit column grant.
+- `organizations.category` / `onboarding_intent`, with the column-level GRANT that the initial `revoke update` made necessary.
+- `message_templates` + `message_batches`, both with RLS; legacy template text columns dropped.
+- Typed `lead_outcome`, `leads.reviewed_at`, `invites.email`, `payments.event_id`, `profiles.notifications_enabled`.
+- 4 storage buckets + 14 `storage.objects` policies; `*_url` columns renamed to `*_path`.
+
+Also: `types/database.ts` generated, `lib/db.ts` added (money lives in exactly one place), `supabase/seed.sql` placeholder, `db:*` npm scripts, CLI pinned. 17 assertions pass; `db lint` clean; `tsc --noEmit` clean.
+
+**Persist-version bump schedule** (each store's mock data is purged when its phase wires it to Supabase — do not do these early or you blank working screens):
+
+| AsyncStorage key | Bump in |
+|---|---|
+| `yieldd-session` | Phase 1 → v2 |
+| `yieldd-leads` (7 mock leads) | Phase 2 (2.11–2.17) |
+| `yieldd-event-fields` | Phase 2 (2.8) |
+| `yieldd-templates` (2 seeded) | Phase 2 (2.9) |
+| `yieldd-card-profile` | Phase 3 (3.14) |
+| `yieldd-team` (4 fake + 1 invite) | Phase 6 (6.2) |
+| `yieldd-company` | Phase 6 (6.1) |
 
 ---
 
@@ -73,7 +101,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** A rep who signs up via an invite link ends up with `role = 'rep'` in the inviter's org, an `active` row in `event_members` for the invited event, and skips the fork screen entirely.
 
 ### 1.6 — Fork screen makes a real choice
-- **Status:** Not Started *(UI exists, both buttons currently do the same no-op routing)*
+- **Status:** Not Started *(UI exists and the two buttons DO already route differently — `chooseTeam` → `/(app)/events/new`, `chooseSolo` → `/(app)/card/edit`. What's actually missing: the choice is never persisted, and it uses `router.push` where it should `replace`, leaving an `(auth)` route in the stack.)*
 - **Files:** `app/(auth)/fork.tsx`
 - **Description:** "For my team" → event creation flow (Phase 2, D1). "Just me" → digital card builder (Phase 3, C1). Neither should just drop into the empty `(app)` home.
 - **Acceptance criteria:** Each option visibly leads somewhere different.

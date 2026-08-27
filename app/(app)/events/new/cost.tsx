@@ -7,18 +7,43 @@ import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 
-const FIELDS = ['Stall', 'Fabrication', 'Travel', 'Staff', 'Marketing'] as const;
+const COST_KEYS = [
+  'Stall',
+  'Fabrication',
+  'Furniture',
+  'Travel',
+  'Staff',
+  'Accommodation',
+  'Marketing',
+] as const;
+
+type CostKey = (typeof COST_KEYS)[number];
+
+// Typed rather than `as const` so `hint` is optional on every entry — with
+// `as const` the array widens to a union in which only Staff has `hint`, and
+// destructuring it below is a type error.
+const FIELDS: readonly { key: CostKey; hint?: string }[] = [
+  { key: 'Stall' },
+  { key: 'Fabrication' },
+  { key: 'Furniture' },
+  { key: 'Travel' },
+  { key: 'Staff', hint: 'e.g. food or transportation' },
+  { key: 'Accommodation' },
+  { key: 'Marketing' },
+];
 
 function formatInr(n: number) {
   return n.toLocaleString('en-IN');
 }
 
 export default function EventCostScreen() {
-  const [values, setValues] = useState<Record<(typeof FIELDS)[number], string>>({
+  const [values, setValues] = useState<Record<(typeof FIELDS)[number]['key'], string>>({
     Stall: '',
     Fabrication: '',
+    Furniture: '',
     Travel: '',
     Staff: '',
+    Accommodation: '',
     Marketing: '',
   });
 
@@ -42,20 +67,25 @@ export default function EventCostScreen() {
           <Typography className="text-[12px] text-white/[0.60] mt-1">TOTAL EVENT COST</Typography>
         </View>
 
-        {FIELDS.map((field) => (
+        {FIELDS.map(({ key, hint }) => (
           <View
-            key={field}
-            className="flex-row items-center gap-3 bg-white border border-hairline rounded-md px-4 h-[52px] mb-3"
+            key={key}
+            className={`flex-row items-center gap-3 bg-white border border-hairline rounded-md px-4 mb-3 ${
+              hint ? 'py-3' : 'h-[52px]'
+            }`}
           >
-            <Typography className="flex-1 text-[14px] font-semibold text-navy">{field}</Typography>
+            <View className="flex-1">
+              <Typography className="text-[14px] font-semibold text-navy">{key}</Typography>
+              {hint ? <Typography className="text-[11px] text-slate mt-[1px]">{hint}</Typography> : null}
+            </View>
             <Typography className="text-[14px] font-semibold text-slate">&#8377;</Typography>
             <RNTextInput
               className="w-[120px] text-right text-[14.5px] font-regular text-navy"
               placeholder="0"
               placeholderTextColor="#97A3B8"
               keyboardType="number-pad"
-              value={values[field]}
-              onChangeText={(v) => setValues((prev) => ({ ...prev, [field]: v }))}
+              value={values[key]}
+              onChangeText={(v) => setValues((prev) => ({ ...prev, [key]: v }))}
             />
           </View>
         ))}
