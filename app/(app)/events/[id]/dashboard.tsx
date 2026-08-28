@@ -7,7 +7,7 @@ import { Typography } from '../../../../components/ui/Typography';
 import { Toggle } from '../../../../components/ui/Toggle';
 import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { RefreshIcon } from '../../../../components/ui/icons';
-import { EVENTS } from '../../../../data/events';
+import { useEvent, useUpdateEvent } from '../../../../hooks/useEvents';
 
 const HOURLY = [12, 28, 45, 62, 80, 100, 74, 58, 30];
 const REPS = [
@@ -19,16 +19,32 @@ const REPS = [
 
 export default function EventDashboardScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const eventId = id ?? 'imtex-2026';
-  const eventStatus = EVENTS.find((e) => e.id === eventId)?.status;
-  const isClosed = eventStatus === 'closed';
-  const isUpcoming = eventStatus === 'upcoming';
-  const [leaderboardVisible, setLeaderboardVisible] = useState(true);
+  const eventId = id ?? '';
+  const { data: event } = useEvent(eventId || undefined);
+  const updateEvent = useUpdateEvent();
+
+  const isClosed = event?.status === 'closed';
+  const isUpcoming = event?.status === 'upcoming';
+
+  // Optimistic locally so the switch does not lag behind the finger, but the
+  // event row is what it actually reads from — the toggle gates the roster for
+  // every rep in `event_members_select`, so it cannot be screen-local state.
+  const [leaderboardOverride, setLeaderboardOverride] = useState<boolean | null>(null);
+  const leaderboardVisible = leaderboardOverride ?? event?.leaderboardVisibleToReps ?? true;
+  const setLeaderboardVisible = (value: boolean) => {
+    setLeaderboardOverride(value);
+    if (eventId) {
+      updateEvent.mutate(
+        { id: eventId, leaderboardVisibleToReps: value },
+        { onError: () => setLeaderboardOverride(null) }
+      );
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader
-        title="IMTEX 2026"
+        title={event?.name ?? 'Event'}
         right={
           <Pressable className="w-[34px] h-[34px] rounded-md bg-surface items-center justify-center">
             <RefreshIcon />

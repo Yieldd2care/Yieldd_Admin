@@ -14,6 +14,13 @@ export type CustomFieldDef = {
 
 type EventFieldsState = {
   customFields: CustomFieldDef[];
+  /**
+   * Replaces the whole list — used to load an event's saved fields in, and to
+   * write the server's ids back after a save. This store is the editing surface
+   * for one event at a time, not a second copy of the truth; the truth is
+   * `event_custom_field_defs`.
+   */
+  setFields: (fields: CustomFieldDef[]) => void;
   addField: () => void;
   updateField: (id: string, patch: Partial<CustomFieldDef>) => void;
   removeField: (id: string) => void;
@@ -31,6 +38,7 @@ export const useEventFieldsStore = create<EventFieldsState>()(
   persist(
     (set) => ({
       customFields: [],
+      setFields: (customFields) => set({ customFields }),
       addField: () =>
         set((state) => {
           if (state.customFields.length >= MAX_CUSTOM_FIELDS) return state;
@@ -65,6 +73,11 @@ export const useEventFieldsStore = create<EventFieldsState>()(
     {
       name: 'yieldd-event-fields',
       storage: createJSONStorage(() => AsyncStorage),
+      // v2: fields are per-event and live in the database now. A v1 cache holds
+      // one global list that would otherwise be pushed onto whichever event is
+      // opened first.
+      version: 2,
+      migrate: () => ({ customFields: [] }),
     }
   )
 );

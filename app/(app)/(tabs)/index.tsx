@@ -17,6 +17,8 @@ import {
 } from '../../../components/ui/icons';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
+import { useCurrentEventStore } from '../../../stores/useCurrentEventStore';
+import { useCurrentEvent, useEvents } from '../../../hooks/useEvents';
 
 function stubComingSoon(what: string) {
   Alert.alert('Coming soon', `${what} isn't designed yet.`);
@@ -39,6 +41,11 @@ export default function HomeScreen() {
   const RECENT_LEADS = syncedLeads.slice(0, 3);
   const NEEDS_NOTE_COUNT = syncedLeads.filter((l) => l.needsNote).length;
   const WHATSAPP_PENDING_COUNT = syncedLeads.filter((l) => l.status === 'New').length;
+
+  const { data: events } = useEvents();
+  const { event } = useCurrentEvent();
+  const selectEvent = useCurrentEventStore((s) => s.selectEvent);
+  const isAdmin = user?.role === 'admin';
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top']}>
@@ -77,8 +84,16 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View className="mx-5 mt-3 bg-navy rounded-xl p-4">
           <View className="flex-row items-center gap-[6px]">
-            <View className="w-[6px] h-[6px] rounded-full bg-success" />
-            <Typography className="text-[12px] font-semibold text-white/60">IMTEX 2026 &middot; B-42</Typography>
+            {/* The dot means "this show is running right now" — showing it on an
+                event that starts in March would be a lie the rep acts on. */}
+            <View
+              className={`w-[6px] h-[6px] rounded-full ${event?.status === 'live' ? 'bg-success' : 'bg-white/30'}`}
+            />
+            <Typography className="text-[12px] font-semibold text-white/60">
+              {event
+                ? [event.name, event.stallNumber ?? event.city].filter(Boolean).join(' · ')
+                : 'No event selected'}
+            </Typography>
           </View>
           <View className="flex-row items-center justify-between mt-[12px]">
             <View>
@@ -96,20 +111,36 @@ export default function HomeScreen() {
           <Typography className="text-[11px] font-bold tracking-[0.06em] text-slate" style={{ textTransform: 'uppercase' }}>
             Your events
           </Typography>
+          {/* No className on the ScrollView itself — with this project's
+              NativeWind setup that makes descendant text reserve space and paint
+              no glyphs. Spacing goes in contentContainerClassName. See AGENTS.md. */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 mt-[8px]">
-            <View className="bg-navy rounded-full px-4 py-2">
-              <Typography className="text-[12.5px] font-bold text-white">IMTEX 2026</Typography>
-            </View>
-            <View>
-              <Pressable onPress={() => stubComingSoon('Switching events')} className="bg-surface rounded-full px-4 py-2">
-                <Typography className="text-[12.5px] font-bold text-navy">Auto Expo Q3</Typography>
-              </Pressable>
-            </View>
-            <View>
-              <Pressable onPress={() => router.push('/(app)/events/new')} className="border border-dashed border-hairline rounded-full px-4 py-2">
-                <Typography className="text-[12.5px] font-bold text-slate">+ Add event</Typography>
-              </Pressable>
-            </View>
+            {events?.map((e) => {
+              const active = e.id === event?.id;
+              return (
+                <View key={e.id}>
+                  <Pressable
+                    onPress={() => selectEvent(e.id)}
+                    className={`rounded-full px-4 py-2 ${active ? 'bg-navy' : 'bg-surface'}`}
+                  >
+                    <Typography
+                      className={`text-[12.5px] font-bold ${active ? 'text-white' : 'text-navy'}`}
+                    >
+                      {e.name}
+                    </Typography>
+                  </Pressable>
+                </View>
+              );
+            })}
+            {isAdmin ? (
+              <View>
+                <Pressable onPress={() => router.push('/(app)/events/new')} className="border border-dashed border-hairline rounded-full px-4 py-2">
+                  <Typography className="text-[12.5px] font-bold text-slate">
+                    {events?.length ? '+ Add event' : '+ Create your first event'}
+                  </Typography>
+                </Pressable>
+              </View>
+            ) : null}
           </ScrollView>
         </View>
 
@@ -133,7 +164,11 @@ export default function HomeScreen() {
             <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Search</Typography>
           </Pressable>
           <Pressable
-            onPress={() => router.push({ pathname: '/(app)/events/[id]/roi', params: { id: 'imtex-2026' } })}
+            onPress={() =>
+              event
+                ? router.push({ pathname: '/(app)/events/[id]/roi', params: { id: event.id } })
+                : Alert.alert('No event yet', 'Reports appear once you have an event with leads in it.')
+            }
             className="items-center gap-2 w-[80px]"
           >
             <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">

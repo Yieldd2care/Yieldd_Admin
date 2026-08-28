@@ -7,6 +7,7 @@ import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { COST_KEYS, useEventDraftStore, type CostKey } from '../../../../stores/useEventDraftStore';
+import { useUpdateEvent } from '../../../../hooks/useEvents';
 
 // Typed rather than `as const` so `hint` is optional on every entry — with
 // `as const` the array widens to a union in which only Staff has `hint`, and
@@ -32,6 +33,9 @@ function toAmount(value: string): number {
 
 export default function EventCostScreen() {
   const savedCosts = useEventDraftStore((s) => s.costs);
+  const eventId = useEventDraftStore((s) => s.eventId);
+  const updateEvent = useUpdateEvent();
+  const [error, setError] = useState<string | null>(null);
 
   const [values, setValues] = useState<Record<CostKey, string>>(() =>
     COST_KEYS.reduce(
@@ -47,13 +51,28 @@ export default function EventCostScreen() {
 
   // Both the primary button and "Skip for now" commit, because skipping means
   // "no costs yet", not "throw away what I already typed".
-  const commitAndContinue = () => {
-    useEventDraftStore.getState().setCosts(
-      COST_KEYS.reduce(
-        (acc, key) => ({ ...acc, [key]: toAmount(values[key]) }),
-        {} as Record<CostKey, number>
-      )
+  const commitAndContinue = async () => {
+    if (updateEvent.isPending) return;
+    setError(null);
+
+    const costs = COST_KEYS.reduce(
+      (acc, key) => ({ ...acc, [key]: toAmount(values[key]) }),
+      {} as Record<CostKey, number>
     );
+
+    // Written straight to the seven paise columns, which is what makes
+    // total_cost_paisa — and therefore cost-per-lead and the ROI figure —
+    // agree with the total shown above.
+    if (eventId) {
+      try {
+        await updateEvent.mutateAsync({ id: eventId, costs });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Those costs didn't save. Try again.");
+        return;
+      }
+    }
+
+    useEventDraftStore.getState().setCosts(costs);
     router.push('/(app)/events/new/invite');
   };
 
@@ -94,10 +113,21 @@ export default function EventCostScreen() {
             />
           </View>
         ))}
+
+        {error ? (
+          <Typography className="mt-2 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
+            {error}
+          </Typography>
+        ) : null}
       </ScrollView>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
-        <Button label="Continue" onPress={commitAndContinue} className="w-full" />
-        <Pressable onPress={commitAndContinue}>
+        <Button
+          label={updateEvent.isPending ? 'Saving…' : 'Continue'}
+          disabled={updateEvent.isPending}
+          onPress={commitAndContinue}
+          className="w-full"
+        />
+        <Pressable onPress={commitAndContinue} disabled={updateEvent.isPending}>
           <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
         </Pressable>
       </View>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -11,21 +12,48 @@ import {
   formatDateRange,
   useEventDraftStore,
 } from '../../../../stores/useEventDraftStore';
+import { useEvent } from '../../../../hooks/useEvents';
+import { fetchEventInvites } from '../../../../lib/api/invites';
 
 export default function EventSetupCompleteScreen() {
   // Read one field at a time rather than deriving inside a selector — a
   // selector that builds a new array or object returns a fresh reference on
   // every render and loops.
-  const name = useEventDraftStore((s) => s.name);
-  const city = useEventDraftStore((s) => s.city);
+  const draftName = useEventDraftStore((s) => s.name);
+  const draftCity = useEventDraftStore((s) => s.city);
   const startDate = useEventDraftStore((s) => s.startDate);
   const endDate = useEventDraftStore((s) => s.endDate);
   const costs = useEventDraftStore((s) => s.costs);
   const invitedReps = useEventDraftStore((s) => s.invitedReps);
+  const eventId = useEventDraftStore((s) => s.eventId);
 
-  const totalCost = draftTotalCost(costs);
-  const dates = formatDateRange(startDate, endDate);
-  const repCount = invitedReps.length;
+  // The saved row is the truth; the draft is the fallback for the moment
+  // before it arrives, and for a wizard that never reached the database.
+  const { data: saved } = useEvent(eventId ?? undefined);
+
+  const [inviteCount, setInviteCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    fetchEventInvites(eventId)
+      .then((rows) => {
+        if (!cancelled) setInviteCount(rows.filter((i) => i.status !== 'revoked').length);
+      })
+      .catch(() => {
+        /* Falls back to what the wizard recorded. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  const name = saved?.name || draftName;
+  const city = saved?.city || draftCity;
+  const totalCost = saved ? saved.totalCost : draftTotalCost(costs);
+  const dates = saved
+    ? formatDateRange(saved.startDate, saved.endDate)
+    : formatDateRange(startDate, endDate);
+  const repCount = inviteCount ?? invitedReps.length;
 
   // Every row shows what was actually submitted (PENDING.md #3). A step that
   // was skipped says so plainly rather than borrowing an example value —

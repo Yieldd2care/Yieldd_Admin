@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { COST_KEYS, EMPTY_COSTS, totalOfCosts, type CostKey, type EventCosts } from '../types/event';
+import { formatDateRange } from '../lib/dates';
+
 /**
  * The create-event wizard's answers, gathered across its five screens.
  *
@@ -14,30 +17,27 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * phone call mid-way through kills the process on Android, and losing four
  * screens of typing to that is not acceptable. Cleared once the event is
  * finished.
+ *
+ * Since step 1 now writes a real `events` row, the draft also holds that row's
+ * id — so re-entering an abandoned wizard resumes the same event rather than
+ * creating a second one and burning a Free plan's only slot.
  */
 
-export const COST_KEYS = [
-  'Stall',
-  'Fabrication',
-  'Furniture',
-  'Travel',
-  'Staff',
-  'Accommodation',
-  'Marketing',
-] as const;
-
-export type CostKey = (typeof COST_KEYS)[number];
+export { COST_KEYS, type CostKey };
+export { formatDateRange };
 
 export type DraftRep = { id: string; name: string; phone: string };
 
 export type EventDraft = {
+  /** The `events` row this draft is editing, once step 1 has been saved. */
+  eventId: string | null;
   name: string;
   city: string;
   /** ISO strings, not Date objects — persist serialises through JSON. */
   startDate: string | null;
   endDate: string | null;
   /** Rupees as typed, not paise. Converted at the database boundary. */
-  costs: Record<CostKey, number>;
+  costs: EventCosts;
   /** Only the reps who were actually complete enough to invite. */
   invitedReps: DraftRep[];
   whatsappTemplate: string;
@@ -46,29 +46,21 @@ export type EventDraft = {
 };
 
 type EventDraftState = EventDraft & {
+  setEventId: (id: string | null) => void;
   setDetails: (input: {
     name: string;
     city: string;
     startDate: Date | null;
     endDate: Date | null;
   }) => void;
-  setCosts: (costs: Record<CostKey, number>) => void;
+  setCosts: (costs: EventCosts) => void;
   setInvitedReps: (reps: DraftRep[]) => void;
   setTemplates: (input: { whatsappTemplate: string; emailSubject: string; emailBody: string }) => void;
   reset: () => void;
 };
 
-const EMPTY_COSTS: Record<CostKey, number> = {
-  Stall: 0,
-  Fabrication: 0,
-  Furniture: 0,
-  Travel: 0,
-  Staff: 0,
-  Accommodation: 0,
-  Marketing: 0,
-};
-
 const EMPTY: EventDraft = {
+  eventId: null,
   name: '',
   city: '',
   startDate: null,
@@ -84,6 +76,8 @@ export const useEventDraftStore = create<EventDraftState>()(
   persist(
     (set) => ({
       ...EMPTY,
+
+      setEventId: (eventId) => set({ eventId }),
 
       setDetails: ({ name, city, startDate, endDate }) =>
         set({
@@ -103,36 +97,15 @@ export const useEventDraftStore = create<EventDraftState>()(
     {
       name: 'yieldd-event-draft',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      // v2 adds eventId. A v1 draft has no row behind it, so it starts over
+      // rather than being adopted by whatever event is created next.
+      version: 2,
+      migrate: () => ({ ...EMPTY, costs: { ...EMPTY_COSTS } }),
     }
   )
 );
 
 /** Total across all seven cost lines, in rupees. */
-export function draftTotalCost(costs: Record<CostKey, number>): number {
-  return COST_KEYS.reduce((sum, key) => sum + (costs[key] || 0), 0);
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/**
- * `18–22 Feb 2026`, collapsing the month and year when they repeat, which is
- * the overwhelmingly common case for a trade show.
- */
-export function formatDateRange(startISO: string | null, endISO: string | null): string {
-  if (!startISO) return '';
-  const start = new Date(startISO);
-  if (!endISO) return `${start.getDate()} ${MONTHS[start.getMonth()]} ${start.getFullYear()}`;
-
-  const end = new Date(endISO);
-  const sameYear = start.getFullYear() === end.getFullYear();
-  const sameMonth = sameYear && start.getMonth() === end.getMonth();
-
-  if (sameMonth) {
-    return `${start.getDate()}–${end.getDate()} ${MONTHS[end.getMonth()]} ${end.getFullYear()}`;
-  }
-  if (sameYear) {
-    return `${start.getDate()} ${MONTHS[start.getMonth()]} – ${end.getDate()} ${MONTHS[end.getMonth()]} ${end.getFullYear()}`;
-  }
-  return `${start.getDate()} ${MONTHS[start.getMonth()]} ${start.getFullYear()} – ${end.getDate()} ${MONTHS[end.getMonth()]} ${end.getFullYear()}`;
+export function draftTotalCost(costs: EventCosts): number {
+  return totalOfCosts(costs);
 }

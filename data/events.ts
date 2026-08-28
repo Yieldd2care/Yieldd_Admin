@@ -1,21 +1,19 @@
-export type EventStatus = 'live' | 'upcoming' | 'closed';
+/**
+ * Presentation for event status.
+ *
+ * The mock `EVENTS` array that used to live here is gone — events come from the
+ * database now (`hooks/useEvents.ts`). What is left is the styling, which is
+ * genuinely UI and has no business in a query layer.
+ */
 
-export type Event = {
-  id: string;
-  name: string;
-  sub: string;
-  status: EventStatus;
-  leads?: number;
-  dayLabel?: string;
+export type { Event, EventStatus } from '../types/event';
+import type { EventStatus } from '../types/event';
+
+export const STATUS_LABEL: Record<EventStatus, string> = {
+  live: 'Live',
+  upcoming: 'Upcoming',
+  closed: 'Closed',
 };
-
-export const EVENTS: Event[] = [
-  { id: 'imtex-2026', name: 'IMTEX 2026', sub: 'Bengaluru · 18–22 Feb', status: 'live', leads: 413, dayLabel: 'Live · Day 3' },
-  { id: 'plastindia-2026', name: 'Plastindia 2026', sub: 'Ahmedabad · 4–9 Apr', status: 'upcoming' },
-  { id: 'auto-expo-2025', name: 'Auto Expo 2025', sub: 'New Delhi · 12–16 Nov', status: 'closed', leads: 286 },
-];
-
-export const STATUS_LABEL: Record<EventStatus, string> = { live: 'Live', upcoming: 'Upcoming', closed: 'Closed' };
 
 export const STATUS_CLASSES: Record<EventStatus, string> = {
   live: 'bg-gold/[0.16]',

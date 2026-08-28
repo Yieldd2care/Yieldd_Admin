@@ -5,9 +5,14 @@ import { router } from 'expo-router';
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CalendarIcon, ChevronRightIcon } from '../../../components/ui/icons';
-import { EVENTS, STATUS_CLASSES, STATUS_LABEL, STATUS_TEXT, type EventStatus } from '../../../data/events';
+import { STATUS_CLASSES, STATUS_LABEL, STATUS_TEXT, type EventStatus } from '../../../data/events';
+import { useEvents } from '../../../hooks/useEvents';
 
 export default function SettingsExportScreen() {
+  const { data: events, isLoading } = useEvents();
+  // Upcoming events are left out on purpose: there is nothing to export yet.
+  const exportable = events?.filter((e) => e.status !== 'upcoming') ?? [];
+
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader title="Export leads" />
@@ -18,7 +23,7 @@ export default function SettingsExportScreen() {
         </Typography>
 
         {(['live', 'closed'] as EventStatus[]).map((group) => {
-          const items = EVENTS.filter((e) => e.status === group);
+          const items = exportable.filter((e) => e.status === group);
           if (!items.length) return null;
           return (
             <View key={group}>
@@ -52,6 +57,12 @@ export default function SettingsExportScreen() {
             </View>
           );
         })}
+
+        {!isLoading && !exportable.length ? (
+          <Typography className="text-[13.5px] text-slate text-center mt-10 leading-[1.5]">
+            Nothing to export yet &mdash; leads become available once an event is running.
+          </Typography>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

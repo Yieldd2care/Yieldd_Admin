@@ -8,6 +8,9 @@ import { Button } from '../../../../components/ui/Button';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { MailIcon, WhatsAppIcon } from '../../../../components/ui/icons';
 import { useEventDraftStore } from '../../../../stores/useEventDraftStore';
+import { useSessionStore } from '../../../../stores/useSessionStore';
+import { useUpdateEvent } from '../../../../hooks/useEvents';
+import { ensureTemplate } from '../../../../lib/api/messageTemplates';
 
 const DEFAULT_WHATSAPP =
   "Hi {{name}}, great meeting you at {{event}}. Sharing our brochure — let us know if you'd like a quote.";
@@ -34,17 +37,70 @@ function MergeFieldText({ text, className = '' }: { text: string; className?: st
 
 export default function MessageTemplatesScreen() {
   const draft = useEventDraftStore();
+  const user = useSessionStore((s) => s.user);
+  const updateEvent = useUpdateEvent();
+
   const [whatsappText, setWhatsappText] = useState(draft.whatsappTemplate || DEFAULT_WHATSAPP);
   const [emailBody, setEmailBody] = useState(draft.emailBody || DEFAULT_EMAIL_BODY);
   const [editingWhatsapp, setEditingWhatsapp] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const finish = () => {
+  /**
+   * The two messages become organisation-level templates and the event points
+   * at them, rather than being stored as loose text on the event.
+   *
+   * `events.whatsapp_template` and `email_template` used to be text columns and
+   * were dropped on purpose: two writable copies of the same message with
+   * nothing reconciling them is how they drift apart. One template row, many
+   * events referencing it, edited in one place.
+   */
+  const finish = async () => {
+    if (isSaving) return;
+    setError(null);
+
     useEventDraftStore.getState().setTemplates({
       whatsappTemplate: whatsappText,
       emailSubject: DEFAULT_EMAIL_SUBJECT,
       emailBody,
     });
+
+    if (draft.eventId && user) {
+      setIsSaving(true);
+      const label = (isEdited: boolean) =>
+        isEdited && draft.name ? `${draft.name} follow-up` : 'Default follow-up';
+      try {
+        const [whatsapp, email] = await Promise.all([
+          ensureTemplate({
+            organizationId: user.organizationId,
+            createdBy: user.id,
+            channel: 'whatsapp',
+            name: label(whatsappText !== DEFAULT_WHATSAPP),
+            body: whatsappText,
+          }),
+          ensureTemplate({
+            organizationId: user.organizationId,
+            createdBy: user.id,
+            channel: 'email',
+            name: label(emailBody !== DEFAULT_EMAIL_BODY),
+            subject: DEFAULT_EMAIL_SUBJECT,
+            body: emailBody,
+          }),
+        ]);
+        await updateEvent.mutateAsync({
+          id: draft.eventId,
+          whatsappTemplateId: whatsapp.id,
+          emailTemplateId: email.id,
+        });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Those templates didn't save.");
+        setIsSaving(false);
+        return;
+      }
+      setIsSaving(false);
+    }
+
     router.push('/(app)/events/new/complete');
   };
 
@@ -96,10 +152,21 @@ export default function MessageTemplatesScreen() {
             )}
           </View>
         </View>
+
+        {error ? (
+          <Typography className="mt-1 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
+            {error}
+          </Typography>
+        ) : null}
       </ScrollView>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
-        <Button label="Use these defaults" onPress={finish} className="w-full" />
-        <Pressable onPress={finish}>
+        <Button
+          label={isSaving ? 'Saving…' : 'Use these defaults'}
+          disabled={isSaving}
+          onPress={finish}
+          className="w-full"
+        />
+        <Pressable onPress={finish} disabled={isSaving}>
           <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
         </Pressable>
       </View>
