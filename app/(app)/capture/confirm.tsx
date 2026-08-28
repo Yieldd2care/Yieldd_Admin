@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -16,6 +16,7 @@ import { useEventFieldsStore } from '../../../stores/useEventFieldsStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCurrentEvent } from '../../../hooks/useEvents';
 import { fetchEventFields } from '../../../lib/api/eventFields';
+import { scanCard } from '../../../lib/api/cardScan';
 import type { CustomFieldValue } from '../../../data/leads';
 
 export default function ConfirmLeadScreen() {
@@ -46,6 +47,76 @@ export default function ConfirmLeadScreen() {
   const user = useSessionStore((s) => s.user);
   const { event } = useCurrentEvent();
   const [isSaving, setIsSaving] = useState(false);
+
+  const [scanState, setScanState] = useState<'idle' | 'reading' | 'done' | 'failed' | 'empty'>(
+    imageUri ? 'reading' : 'idle'
+  );
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
+
+  /**
+   * Reads the card while the rep is standing there.
+   *
+   * Two rules make this safe to run underneath someone who is already typing:
+   * a field is only filled if it is still empty, and the whole thing is
+   * abandoned if the screen goes away. Losing a typed correction to a late
+   * response would be worse than not reading the card at all.
+   *
+   * The photo is not required for the lead to save. If this fails — no signal,
+   * a smudged card, the service down — the rep types the details and nothing
+   * about the capture changes.
+   */
+  useEffect(() => {
+    if (!imageUri) return;
+    let cancelled = false;
+
+    void (async () => {
+      const result = await scanCard(imageUri);
+      if (cancelled) return;
+
+      if (!result.ok) {
+        setScanState('failed');
+        setScanMessage(result.message);
+        return;
+      }
+      if (!result.read) {
+        setScanState('empty');
+        setScanMessage(null);
+        return;
+      }
+
+      const fillIfEmpty = (
+        value: string | null,
+        current: string,
+        set: (next: string) => void
+      ) => {
+        if (value && !current.trim()) set(value);
+      };
+
+      const f = result.fields;
+      setName((current) => (f.fullName && !current.trim() ? f.fullName : current));
+      setDesignation((current) => (f.designation && !current.trim() ? f.designation : current));
+      setCompany((current) => (f.company && !current.trim() ? f.company : current));
+      setPhone((current) => (f.phone && !current.trim() ? f.phone : current));
+      setEmail((current) => (f.email && !current.trim() ? f.email : current));
+      setCompanyLandline((current) =>
+        f.companyLandline && !current.trim() ? f.companyLandline : current
+      );
+      setCompanyWebsite((current) =>
+        f.companyWebsite && !current.trim() ? f.companyWebsite : current
+      );
+      setCompanyAddress((current) =>
+        f.companyAddress && !current.trim() ? f.companyAddress : current
+      );
+      void fillIfEmpty;
+
+      setScanState('done');
+      setScanMessage(null);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUri]);
 
   // The fields on this form belong to this event, and an admin can change them
   // mid-show — so they are loaded here rather than trusted from whatever the
@@ -93,6 +164,41 @@ export default function ConfirmLeadScreen() {
 
       <ScrollView contentContainerClassName="px-5 pt-5 pb-6" showsVerticalScrollIndicator={false}>
         {!event ? <NoEventNotice /> : null}
+
+        {scanState === 'reading' ? (
+          <View className="flex-row items-center gap-[10px] bg-navy/[0.04] border border-hairline rounded-md px-4 py-3 mb-4">
+            <ActivityIndicator size="small" color="#F4B000" />
+            <Typography className="text-[12.5px] font-semibold text-navy flex-1">
+              Reading the card&#8230; you can start typing, nothing will be overwritten.
+            </Typography>
+          </View>
+        ) : null}
+
+        {scanState === 'done' ? (
+          <View className="flex-row items-start gap-2 bg-gold/[0.08] border border-gold/[0.30] rounded-md px-[14px] py-3 mb-4">
+            <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
+            <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
+              Filled in from the card. Check the number and spelling before saving &mdash; a misread
+              digit is a lead nobody can call back.
+            </Typography>
+          </View>
+        ) : null}
+
+        {scanState === 'empty' ? (
+          <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
+            <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
+              Nothing readable on that photo. Type the details in.
+            </Typography>
+          </View>
+        ) : null}
+
+        {scanState === 'failed' && scanMessage ? (
+          <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
+            <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
+              {scanMessage}
+            </Typography>
+          </View>
+        ) : null}
         <View className="flex-row items-center gap-3 mb-[18px]">
           <View className="w-16 h-11 rounded-lg bg-navy overflow-hidden relative">
             {imageUri ? (

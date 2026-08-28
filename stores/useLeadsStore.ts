@@ -11,6 +11,7 @@ import {
   type LeadPatch,
 } from '../lib/api/leads';
 import { captureTimeLabel, initialOf } from '../lib/mappers/lead';
+import { cardImagePath, uploadCardImage } from '../lib/api/storage';
 
 /**
  * Leads on this device.
@@ -43,6 +44,11 @@ export type StoredLead = Lead & {
    *  up under a different person's name if someone else signs in on the phone. */
   capturedBy: string;
   organizationId: string;
+  /**
+   * A photo taken on this device that has not reached the bucket yet.
+   * Separate from `imageUri`, which also holds the object key once it has.
+   */
+  localImageUri?: string;
   /** Edits made since the last successful push. Final values, not a diff log. */
   pendingPatch?: LeadPatch;
   /**
@@ -140,7 +146,7 @@ export const useLeadsStore = create<LeadsState>()(
             // would silently undo what the rep just typed.
             const unsynced = new Map(
               state.leads
-                .filter((l) => l.syncStatus === 'draft' || l.pendingPatch)
+                .filter((l) => l.syncStatus === 'draft' || l.pendingPatch || l.localImageUri)
                 .map((l) => [l.id, l])
             );
 
@@ -152,6 +158,7 @@ export const useLeadsStore = create<LeadsState>()(
                 eventId: local?.eventId ?? opts.eventId ?? '',
                 capturedBy: local?.capturedBy ?? '',
                 organizationId: local?.organizationId ?? '',
+                localImageUri: local?.localImageUri,
               };
               if (!local?.pendingPatch) return base;
               return applyPatch({ ...base, pendingPatch: local.pendingPatch }, local.pendingPatch);
@@ -198,6 +205,7 @@ export const useLeadsStore = create<LeadsState>()(
           companySummary: input.companySummary,
           customFieldValues: input.customFieldValues,
           imageUri: input.imageUri,
+          localImageUri: input.imageUri,
           syncStatus: 'draft',
           eventId: input.eventId,
           capturedBy: input.capturedBy,
@@ -261,6 +269,10 @@ export const useLeadsStore = create<LeadsState>()(
                 consentGiven: lead.consentGiven,
                 source: lead.source,
                 capturedAt: lead.capturedAt,
+                // Written with the row because the bucket policy reads it back.
+                cardImagePath: lead.localImageUri
+                  ? cardImagePath(lead.organizationId, lead.id)
+                  : undefined,
               });
 
               if (!outcome.ok) {
@@ -282,6 +294,35 @@ export const useLeadsStore = create<LeadsState>()(
                   l.id === lead.id ? { ...l, syncStatus: 'synced' as const } : l
                 ),
               }));
+            }
+
+            // The photo goes after the row, never before: storage refuses the
+            // object until the lead exists carrying its key. A failure here
+            // costs the photo, never the lead — every typed field is already
+            // safely on the server by this point.
+            const current = get().leads.find((l) => l.id === lead.id);
+            if (current?.localImageUri && current.syncStatus === 'synced') {
+              const outcome = await uploadCardImage(
+                current.organizationId,
+                current.id,
+                current.localImageUri
+              );
+              if (outcome.ok) {
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id
+                      ? { ...l, localImageUri: undefined, imageUri: outcome.path }
+                      : l
+                  ),
+                }));
+              } else if (outcome.permanent) {
+                // Stop trying. The lead keeps everything else.
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id ? { ...l, localImageUri: undefined } : l
+                  ),
+                }));
+              }
             }
 
             const patch = get().leads.find((l) => l.id === lead.id)?.pendingPatch;

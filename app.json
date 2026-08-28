@@ -72,7 +72,8 @@
           "savePhotosPermission": "Allow Yieldd to save the dashboard image to your photos."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-audio"
     ]
   }
 }

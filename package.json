@@ -9,11 +9,13 @@
     "@supabase/supabase-js": "^2.112.3",
     "@tanstack/react-query": "^5.102.8",
     "expo": "^54.0.0",
+    "expo-audio": "~1.1.1",
     "expo-blur": "~15.0.8",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.14",
     "expo-crypto": "~15.0.9",
     "expo-document-picker": "~14.0.8",
+    "expo-file-system": "~19.0.24",
     "expo-font": "~14.0.12",
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.12",
@@ -60,7 +62,9 @@
     "db:types": "supabase gen types typescript --linked --schema public > types/database.ts",
     "typecheck": "tsc --noEmit",
     "verify:roi": "node scripts/verify-roi.mjs",
-    "verify:stats": "node --env-file=.env scripts/verify-stats.mjs"
+    "verify:stats": "node --env-file=.env scripts/verify-stats.mjs",
+    "verify:card": "node --env-file=.env scripts/verify-card-scan.mjs",
+    "compare:card-models": "node --env-file=.env scripts/compare-card-models.mjs"
   },
   "private": true
 }

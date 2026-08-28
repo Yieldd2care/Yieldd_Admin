@@ -119,6 +119,11 @@ export type LeadCaptureInput = {
   companyAddress?: string;
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
+  /**
+   * The object key the photo WILL live at, written with the row rather than
+   * after the upload. The bucket policy joins back to this column, so the row
+   * has to carry the key before storage will accept the file.
+   */
   cardImagePath?: string;
   consentGiven?: boolean;
   source?: 'card_scan' | 'manual';
