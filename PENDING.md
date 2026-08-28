@@ -61,6 +61,22 @@ Google sign-in cannot work inside Expo Go — the `exp://<LAN IP>` redirect chan
 network and cannot be allow-listed. The button says so plainly rather than failing oddly. Same
 requirement invite deep links already have.
 
+### 9. Not built yet — flagged so nothing here reads as finished
+
+These screens still show placeholder or mock content. Each one says so on screen
+rather than quietly inventing something:
+
+- **Card scanning (OCR)** — the confirm screen opens blank. The camera saves no
+  photo yet, so nothing is read from a card.
+- **Voice notes** — recording, playback, transcript and summary. A lead marked
+  as having a voice note says the transcription service is not connected.
+- **Company summary (AI)** — the button now says it is not switched on. It used
+  to invent a sentence about a real company and label it AI-generated.
+- **Bulk WhatsApp send, send queue, evening review** — still on mock lists.
+- **Digital business card and the public card page** — still on a local store.
+- **Excel export** — the event picker is real; the file is not generated.
+- **Payments** — the whole of Phase 4.
+
 ---
 
 ## Done

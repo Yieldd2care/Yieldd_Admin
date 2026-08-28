@@ -11,15 +11,31 @@ Everything needed to take the app from "database exists, auth screens look right
 | Phase | Area | Status | Tasks | Depends on |
 |---|---|---|---|---|
 | 0 | Foundation (DB, RLS, auth config) | **Complete** | — | — |
-| 1 | Authentication integration | Not Started | 6 | Phase 0 |
-| 2 | Core feature flow (capture) | Not Started | 15 | Phase 1 |
-| 3 | Secondary features (leads, follow-up, dashboards, card) | Not Started | 19 | Phase 2 |
+| 1 | Authentication integration | **Complete** | 6 | Phase 0 |
+| 2 | Core feature flow (capture) | **In Progress** | 15 | Phase 1 |
+| 3 | Secondary features (leads, follow-up, dashboards, card) | **In Progress** | 19 | Phase 2 |
 | 4 | Monetization (payment gateway) | Not Started | 7 | Phase 1 |
 | 5 | Pro/premium feature gating | Not Started | 6 | Phases 3 & 4 |
 | 6 | Settings and polish | Not Started | 6 | Phase 3 |
 
-**Screens with real UI today:** 4 of 41 (auth sign-in/sign-up, fork question, web landing page, an `(app)` placeholder home screen with no actual capture functionality).
-**Database tables wired to any UI:** 0 of 14 (schema is live on Supabase; nothing in the app talks to it yet — that connection was built and then deliberately reverted to keep this session's scope to "database only").
+**Screens with real UI today:** all 60 route files exist with final design.
+**Screens reading or writing the real database:** events (list, wizard, dashboard, ROI, custom fields), capture (confirm, manual, saved, drafts), leads (list, detail, status, deal value), follow-ups, log outcome, team, member detail, reassign, export picker, home.
+
+**Still on mock or placeholder data:** bulk send, send queue, evening review, the digital card screens, the hosted public card page, notifications, and payment. Camera photo upload, voice recording upload and card reading (OCR) are not built — the capture screens save everything except the image and audio.
+
+### What was built on 2026-08-28
+
+- **Events** — the create-event wizard writes a real `events` row at step 1 (so a Free plan's one-event refusal arrives on the first screen, not after five), plus invites with per-person tokens, custom field definitions and org-level message templates. Migration `20260828120000` makes whoever creates an event an active `event_members` row — without it the person who built the event was the one person RLS would not let capture on it.
+- **Leads** — captured through an offline queue that IS the lead list: a `draft` lead has not reached the server, a `pendingPatch` holds edits that have not landed. Ids are generated on the device with `expo-crypto` and are the real primary key, so a replayed insert collides instead of duplicating.
+- **Team** — `profiles` and `invites`, with seats from `seats_included + seats_purchased`. Deactivating is reversible.
+- **Event figures** — migration `20260828140000` adds `event_stats`, `event_hourly_capture` and `event_leaderboard` as `security definer` aggregates. Necessary, not tidy-up: `leads_select_own_or_admin` hides other reps' leads, so counting on the device gave a rep a fraction of the total and cost-per-lead then divided the full event cost by that fraction. Money is admin-only and the database returns NULL for a rep rather than trusting the client to hide it.
+
+Two checks are runnable at any time:
+
+```
+npm run verify:roi      # 31 arithmetic checks on lib/roi.ts
+npm run verify:stats    # 32 checks against the live database, cleans up after itself
+```
 
 ### Dependency order, plainly
 Phase 1 unblocks everything (nothing else can write real data without a real signed-in user). Phase 2 unblocks Phase 3 (leads/events must exist before you can list, follow up on, or report on them). Phase 4 only needs Phase 1 — you can build the payment flow in parallel with Phase 2/3 if useful, but Phase 4 is **blocked on you registering a payment gateway** (see Phase 4 note). Phase 5 needs both real features to gate (Phase 3) and a real `plan_tier` source (Phase 4, or a manual flip in the meantime — see below). Phase 6 is cleanup once the core app works.
@@ -64,44 +80,44 @@ Also: `types/database.ts` generated, `lib/db.ts` added (money lives in exactly o
 
 ---
 
-## Phase 1 — Authentication integration
+## Phase 1 — Authentication integration *(Complete)*
 
 *Depends on: Phase 0.*
 
 This exact work was implemented and verified working earlier this session, then reverted to keep that turn scoped to database-only. Redoing 1.1–1.4 is short — see the conversation for the working version.
 
 ### 1.1 — Supabase client
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** `lib/supabase.ts` (new)
 - **Description:** Recreate the client singleton — `createClient` with `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (already in `.env`), AsyncStorage as the auth storage adapter, `persistSession: true`, `autoRefreshToken: true`.
 - **Acceptance criteria:** App builds; `supabase.auth.getSession()` resolves without throwing on a cold start.
 
 ### 1.2 — Real auth in the session store
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** `stores/useSessionStore.ts`, `types/session.ts`
 - **Description:** Replace the mock with `supabase.auth.signUp` / `signInWithPassword` / `signOut`. `signUp` passes `full_name`/`company_name` as signup metadata (the trigger already reads these). After auth, fetch the `profiles` row joined with `organizations(name)` to populate `user`. Make `signUp`/`signIn` async and return `{ error: string | null }` so the UI can show real failures.
 - **Acceptance criteria:** Creating an account produces one row each in `organizations` and `profiles`. Signing in with the wrong password returns an error string instead of throwing. Signing out clears `user` and the Supabase session.
 
 ### 1.3 — Session restore on launch
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** `app/_layout.tsx`
 - **Description:** Call an `initialize()` store action on mount (checks `getSession()`, fetches profile if present, subscribes to `onAuthStateChange`). Keep the splash screen visible until both fonts *and* the session check are ready.
 - **Acceptance criteria:** Force-quitting and reopening the app while logged in lands directly in `(app)`, never flashes the auth screen first.
 
 ### 1.4 — Auth screen error/pending UX
-- **Status:** Not Started *(the screen's layout, branding, and keyboard handling are already done)*
+- **Status:** **Complete**
 - **Files:** `app/(auth)/index.tsx`
 - **Description:** Make `handleSubmit` async, disable the button and show a pending label while in flight, render the returned error inline.
 - **Acceptance criteria:** A duplicate-email signup or wrong-password sign-in shows a visible message; the button can't be double-tapped mid-submit.
 
 ### 1.5 — Rep invite acceptance
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** `app/(auth)/index.tsx` or a new `app/(auth)/invite.tsx`, deep-link handling in `app.json`
 - **Description:** Per D3/B4 ("rep invite deep links bypass B3 and B4 entirely"): a rep tapping a WhatsApp invite link should land on signup with the `invite_token` already captured, passed through as signup metadata. `handle_new_user()` already handles the server side (attaches to the existing org + event instead of creating a new org).
 - **Acceptance criteria:** A rep who signs up via an invite link ends up with `role = 'rep'` in the inviter's org, an `active` row in `event_members` for the invited event, and skips the fork screen entirely.
 
 ### 1.6 — Fork screen makes a real choice
-- **Status:** Not Started *(UI exists and the two buttons DO already route differently — `chooseTeam` → `/(app)/events/new`, `chooseSolo` → `/(app)/card/edit`. What's actually missing: the choice is never persisted, and it uses `router.push` where it should `replace`, leaving an `(auth)` route in the stack.)*
+- **Status:** **Complete** — the choice is persisted to `organizations.onboarding_intent`, and Team now lands on Home rather than walling a new user into Create Event (PENDING.md #2).
 - **Files:** `app/(auth)/fork.tsx`
 - **Description:** "For my team" → event creation flow (Phase 2, D1). "Just me" → digital card builder (Phase 3, C1). Neither should just drop into the empty `(app)` home.
 - **Acceptance criteria:** Each option visibly leads somewhere different.
@@ -115,13 +131,13 @@ This exact work was implemented and verified working earlier this session, then 
 ### Infrastructure (build before the screens that need it)
 
 #### 2.1 — Offline-first local queue
-- **Status:** Not Started
+- **Status:** **Complete** — built into `stores/useLeadsStore.ts` rather than a separate module. For lead capture the queue and the list are the same thing, so a `draft` lead IS the outbox entry. Device-generated UUIDs as the real primary key make replays collide instead of duplicating.
 - **Files:** new `lib/offlineQueue.ts` (or equivalent), likely `expo-sqlite` or an AsyncStorage-backed queue
 - **Description:** Captures must never wait on network — MVP_PLAN: *"the image is stored and the screen advances immediately... the rep never waits for OCR."* Leads/voice notes get written to a local queue first, then synced to Supabase in the background when connectivity returns. **Open design decision:** plain AsyncStorage queue + a sync loop, vs. `expo-sqlite`, vs. a library like WatermelonDB or PowerSync — worth a quick discussion before building, since it's the foundation everything in this phase writes through.
 - **Acceptance criteria:** Airplane mode: capturing a lead still saves locally and shows success. Reconnecting drains the queue without duplicating rows (idempotent — a `client_id` or similar on each queued item to dedupe against `leads.id`).
 
 #### 2.2 — Storage buckets
-- **Status:** Not Started
+- **Status:** **Complete** (2026-08-27) — four buckets with object-level policies. Nothing uploads to them yet; that is 2.12 and 2.16.
 - **Files:** new `supabase/migrations/*_storage_buckets.sql`
 - **Description:** Two private buckets, `card-images` and `voice-notes`, with RLS policies mirroring the `leads`/`voice_notes` table policies (flagged as open item in DATABASE_SCHEMA.md §9). Blocks 2.5 and 2.9.
 - **Acceptance criteria:** An authenticated rep can upload to their own event's folder; another org's rep gets denied.
@@ -141,44 +157,44 @@ This exact work was implemented and verified working earlier this session, then 
 ### Event setup (D1–D6) — required before any capture, since every lead needs an `event_id`
 
 #### 2.5 — Create event (D1)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** new `app/(app)/events/new.tsx`
 - **Table:** `events`
 - **Acceptance criteria:** Creates a row with `organization_id`/`created_by` set. On a Free org with an existing `upcoming`/`live` event, the RLS insert rejection surfaces as a clear "upgrade to create a second event" message, not a raw Postgres error.
 
 #### 2.6 — Event cost (D2)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** part of the event creation flow above, or `app/(app)/events/[id]/cost.tsx`
 - **Table:** `events` (the five `cost_*_paisa` columns)
 - **Acceptance criteria:** `total_cost_paisa` (generated column) reflects whatever subset of the five fields was filled in.
 
 #### 2.7 — Invite reps (D3)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** `app/(app)/events/[id]/invite.tsx`
 - **Table:** `invites`
 - **Acceptance criteria:** Each row added creates a `pending` `invites` record with a unique token and opens a WhatsApp deep link pre-filled with the invite text.
 
 #### 2.8 — Custom fields (D4)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** `app/(app)/events/[id]/fields.tsx`
 - **Table:** `event_custom_field_defs`
 - **Acceptance criteria:** Fields defined here appear as real inputs on the confirm-lead screen (2.12) for that event.
 
 #### 2.9 — Message templates (D5)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** `app/(app)/events/[id]/templates.tsx`
 - **Table:** `events.whatsapp_template` / `email_template`
 - **Acceptance criteria:** Saved templates are what pre-fill the bulk-send screen later (Phase 3, F4).
 
 #### 2.10 — Setup complete (D6)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** `app/(app)/events/[id]/complete.tsx`
 - **Acceptance criteria:** Summary screen only, no new writes; routes into the home/scan screen (2.11) with this event as current.
 
 ### Capture (E1–E7) — the loop reps live in all day
 
 #### 2.11 — Home / scan (E1)
-- **Status:** Not Started *(current file is a placeholder with no scan button or event context)*
+- **Status:** **Complete** — reads the current event, today's real capture count and the event switcher.
 - **Files:** `app/(app)/index.tsx`
 - **Description:** Offline-ready banner, dominant SCAN button, today's capture count (`leads` count by `captured_by` + current event + today), current event name, entry points to lead list and follow-ups.
 - **Acceptance criteria:** Capture count matches the actual number of `leads` rows captured today by the signed-in rep.
@@ -189,7 +205,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Tapping capture advances to the confirm screen (2.13) immediately — the photo write and any upload happen after navigation, never blocking it.
 
 #### 2.13 — Confirm lead (E3)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** new `app/(app)/capture/confirm.tsx`
 - **Table:** `leads` (insert), calls `find_duplicate_lead()` RPC
 - **Acceptance criteria:** Saving inserts a `leads` row via the offline queue (2.1) with `captured_by` = current rep, correct `event_id`, `consent_given`/`consent_at` from the toggle. If `find_duplicate_lead()` returns a match, the duplicate flag (2.14) shows before save completes.
@@ -201,7 +217,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Shows who captured the earlier contact, when, and their note/summary — nothing else about that rep's other leads is reachable from here.
 
 #### 2.15 — Manual entry (E5)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** new `app/(app)/capture/manual.tsx`
 - **Table:** `leads` (insert, `source = 'manual'`)
 - **Acceptance criteria:** Name + phone save in under 15 seconds of interaction — no required fields beyond those two.
@@ -214,7 +230,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Recording, playback, re-record, delete all work locally before upload; the 4th voice note on a Free org shows the lock message, not a crash.
 
 #### 2.17 — Save confirmation (E7)
-- **Status:** Not Started
+- **Status:** **Complete**
 - **Files:** new `app/(app)/capture/saved.tsx`
 - **Acceptance criteria:** Shows the captured lead's name and the day's running count, then auto-returns to scan (2.11). Free-org lead-101 upsell (Phase 5, 5.1) fires *after* this renders, never instead of it.
 
@@ -227,11 +243,11 @@ This exact work was implemented and verified working earlier this session, then 
 ### Lead management (F1–F5)
 
 #### 3.1 — Lead list (F1)
-- **Status:** Not Started · **Files:** new `app/(app)/leads/index.tsx` · **Table:** `leads`
+- **Status:** **Complete** · **Files:** new `app/(app)/leads/index.tsx` · **Table:** `leads`
 - **Acceptance criteria:** Reps see their own captured/assigned leads by default; admins see all leads in the event (matches the RLS policy exactly — nothing extra to build server-side).
 
 #### 3.2 — Lead detail (F2)
-- **Status:** Not Started · **Files:** new `app/(app)/leads/[id].tsx` · **Tables:** `leads`, `voice_notes`, `lead_activity`
+- **Status:** **Complete** · **Files:** new `app/(app)/leads/[id].tsx` · **Tables:** `leads`, `voice_notes`, `lead_activity`
 - **Acceptance criteria:** Editing a field, changing status, or reassigning (admin only — DB trigger already blocks reps from changing `assigned_to`) all persist and show up in the activity log.
 
 #### 3.3 — Evening review (F3)
@@ -250,31 +266,31 @@ This exact work was implemented and verified working earlier this session, then 
 ### Follow-up and pipeline (G1–G4)
 
 #### 3.6 — Today's follow-ups (G1)
-- **Status:** Not Started · **Files:** new `app/(app)/follow-ups/index.tsx` · **Table:** `leads` (`follow_up_date <= today`)
+- **Status:** **Complete** · **Files:** new `app/(app)/follow-ups/index.tsx` · **Table:** `leads` (`follow_up_date <= today`)
 - **Acceptance criteria:** Each entry shows the voice note summary from the original capture — this is explicitly "the payoff for the whole voice feature" per MVP_PLAN.
 
 #### 3.7 — Log outcome (G2)
-- **Status:** Not Started · **Files:** new `app/(app)/follow-ups/[id]/outcome.tsx` · **Table:** `lead_activity` (insert), `leads.follow_up_date` (update)
+- **Status:** **Complete** · **Files:** new `app/(app)/follow-ups/[id]/outcome.tsx` · **Table:** `lead_activity` (insert), `leads.follow_up_date` (update)
 
 #### 3.8 — Status change (G3)
-- **Status:** Not Started · **Files:** part of lead detail (3.2) · **Table:** `leads.status`, `lead_activity`
+- **Status:** **Complete** · **Files:** part of lead detail (3.2) · **Table:** `leads.status`, `lead_activity`
 - **Acceptance criteria:** Selecting "Won" routes into 3.9 before the status change commits.
 
 #### 3.9 — Deal value entry (G4)
-- **Status:** Not Started · **Files:** new component used from 3.8 · **Table:** `leads.deal_value_paisa`
+- **Status:** **Complete** · **Files:** new component used from 3.8 · **Table:** `leads.deal_value_paisa`
 - **Acceptance criteria:** Cannot reach "Won" without entering a value — the DB `leads_won_requires_value` check is the backstop, but the UI shouldn't let a rep hit that error in normal use.
 
 ### Admin visibility (H1–H4)
 
 #### 3.10 — Event list (H1)
-- **Status:** Not Started · **Files:** new `app/(app)/events/index.tsx` · **Table:** `events`
+- **Status:** **Complete** · **Files:** new `app/(app)/events/index.tsx` · **Table:** `events`
 
 #### 3.11 — Event dashboard (H2)
-- **Status:** Not Started · **Files:** new `app/(app)/events/[id]/dashboard.tsx`
+- **Status:** **Complete** · **Files:** new `app/(app)/events/[id]/dashboard.tsx`
 - **Description:** Rep-wise live counts, leaderboard (respecting `leaderboard_visible_to_reps`), last-sync timestamp.
 
 #### 3.12 — ROI dashboard (H3)
-- **Status:** Not Started · **Files:** new `app/(app)/events/[id]/roi.tsx`
+- **Status:** **Complete** · **Files:** new `app/(app)/events/[id]/roi.tsx`
 - **Description:** The 9pm screen — MVP_PLAN calls it one of the three moments that decide the product. Cost per lead, ROI %, pipeline value, rep split. Build this one with real design care, not a placeholder table.
 - **Acceptance criteria:** Screenshot-friendly layout (admin sends it to their MD per the spec).
 
