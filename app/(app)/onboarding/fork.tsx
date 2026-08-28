@@ -4,9 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
-import { Typography } from '../../components/ui/Typography';
-import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
-import { ChevronRightIcon, UsersIcon, ProfileIcon } from '../../components/ui/icons';
+import { Typography } from '../../../components/ui/Typography';
+import { NavyGlowBackdrop } from '../../../components/app/NavyGlowBackdrop';
+import { ChevronRightIcon, UsersIcon, ProfileIcon } from '../../../components/ui/icons';
+import { useSessionStore } from '../../../stores/useSessionStore';
 
 function ChecklistIllustration() {
   return (
@@ -53,8 +54,26 @@ function ForkOption({
 }
 
 export default function ForkScreen() {
-  const chooseTeam = () => router.push('/(app)/events/new');
-  const chooseSolo = () => router.push('/(app)/card/edit');
+  const setAccountIntent = useSessionStore((s) => s.setAccountIntent);
+
+  // `replace`, not `push` — the fork is a one-time decision and must not sit in
+  // the back stack waiting to be swiped back into.
+  //
+  // The intent write is fire-and-forget: it records which path this org chose,
+  // and a rep (who cannot write it) should still get where they are going.
+  //
+  // Team lands on Home, not straight into Create Event (PENDING.md #2): a brand
+  // new user has no event yet, and demanding event details up front walls them
+  // off from the rest of the app. They can start an event from Home when ready.
+  const chooseTeam = async () => {
+    void setAccountIntent('team');
+    router.replace('/(app)');
+  };
+
+  const chooseSolo = async () => {
+    void setAccountIntent('solo');
+    router.replace('/(app)/card/edit');
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>

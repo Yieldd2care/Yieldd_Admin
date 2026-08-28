@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { PlayIcon, RewindIcon, TrashIcon } from '../../../components/ui/icons';
+import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 
 const WAVE = [18, 30, 22, 44, 26, 56, 34, 20, 40, 28, 50, 24, 32, 46, 20, 38, 54, 26, 30, 42, 18, 36, 48, 22, 28, 34, 20, 26];
 
@@ -59,7 +60,13 @@ export default function VoiceNoteScreen() {
       </View>
 
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
-        <Pressable onPress={() => router.back()} className="h-[54px] rounded-md bg-gold items-center justify-center shadow-[0_10px_24px_rgba(244,176,0,0.30)]">
+        <Pressable
+          onPress={() => {
+            useCaptureDraftStore.getState().setHasVoice(true);
+            router.back();
+          }}
+          className="h-[54px] rounded-md bg-gold items-center justify-center shadow-[0_10px_24px_rgba(244,176,0,0.30)]"
+        >
           <Typography className="text-[16px] font-bold text-navy">Attach to lead</Typography>
         </Pressable>
       </View>

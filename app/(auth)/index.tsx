@@ -12,6 +12,8 @@ import { AuthTabs, type AuthMode } from '../../components/auth/AuthTabs';
 import { GoogleButton } from '../../components/auth/GoogleButton';
 import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
 import { useSessionStore } from '../../stores/useSessionStore';
+import { nextRouteAfterAuth } from '../../lib/auth/nextRoute';
+import { isValidPhone } from '../../lib/phone';
 
 const COPY: Record<AuthMode, { headline: string; subhead: string }> = {
   create: {
@@ -24,36 +26,100 @@ const COPY: Record<AuthMode, { headline: string; subhead: string }> = {
   },
 };
 
+// Matches password_min_length on the Supabase project. Checked here too so the
+// user is told before a round-trip, not after.
+const MIN_PASSWORD = 8;
+
 export default function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>('create');
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const signUp = useSessionStore((s) => s.signUp);
   const signIn = useSessionStore((s) => s.signIn);
+  const signInWithGoogle = useSessionStore((s) => s.signInWithGoogle);
+  const isSubmitting = useSessionStore((s) => s.isSubmitting);
+  const pendingInviteToken = useSessionStore((s) => s.pendingInviteToken);
 
   const isCreate = mode === 'create';
-  const canSubmit = isCreate
-    ? name.trim() && company.trim() && email.trim() && password.trim()
-    : email.trim() && password.trim();
+  // Google hands back a name and an email and nothing else, and there is no way
+  // to carry an invite token through the OAuth round trip. Someone holding one
+  // would quietly land in a brand new organisation of their own instead of the
+  // one that invited them, so the door is closed rather than left ajar.
+  const inviteBlocksGoogle = Boolean(pendingInviteToken);
+  const canSubmit = Boolean(
+    isCreate
+      ? name.trim() && company.trim() && phone.trim() && email.trim() && password.trim()
+      : email.trim() && password.trim()
+  );
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    if (isCreate) {
-      signUp({ name, company, email, password });
-      router.replace('/(auth)/fork');
-    } else {
-      signIn({ email, password });
-      router.replace('/(app)');
+  // Any edit invalidates the last error — leaving it on screen while the user
+  // fixes the thing it complained about reads as broken.
+  const edit = (setter: (v: string) => void) => (value: string) => {
+    if (error) setError(null);
+    setter(value);
+  };
+
+  const changeMode = (next: AuthMode) => {
+    setError(null);
+    setMode(next);
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting) return;
+    setError(null);
+
+    if (isCreate && !isValidPhone(phone)) {
+      setError('Enter a contact number with at least 10 digits.');
+      return;
     }
+
+    if (isCreate && password.length < MIN_PASSWORD) {
+      setError(`Use at least ${MIN_PASSWORD} characters for your password.`);
+      return;
+    }
+
+    const usedInvite = Boolean(pendingInviteToken);
+    const result = isCreate
+      ? await signUp({ name, company, phone, email, password })
+      : await signIn({ email, password });
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    // signUp and signIn both resolve only once the profile is loaded, so the
+    // guard on the destination will see a user and let us through.
+    router.replace(
+      nextRouteAfterAuth(useSessionStore.getState().user, { joinedViaInvite: usedInvite })
+    );
   };
 
-  const handleDevBypass = () => {
-    signIn({ email: 'dev@yieldd.co', password: '' });
-    router.replace('/(app)');
+  const handleGoogle = async () => {
+    if (isSubmitting || inviteBlocksGoogle) return;
+    setError(null);
+
+    const outcome = await signInWithGoogle();
+    // Dismissing the browser is an ordinary thing to do, not an error.
+    if (outcome.cancelled) return;
+    if (outcome.error) {
+      setError(outcome.error);
+      return;
+    }
+
+    // On web the page is already on its way to Google and there is nothing to
+    // route. On native the session has landed and the profile is loaded.
+    if (Platform.OS === 'web') return;
+    router.replace(nextRouteAfterAuth(useSessionStore.getState().user));
   };
+
+  const devEmail = process.env.EXPO_PUBLIC_DEV_EMAIL;
+  const devPassword = process.env.EXPO_PUBLIC_DEV_PASSWORD;
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
@@ -73,9 +139,16 @@ export default function AuthScreen() {
             style={{ alignItems: 'center' }}
             className="pt-8 px-8"
           >
+            {/*
+              The horizontal lockup, keyed off the dark background baked into
+              the source file so it sits on the navy and the gold glow without
+              a visible box. Sized to its own 264x79 ratio — the previous asset
+              was the near-square stacked lockup inside a wide box, so `contain`
+              fitted it to the height and it rendered tiny (PENDING.md #1).
+            */}
             <Image
-              source={require('../../assets/brand/yieldd-lockup-transparent.png')}
-              style={{ width: 130, height: 43 }}
+              source={require('../../assets/brand/yieldd-secondary-lockup-transparent.png')}
+              style={{ width: 184, height: 55 }}
               resizeMode="contain"
             />
             <Typography className="mt-7 text-[21px] font-extrabold text-white text-center tracking-[-0.01em]">
@@ -87,7 +160,7 @@ export default function AuthScreen() {
           </MotiView>
 
           <View className="mx-8 mt-7">
-            <AuthTabs mode={mode} onChange={setMode} />
+            <AuthTabs mode={mode} onChange={changeMode} />
           </View>
 
           <MotiView
@@ -96,7 +169,16 @@ export default function AuthScreen() {
             transition={{ type: 'timing', duration: 520, delay: 120 }}
             className="px-8 pt-6"
           >
-            <GoogleButton />
+            <GoogleButton
+              onPress={handleGoogle}
+              disabled={isSubmitting || inviteBlocksGoogle}
+              className={inviteBlocksGoogle ? 'opacity-40' : ''}
+            />
+            {inviteBlocksGoogle ? (
+              <Typography className="mt-[10px] text-[11.5px] leading-[1.45] text-white/[0.50] text-center">
+                To accept your invite, create the account with an email and password.
+              </Typography>
+            ) : null}
 
             <View className="flex-row items-center gap-3 my-[18px]">
               <View className="flex-1 h-px bg-white/[0.14]" />
@@ -107,44 +189,65 @@ export default function AuthScreen() {
             <View className="gap-3">
               {isCreate ? (
                 <>
-                  <AuthPillInput placeholder="Priya Sharma" value={name} onChangeText={setName} autoCapitalize="words" />
+                  <AuthPillInput
+                    placeholder="Priya Sharma"
+                    value={name}
+                    onChangeText={edit(setName)}
+                    autoCapitalize="words"
+                  />
                   <AuthPillInput
                     placeholder="Acme Industries Pvt Ltd"
                     value={company}
-                    onChangeText={setCompany}
+                    onChangeText={edit(setCompany)}
                     autoCapitalize="words"
+                  />
+                  <AuthPillInput
+                    placeholder="+91 98765 43210"
+                    value={phone}
+                    onChangeText={edit(setPhone)}
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
+                    textContentType="telephoneNumber"
                   />
                 </>
               ) : null}
               <AuthPillInput
                 placeholder="you@company.com"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={edit(setEmail)}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
               />
               <AuthPillInput
-                placeholder="At least 8 characters"
+                placeholder={`At least ${MIN_PASSWORD} characters`}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={edit(setPassword)}
                 secureTextEntry
                 autoComplete="password"
               />
             </View>
 
-            {!isCreate ? (
-              <Pressable className="self-end mt-3">
-                <Typography className="text-[12.5px] font-bold text-gold">Forgot password?</Typography>
-              </Pressable>
+            {error ? (
+              <Typography className="mt-4 text-[12.5px] font-semibold text-[#FF8A8A] text-center leading-[1.45]">
+                {error}
+              </Typography>
             ) : null}
 
             <Button
-              label={isCreate ? 'Create account' : 'Sign in'}
+              label={
+                isSubmitting
+                  ? isCreate
+                    ? 'Creating account…'
+                    : 'Signing in…'
+                  : isCreate
+                    ? 'Create account'
+                    : 'Sign in'
+              }
               onPress={handleSubmit}
-              disabled={!canSubmit}
+              disabled={!canSubmit || isSubmitting}
               shape="pill"
-              className={`w-full mt-5 ${!canSubmit ? 'opacity-50' : ''}`}
+              className={`w-full mt-5 ${!canSubmit || isSubmitting ? 'opacity-50' : ''}`}
             />
 
             {isCreate ? (
@@ -170,10 +273,23 @@ export default function AuthScreen() {
             </Pressable>
           </View>
 
-          {__DEV__ ? (
-            <Pressable onPress={handleDevBypass} className="items-center pb-6">
+          {/*
+            Dev-only, never in a production build. It fills the form rather than
+            bypassing auth: there is no such thing as a signed-in user without a
+            Supabase session any more, and faking one would 401 every request.
+          */}
+          {__DEV__ && devEmail ? (
+            <Pressable
+              onPress={() => {
+                setError(null);
+                setMode('signin');
+                setEmail(devEmail);
+                setPassword(devPassword ?? '');
+              }}
+              className="items-center pb-6"
+            >
               <Typography className="text-[12px] font-semibold text-white/[0.45]">
-                Continue without an account (dev)
+                Fill dev credentials
               </Typography>
             </Pressable>
           ) : null}

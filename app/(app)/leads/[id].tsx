@@ -1,14 +1,30 @@
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CheckIcon, ClockIcon, ContactsIcon, EditIcon, MailIcon, PhoneIcon, PlayIcon, WhatsAppIcon } from '../../../components/ui/icons';
+import { STATUS_CLASSES, STATUS_TEXT } from '../../../data/leads';
+import { useLeadsStore } from '../../../stores/useLeadsStore';
+import { useTeamStore } from '../../../stores/useTeamStore';
+import { useSessionStore } from '../../../stores/useSessionStore';
 
 const MINI_WAVE = [6, 10, 8, 16, 9, 20, 12, 7, 14, 10, 18, 8, 11, 16, 7, 13, 19, 9, 10, 15, 6, 12, 17, 8];
 
 export default function LeadDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const leads = useLeadsStore((s) => s.leads);
+  const lead = leads.find((l) => l.id === id) ?? leads[0];
+
+  const members = useTeamStore((s) => s.members);
+  const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
+
+  // An unassigned lead belongs to whoever captured it, which today is always
+  // the signed-in user.
+  const assignee = lead.assignedToId ? members.find((m) => m.id === lead.assignedToId) : undefined;
+  const assignedLabel = !assignee || assignee.isSelf ? 'Assigned to you' : `Assigned to ${assignee.name}`;
+
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader
@@ -23,17 +39,17 @@ export default function LeadDetailScreen() {
       <ScrollView contentContainerClassName="px-5 pt-[18px] pb-8" showsVerticalScrollIndicator={false}>
         <View className="flex-row items-center gap-3">
           <View className="w-[52px] h-[52px] rounded-2xl bg-gold items-center justify-center">
-            <Typography className="text-[19px] font-extrabold text-navy">R</Typography>
+            <Typography className="text-[19px] font-extrabold text-navy">{lead.initial}</Typography>
           </View>
           <View>
-            <Typography className="text-[17px] font-bold text-navy">Rajesh Menon</Typography>
-            <Typography className="text-[12.5px] text-slate mt-[2px]">Purchase Head &middot; Northline Engineering</Typography>
+            <Typography className="text-[17px] font-bold text-navy">{lead.name}</Typography>
+            <Typography className="text-[12.5px] text-slate mt-[2px]">{lead.company || 'No company'}</Typography>
           </View>
         </View>
 
         <View className="flex-row items-center gap-[10px] mt-4">
-          <View className="bg-gold/[0.14] rounded-full px-3 py-[6px]">
-            <Typography className="text-[11.5px] font-bold text-[#8A6100]">Qualified</Typography>
+          <View className={`rounded-full px-3 py-[6px] ${STATUS_CLASSES[lead.status]}`}>
+            <Typography className={`text-[11.5px] font-bold ${STATUS_TEXT[lead.status]}`}>{lead.status}</Typography>
           </View>
           <View className="flex-row items-center gap-[5px] bg-surface rounded-full px-3 py-[6px]">
             <ClockIcon size={11} color="#0B132B" strokeWidth={2} />
@@ -89,15 +105,28 @@ export default function LeadDetailScreen() {
 
         <View className="bg-white border border-hairline rounded-2xl p-4 mt-[18px]">
           <Typography className="text-[12.5px] font-bold text-navy mb-2">Captured details</Typography>
-          <FieldRow k="Phone" v="98204 41720" />
-          <FieldRow k="Email" v="rajesh@northline.co.in" />
-          <FieldRow k="Product interest" v="Precision castings" />
-          <View className="flex-row justify-between py-[10px]">
+
+          <Typography className="text-[10px] font-bold tracking-[0.1em] text-blue mt-1 mb-1" style={{ textTransform: 'uppercase' }}>
+            Personal
+          </Typography>
+          <FieldRow k="Name" v={lead.name} />
+          <FieldRow k="Phone" v={lead.phone || 'Not captured'} />
+          <FieldRow k="Email" v={lead.email || 'Not captured'} />
+          <View className="flex-row justify-between py-[10px] border-b border-section">
             <Typography className="text-[12.5px] text-slate">Consent</Typography>
             <View className="flex-row items-center gap-[8px]">
               <CheckIcon size={14} color="#2E9C61" strokeWidth={2.5} />
-              <Typography className="text-[12.5px] font-semibold text-navy">Given</Typography>
+              <Typography className="text-[12.5px] font-bold text-navy">Given</Typography>
             </View>
+          </View>
+
+          <Typography className="text-[10px] font-bold tracking-[0.1em] text-blue mt-3 mb-1" style={{ textTransform: 'uppercase' }}>
+            Company
+          </Typography>
+          <FieldRow k="Company" v={lead.company || 'Not captured'} />
+          <View className="flex-row justify-between py-[10px]">
+            <Typography className="text-[12.5px] text-slate">Product interest</Typography>
+            <Typography className="text-[12.5px] font-bold text-navy">Precision castings</Typography>
           </View>
         </View>
 
@@ -109,12 +138,19 @@ export default function LeadDetailScreen() {
           </View>
         </View>
 
+        {/*
+          Reassigning is an admin action (PENDING.md #6). A rep sees who the
+          lead belongs to but cannot move it — including off their own name.
+        */}
         <Pressable
-          onPress={() => Alert.alert('Reassign', "Reassigning leads isn't wired up yet.")}
+          disabled={!isAdmin}
+          onPress={() => router.push(`/(app)/(modals)/reassign?leadId=${lead.id}`)}
           className="flex-row items-center justify-between mt-[18px] bg-white border border-hairline rounded-md px-4 py-[14px]"
         >
-          <Typography className="text-[13px] font-semibold text-navy">Assigned to you</Typography>
-          <Typography className="text-[12px] font-bold text-gold">Reassign</Typography>
+          <Typography className="text-[13px] font-semibold text-navy">{assignedLabel}</Typography>
+          {isAdmin ? (
+            <Typography className="text-[12px] font-bold text-gold">Reassign</Typography>
+          ) : null}
         </Pressable>
       </ScrollView>
 
@@ -149,7 +185,7 @@ function FieldRow({ k, v }: { k: string; v: string }) {
   return (
     <View className="flex-row justify-between py-[10px] border-b border-section">
       <Typography className="text-[12.5px] text-slate">{k}</Typography>
-      <Typography className="text-[12.5px] font-semibold text-navy">{v}</Typography>
+      <Typography className="text-[12.5px] font-bold text-navy">{v}</Typography>
     </View>
   );
 }

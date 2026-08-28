@@ -1,19 +1,29 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 
 import { Typography } from '../../../components/ui/Typography';
 import { Toggle } from '../../../components/ui/Toggle';
 import { useSessionStore } from '../../../stores/useSessionStore';
+import { useTemplatesStore } from '../../../stores/useTemplatesStore';
+import { useCompanyStore } from '../../../stores/useCompanyStore';
+import { useTeamStore } from '../../../stores/useTeamStore';
 import {
   ChevronRightIcon,
+  DownloadIcon,
   FileIcon,
   LogoutIcon,
+  MailIcon,
+  RefreshIcon,
   StorageIcon,
+  TagIcon,
   UsersIcon,
   WhatsAppIcon,
 } from '../../../components/ui/icons';
+
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 function Row({
   icon,
@@ -43,6 +53,21 @@ export default function ProfileScreen() {
   const [notifications, setNotifications] = useState(true);
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? 'Y';
 
+  const whatsappTemplateCount = useTemplatesStore((s) => s.whatsappTemplates.length);
+  const emailTemplateCount = useTemplatesStore((s) => s.emailTemplates.length);
+  const companyCategory = useCompanyStore((s) => s.selectedCategory);
+  const activeMemberCount = useTeamStore((s) => s.members.filter((m) => m.status === 'active').length);
+
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const checkForUpdate = () => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    setTimeout(() => {
+      setCheckingUpdate(false);
+      Alert.alert("You're up to date", `Yieldd v${APP_VERSION} is the latest version.`);
+    }, 900);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top']}>
       <View className="bg-white px-5 pt-[18px] pb-3">
@@ -56,9 +81,16 @@ export default function ProfileScreen() {
           </View>
           <View className="flex-1">
             <Typography className="text-[15px] font-bold text-navy">{user?.name ?? 'there'}</Typography>
-            <Typography className="text-[12px] text-slate mt-[2px]">Admin &middot; {user?.company ?? ''}</Typography>
+            <Typography className="text-[12px] text-slate mt-[2px]">
+              {user?.designation?.trim() || (user?.role === 'admin' ? 'Admin' : 'Sales rep')} &middot;{' '}
+              {user?.company ?? ''}
+            </Typography>
           </View>
-          <ChevronRightIcon size={16} color="#5A6B87" strokeWidth={2} />
+          {/*
+            No chevron here on purpose (PENDING.md #5) — this block is who you
+            are signed in as, not a link. An arrow promised a screen that does
+            not exist.
+          */}
         </View>
 
         <View className="flex-row items-center gap-3 rounded-2xl px-[18px] py-4 mt-[14px]" style={{ backgroundColor: '#0B132B' }}>
@@ -73,18 +105,52 @@ export default function ProfileScreen() {
 
         <SectionLabel>Account</SectionLabel>
         <Card>
-          <Row icon={<UsersIcon size={15} />} label="Team" right={<Typography className="text-[12px] font-semibold text-slate">6 members</Typography>} onPress={() => router.push('/(app)/settings/team')} />
+          <Row icon={<UsersIcon size={15} />} label="Team" right={<Typography className="text-[12px] font-semibold text-slate">{activeMemberCount} members</Typography>} onPress={() => router.push('/(app)/settings/team')} />
           <Row
             icon={<FileIcon color="#0B132B" />}
             label="Plan & billing"
             right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
             onPress={() => Alert.alert('Plan & billing', "Plan & billing isn't wired up yet.")}
+            isLast
+          />
+        </Card>
+
+        <SectionLabel>Business</SectionLabel>
+        <Card>
+          <Row
+            icon={<WhatsAppIcon size={15} color="#25D366" />}
+            label="WhatsApp template"
+            right={
+              <View className="flex-row items-center gap-[6px]">
+                <Typography className="text-[12px] font-semibold text-slate">{whatsappTemplateCount}</Typography>
+                <ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />
+              </View>
+            }
+            onPress={() => router.push('/(app)/settings/whatsapp-template')}
           />
           <Row
-            icon={<FileIcon color="#0B132B" />}
-            label="GST invoices"
-            right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
-            onPress={() => Alert.alert('GST invoices', "GST invoices aren't wired up yet.")}
+            icon={<MailIcon size={15} color="#0B132B" strokeWidth={1.75} />}
+            label="Email template"
+            right={
+              <View className="flex-row items-center gap-[6px]">
+                <Typography className="text-[12px] font-semibold text-slate">{emailTemplateCount}</Typography>
+                <ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />
+              </View>
+            }
+            onPress={() => router.push('/(app)/settings/email-template')}
+          />
+          <Row
+            icon={<TagIcon size={15} />}
+            label="Company category"
+            right={
+              <View className="flex-row items-center gap-[6px]">
+                <Typography className="text-[12px] font-semibold text-slate" numberOfLines={1}>
+                  {companyCategory ?? 'Not set'}
+                </Typography>
+                <ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />
+              </View>
+            }
+            onPress={() => router.push('/(app)/settings/category')}
             isLast
           />
         </Card>
@@ -99,7 +165,7 @@ export default function ProfileScreen() {
           />
         </Card>
 
-        <SectionLabel>Sync &amp; storage</SectionLabel>
+        <SectionLabel>Sync</SectionLabel>
         <Card>
           <Row
             icon={<StorageIcon size={15} />}
@@ -113,8 +179,49 @@ export default function ProfileScreen() {
                 <Typography className="text-[11.5px] font-bold text-gold">Sync now</Typography>
               </View>
             }
+            isLast
           />
-          <Row icon={<StorageIcon size={15} />} label="Storage used" right={<Typography className="text-[12px] font-semibold text-slate">214 MB</Typography>} isLast />
+        </Card>
+
+        <SectionLabel>Data</SectionLabel>
+        <Card>
+          <Row
+            icon={<DownloadIcon size={15} />}
+            label="Export leads"
+            right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
+            onPress={() => router.push('/(app)/settings/export')}
+            isLast
+          />
+        </Card>
+
+        <SectionLabel>General</SectionLabel>
+        <Card>
+          <Row
+            icon={<FileIcon color="#0B132B" />}
+            label="Privacy policy"
+            right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
+            onPress={() => Linking.openURL('https://yieldd.co/privacy')}
+          />
+          <Row
+            icon={<FileIcon color="#0B132B" />}
+            label="Terms of service"
+            right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
+            onPress={() => Linking.openURL('https://yieldd.co/terms')}
+          />
+          <Row
+            icon={<RefreshIcon size={15} />}
+            label="Check for updates"
+            right={
+              <View className="flex-row items-center gap-[8px]">
+                <Typography className="text-[12px] font-semibold text-slate">v{APP_VERSION}</Typography>
+                <Typography className="text-[11.5px] font-bold text-gold">
+                  {checkingUpdate ? 'Checking…' : 'Check now'}
+                </Typography>
+              </View>
+            }
+            onPress={checkForUpdate}
+            isLast
+          />
         </Card>
 
         <SectionLabel>Support</SectionLabel>

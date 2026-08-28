@@ -3,27 +3,31 @@ import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
-import { Typography } from '../ui/Typography';
-import { CameraIcon, CalendarIcon, HomeIcon, ProfileIcon, UsersIcon } from '../ui/icons';
+import { CameraIcon, CalendarIcon, HomeIcon, QrCodeIcon, SettingsIcon } from '../ui/icons';
+
+const TAB_ICON_SIZE = 24;
 
 const TAB_ICONS: Record<string, (active: boolean) => ReactNode> = {
-  index: (active) => <HomeIcon color={active ? '#0B132B' : '#5A6B87'} strokeWidth={active ? 2 : 1.75} />,
-  leads: (active) => <UsersIcon color={active ? '#0B132B' : '#5A6B87'} strokeWidth={active ? 2 : 1.75} />,
-  events: (active) => <CalendarIcon color={active ? '#0B132B' : '#5A6B87'} strokeWidth={active ? 2 : 1.75} />,
-  profile: (active) => <ProfileIcon color={active ? '#0B132B' : '#5A6B87'} strokeWidth={active ? 2 : 1.75} />,
+  index: (active) => (
+    <HomeIcon size={TAB_ICON_SIZE} color={active ? '#F4B000' : 'rgba(255,255,255,0.55)'} strokeWidth={active ? 2 : 1.75} />
+  ),
+  events: (active) => (
+    <CalendarIcon size={TAB_ICON_SIZE} color={active ? '#F4B000' : 'rgba(255,255,255,0.55)'} strokeWidth={active ? 2 : 1.75} />
+  ),
+  qr: (active) => (
+    <QrCodeIcon size={TAB_ICON_SIZE} color={active ? '#F4B000' : 'rgba(255,255,255,0.55)'} strokeWidth={active ? 2 : 1.75} />
+  ),
+  profile: (active) => (
+    <SettingsIcon size={TAB_ICON_SIZE} color={active ? '#F4B000' : 'rgba(255,255,255,0.55)'} strokeWidth={active ? 2 : 1.75} />
+  ),
 };
 
-const TAB_LABELS: Record<string, string> = {
-  index: 'Home',
-  leads: 'Leads',
-  events: 'Events',
-  profile: 'Profile',
-};
+const TAB_ORDER = ['index', 'events', 'qr', 'profile'];
 
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
-  const isHome = state.routes[state.index].name === 'index';
-  const leftTabs = state.routes.filter((r) => r.name === 'index' || r.name === 'leads');
-  const rightTabs = state.routes.filter((r) => r.name === 'events' || r.name === 'profile');
+  const visibleTabs = TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(
+    (r): r is (typeof state.routes)[number] => Boolean(r)
+  );
 
   const renderTab = (route: (typeof state.routes)[number]) => {
     const index = state.routes.findIndex((r) => r.key === route.key);
@@ -37,37 +41,28 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
     };
 
     return (
-      <Pressable key={route.key} onPress={onPress} className="flex-1 items-center justify-center gap-[3px]">
+      <Pressable key={route.key} onPress={onPress} className="flex-1 items-center justify-center">
         {TAB_ICONS[route.name]?.(active)}
-        <Typography
-          className={`text-[10.5px] font-bold ${active ? 'text-navy' : 'text-slate'}`}
-        >
-          {TAB_LABELS[route.name] ?? route.name}
-        </Typography>
       </Pressable>
     );
   };
 
+  const leftTabs = visibleTabs.slice(0, 2);
+  const rightTabs = visibleTabs.slice(2);
+
   return (
-    <View style={{ paddingBottom: insets.bottom }}>
-      {isHome ? (
-        <View className="absolute left-0 right-0 -top-[52px] items-center gap-2 z-10">
-          <Pressable
-            onPress={() => router.push('/(app)/capture/camera')}
-            className="w-[68px] h-[68px] rounded-full bg-gold items-center justify-center shadow-[0_14px_30px_rgba(244,176,0,0.42)] active:scale-95"
-          >
-            <CameraIcon size={27} strokeWidth={2} />
-          </Pressable>
-          <Pressable onPress={() => router.push('/(app)/capture/manual')}>
-            <Typography className="text-[11.5px] font-bold text-slate">Type it in instead</Typography>
-          </Pressable>
-        </View>
-      ) : null}
-      <View className="flex-row bg-white border-t border-hairline h-16">
-        {leftTabs.map(renderTab)}
-        <View className="flex-1" />
-        {rightTabs.map(renderTab)}
-      </View>
+    <View
+      className="absolute left-0 right-0 bottom-0 bg-navy rounded-t-[22px] flex-row items-center shadow-[0_-8px_24px_rgba(11,19,43,0.18)]"
+      style={{ height: 68 + insets.bottom, paddingBottom: insets.bottom }}
+    >
+      {leftTabs.map(renderTab)}
+      <Pressable
+        onPress={() => router.push('/(app)/capture/camera')}
+        className="w-[70px] h-[70px] -mt-[26px] rounded-full bg-gold border-[5px] border-section items-center justify-center shadow-[0_10px_22px_rgba(244,176,0,0.4)] active:scale-95"
+      >
+        <CameraIcon size={38} strokeWidth={2} />
+      </Pressable>
+      {rightTabs.map(renderTab)}
     </View>
   );
 }

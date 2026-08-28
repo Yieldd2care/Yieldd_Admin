@@ -7,6 +7,7 @@ import { Typography } from '../../../../components/ui/Typography';
 import { Toggle } from '../../../../components/ui/Toggle';
 import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { RefreshIcon } from '../../../../components/ui/icons';
+import { EVENTS } from '../../../../data/events';
 
 const HOURLY = [12, 28, 45, 62, 80, 100, 74, 58, 30];
 const REPS = [
@@ -18,6 +19,10 @@ const REPS = [
 
 export default function EventDashboardScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const eventId = id ?? 'imtex-2026';
+  const eventStatus = EVENTS.find((e) => e.id === eventId)?.status;
+  const isClosed = eventStatus === 'closed';
+  const isUpcoming = eventStatus === 'upcoming';
   const [leaderboardVisible, setLeaderboardVisible] = useState(true);
 
   return (
@@ -90,12 +95,32 @@ export default function EventDashboardScreen() {
           ))}
         </View>
 
-        <Pressable
-          onPress={() => router.push({ pathname: '/(app)/events/[id]/roi', params: { id: id ?? 'imtex-2026' } })}
-          className="h-[52px] rounded-md bg-navy items-center justify-center mt-6"
-        >
-          <Typography className="text-[14.5px] font-bold text-white">View ROI dashboard</Typography>
-        </Pressable>
+        <View className="mt-6 gap-3">
+          {!isClosed ? (
+            <Pressable
+              onPress={() => router.push({ pathname: '/(app)/events/[id]/fields', params: { id: eventId } })}
+              className="h-[52px] rounded-md border border-hairline bg-white items-center justify-center"
+            >
+              <Typography className="text-[14.5px] font-bold text-navy">Manage custom fields</Typography>
+            </Pressable>
+          ) : null}
+
+          {!isUpcoming ? (
+            <Pressable
+              onPress={() => router.push({ pathname: '/(app)/events/[id]/export', params: { id: eventId } })}
+              className="h-[52px] rounded-md border border-hairline bg-white items-center justify-center"
+            >
+              <Typography className="text-[14.5px] font-bold text-navy">Export leads</Typography>
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            onPress={() => router.push({ pathname: '/(app)/events/[id]/roi', params: { id: eventId } })}
+            className="h-[52px] rounded-md bg-navy items-center justify-center"
+          >
+            <Typography className="text-[14.5px] font-bold text-white">View ROI dashboard</Typography>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

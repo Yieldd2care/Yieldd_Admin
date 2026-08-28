@@ -7,6 +7,7 @@ import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { MailIcon, WhatsAppIcon } from '../../../../components/ui/icons';
+import { useEventDraftStore } from '../../../../stores/useEventDraftStore';
 
 const DEFAULT_WHATSAPP =
   "Hi {{name}}, great meeting you at {{event}}. Sharing our brochure — let us know if you'd like a quote.";
@@ -32,10 +33,20 @@ function MergeFieldText({ text, className = '' }: { text: string; className?: st
 }
 
 export default function MessageTemplatesScreen() {
-  const [whatsappText, setWhatsappText] = useState(DEFAULT_WHATSAPP);
-  const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
+  const draft = useEventDraftStore();
+  const [whatsappText, setWhatsappText] = useState(draft.whatsappTemplate || DEFAULT_WHATSAPP);
+  const [emailBody, setEmailBody] = useState(draft.emailBody || DEFAULT_EMAIL_BODY);
   const [editingWhatsapp, setEditingWhatsapp] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
+
+  const finish = () => {
+    useEventDraftStore.getState().setTemplates({
+      whatsappTemplate: whatsappText,
+      emailSubject: DEFAULT_EMAIL_SUBJECT,
+      emailBody,
+    });
+    router.push('/(app)/events/new/complete');
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
@@ -87,8 +98,8 @@ export default function MessageTemplatesScreen() {
         </View>
       </ScrollView>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
-        <Button label="Use these defaults" onPress={() => router.push('/(app)/events/new/complete')} className="w-full" />
-        <Pressable onPress={() => router.push('/(app)/events/new/complete')}>
+        <Button label="Use these defaults" onPress={finish} className="w-full" />
+        <Pressable onPress={finish}>
           <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
         </Pressable>
       </View>

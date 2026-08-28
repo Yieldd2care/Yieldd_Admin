@@ -1,18 +1,23 @@
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
+import { useTeamStore } from '../../../stores/useTeamStore';
 
-const ACTIVE_MEMBERS = [
-  { initial: 'P', name: 'Priya Sharma', role: 'You', badge: 'admin' as const },
-  { initial: 'A', name: 'Arjun Mehta', role: '142 leads captured', badge: 'rep' as const },
-  { initial: 'R', name: 'Ritika Chawla', role: '118 leads captured', badge: 'rep' as const },
-];
+const SEAT_LIMIT = 10;
 
-const DEACTIVATED_MEMBERS = [{ initial: 'D', name: 'Rohit Desai', role: 'Deactivated · leads retained' }];
+function openMemberDetail(id: string, kind: 'member' | 'invite') {
+  router.push({ pathname: '/(app)/(modals)/member-detail', params: { id, kind } });
+}
 
 export default function TeamManagementScreen() {
+  const members = useTeamStore((s) => s.members);
+  const pendingInvites = useTeamStore((s) => s.pendingInvites);
+  const activeMembers = members.filter((m) => m.status === 'active');
+  const deactivatedMembers = members.filter((m) => m.status === 'deactivated');
+
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader
@@ -28,10 +33,15 @@ export default function TeamManagementScreen() {
         <View className="rounded-2xl px-[18px] py-4" style={{ backgroundColor: '#0B132B' }}>
           <View className="flex-row items-center justify-between">
             <Typography className="text-[13px] font-bold text-white">Seats used</Typography>
-            <Typography className="text-[13px] font-bold text-gold">6 of 10</Typography>
+            <Typography className="text-[13px] font-bold text-gold">
+              {activeMembers.length} of {SEAT_LIMIT}
+            </Typography>
           </View>
           <View className="h-[6px] rounded-full bg-white/[0.14] mt-[10px] overflow-hidden">
-            <View className="h-full bg-gold rounded-full" style={{ width: '60%' }} />
+            <View
+              className="h-full bg-gold rounded-full"
+              style={{ width: `${Math.min(100, (activeMembers.length / SEAT_LIMIT) * 100)}%` }}
+            />
           </View>
         </View>
 
@@ -39,10 +49,11 @@ export default function TeamManagementScreen() {
           Active
         </Typography>
         <View className="bg-white border border-hairline rounded-2xl px-4">
-          {ACTIVE_MEMBERS.map((m, i) => (
-            <View
-              key={m.name}
-              className={`flex-row items-center gap-3 py-[13px] ${i < ACTIVE_MEMBERS.length - 1 ? 'border-b border-section' : ''}`}
+          {activeMembers.map((m, i) => (
+            <Pressable
+              key={m.id}
+              onPress={() => openMemberDetail(m.id, 'member')}
+              className={`flex-row items-center gap-3 py-[13px] ${i < activeMembers.length - 1 ? 'border-b border-section' : ''}`}
             >
               <View className="w-9 h-9 rounded-[10px] bg-surface items-center justify-center">
                 <Typography className="text-[13px] font-extrabold text-navy">{m.initial}</Typography>
@@ -56,45 +67,59 @@ export default function TeamManagementScreen() {
                   {m.badge === 'admin' ? 'Admin' : 'Rep'}
                 </Typography>
               </View>
-            </View>
+            </Pressable>
           ))}
         </View>
 
-        <Typography className="text-[10.5px] font-bold tracking-[0.12em] text-slate mt-[22px] mb-[10px]" style={{ textTransform: 'uppercase' }}>
-          Deactivated
-        </Typography>
-        <View className="bg-white border border-hairline rounded-2xl px-4">
-          {DEACTIVATED_MEMBERS.map((m, i) => (
-            <View
-              key={m.name}
-              className={`flex-row items-center gap-3 py-[13px] ${i < DEACTIVATED_MEMBERS.length - 1 ? 'border-b border-section' : ''}`}
-            >
-              <View className="w-9 h-9 rounded-[10px] bg-surface items-center justify-center opacity-50">
-                <Typography className="text-[13px] font-extrabold text-navy">{m.initial}</Typography>
-              </View>
-              <View className="flex-1">
-                <Typography className="text-[13.5px] font-bold text-slate">{m.name}</Typography>
-                <Typography className="text-[11.5px] text-slate mt-[1px]">{m.role}</Typography>
-              </View>
+        {deactivatedMembers.length > 0 ? (
+          <>
+            <Typography className="text-[10.5px] font-bold tracking-[0.12em] text-slate mt-[22px] mb-[10px]" style={{ textTransform: 'uppercase' }}>
+              Deactivated
+            </Typography>
+            <View className="bg-white border border-hairline rounded-2xl px-4">
+              {deactivatedMembers.map((m, i) => (
+                <Pressable
+                  key={m.id}
+                  onPress={() => openMemberDetail(m.id, 'member')}
+                  className={`flex-row items-center gap-3 py-[13px] ${i < deactivatedMembers.length - 1 ? 'border-b border-section' : ''}`}
+                >
+                  <View className="w-9 h-9 rounded-[10px] bg-surface items-center justify-center opacity-50">
+                    <Typography className="text-[13px] font-extrabold text-navy">{m.initial}</Typography>
+                  </View>
+                  <View className="flex-1">
+                    <Typography className="text-[13.5px] font-bold text-slate">{m.name}</Typography>
+                    <Typography className="text-[11.5px] text-slate mt-[1px]">{m.role}</Typography>
+                  </View>
+                </Pressable>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        ) : null}
 
-        <Typography className="text-[10.5px] font-bold tracking-[0.12em] text-slate mt-[22px] mb-[10px]" style={{ textTransform: 'uppercase' }}>
-          Pending invites
-        </Typography>
-        <View className="bg-white border border-hairline rounded-2xl px-4">
-          <View className="flex-row items-center gap-3 py-[13px]">
-            <View className="w-9 h-9 rounded-[10px] bg-section items-center justify-center">
-              <Typography className="text-[13px] font-extrabold text-slate">M</Typography>
+        {pendingInvites.length > 0 ? (
+          <>
+            <Typography className="text-[10.5px] font-bold tracking-[0.12em] text-slate mt-[22px] mb-[10px]" style={{ textTransform: 'uppercase' }}>
+              Pending invites
+            </Typography>
+            <View className="bg-white border border-hairline rounded-2xl px-4">
+              {pendingInvites.map((inv, i) => (
+                <Pressable
+                  key={inv.id}
+                  onPress={() => openMemberDetail(inv.id, 'invite')}
+                  className={`flex-row items-center gap-3 py-[13px] ${i < pendingInvites.length - 1 ? 'border-b border-section' : ''}`}
+                >
+                  <View className="w-9 h-9 rounded-[10px] bg-section items-center justify-center">
+                    <Typography className="text-[13px] font-extrabold text-slate">{inv.initial}</Typography>
+                  </View>
+                  <View className="flex-1">
+                    <Typography className="text-[13.5px] font-bold text-navy">{inv.name}</Typography>
+                    <Typography className="text-[11.5px] text-slate mt-[1px]">{inv.invitedLabel}</Typography>
+                  </View>
+                </Pressable>
+              ))}
             </View>
-            <View className="flex-1">
-              <Typography className="text-[13.5px] font-bold text-navy">Meera Iyer</Typography>
-              <Typography className="text-[11.5px] text-slate mt-[1px]">Invited 2 days ago &middot; 98204 55210</Typography>
-            </View>
-            <Typography className="text-[11.5px] font-bold text-gold">Resend</Typography>
-          </View>
-        </View>
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

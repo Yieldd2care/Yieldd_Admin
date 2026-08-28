@@ -6,18 +6,7 @@ import { router } from 'expo-router';
 import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
-
-const COST_KEYS = [
-  'Stall',
-  'Fabrication',
-  'Furniture',
-  'Travel',
-  'Staff',
-  'Accommodation',
-  'Marketing',
-] as const;
-
-type CostKey = (typeof COST_KEYS)[number];
+import { COST_KEYS, useEventDraftStore, type CostKey } from '../../../../stores/useEventDraftStore';
 
 // Typed rather than `as const` so `hint` is optional on every entry — with
 // `as const` the array widens to a union in which only Staff has `hint`, and
@@ -36,21 +25,37 @@ function formatInr(n: number) {
   return n.toLocaleString('en-IN');
 }
 
+/** Only the digits count — people type "8,40,000" and "Rs 12000" alike. */
+function toAmount(value: string): number {
+  return parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+}
+
 export default function EventCostScreen() {
-  const [values, setValues] = useState<Record<(typeof FIELDS)[number]['key'], string>>({
-    Stall: '',
-    Fabrication: '',
-    Furniture: '',
-    Travel: '',
-    Staff: '',
-    Accommodation: '',
-    Marketing: '',
-  });
+  const savedCosts = useEventDraftStore((s) => s.costs);
+
+  const [values, setValues] = useState<Record<CostKey, string>>(() =>
+    COST_KEYS.reduce(
+      (acc, key) => ({ ...acc, [key]: savedCosts[key] ? String(savedCosts[key]) : '' }),
+      {} as Record<CostKey, string>
+    )
+  );
 
   const total = useMemo(
-    () => Object.values(values).reduce((sum, v) => sum + (parseInt(v.replace(/[^\d]/g, ''), 10) || 0), 0),
+    () => Object.values(values).reduce((sum, v) => sum + toAmount(v), 0),
     [values]
   );
+
+  // Both the primary button and "Skip for now" commit, because skipping means
+  // "no costs yet", not "throw away what I already typed".
+  const commitAndContinue = () => {
+    useEventDraftStore.getState().setCosts(
+      COST_KEYS.reduce(
+        (acc, key) => ({ ...acc, [key]: toAmount(values[key]) }),
+        {} as Record<CostKey, number>
+      )
+    );
+    router.push('/(app)/events/new/invite');
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
@@ -91,8 +96,8 @@ export default function EventCostScreen() {
         ))}
       </ScrollView>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
-        <Button label="Continue" onPress={() => router.push('/(app)/events/new/invite')} className="w-full" />
-        <Pressable onPress={() => router.push('/(app)/events/new/invite')}>
+        <Button label="Continue" onPress={commitAndContinue} className="w-full" />
+        <Pressable onPress={commitAndContinue}>
           <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
         </Pressable>
       </View>

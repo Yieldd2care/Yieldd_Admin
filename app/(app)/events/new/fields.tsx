@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path, Rect } from 'react-native-svg';
@@ -8,7 +8,8 @@ import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { Toggle } from '../../../../components/ui/Toggle';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
-import { ClockIcon, PlusIcon } from '../../../../components/ui/icons';
+import { CustomFieldsEditor } from '../../../../components/app/CustomFieldsEditor';
+import { ClockIcon } from '../../../../components/ui/icons';
 
 function ListIcon() {
   return (
@@ -36,32 +37,15 @@ interface Template {
   on: boolean;
 }
 
-interface CustomField {
-  id: string;
-  name: string;
-  type: 'Text' | 'Number' | 'Dropdown';
-}
-
-let nextFieldId = 1;
-
 export default function CustomFieldsScreen() {
   const [templates, setTemplates] = useState<Template[]>([
     { key: 'product', title: 'Product interest', sub: 'Dropdown', icon: <ListIcon />, on: true },
     { key: 'qty', title: 'Order quantity', sub: 'Number', icon: <BoxIcon />, on: true },
     { key: 'timeline', title: 'Buying timeline', sub: 'Dropdown', icon: <ClockIcon size={17} strokeWidth={1.75} />, on: false },
   ]);
-  const [customFields, setCustomFields] = useState<CustomField[]>([]);
 
   const toggleTemplate = (key: string) =>
     setTemplates((prev) => prev.map((t) => (t.key === key ? { ...t, on: !t.on } : t)));
-
-  const addCustomField = () => {
-    if (customFields.length >= 5) return;
-    setCustomFields((prev) => [...prev, { id: `cf${nextFieldId++}`, name: '', type: 'Text' }]);
-  };
-
-  const updateCustomField = (id: string, patch: Partial<CustomField>) =>
-    setCustomFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
@@ -92,44 +76,9 @@ export default function CustomFieldsScreen() {
           </Pressable>
         ))}
 
-        <Typography variant="caption" className="text-slate mt-5 mb-[10px]">
-          Your own fields
-        </Typography>
-
-        {customFields.map((field) => (
-          <View key={field.id} className="bg-white border border-hairline rounded-lg p-4 mb-[10px] gap-[10px]">
-            <RNTextInput
-              className="h-[44px] border border-hairline rounded-md px-3 text-[13.5px] font-regular text-navy"
-              placeholder="Field name (e.g. Budget range)"
-              placeholderTextColor="#97A3B8"
-              value={field.name}
-              onChangeText={(v) => updateCustomField(field.id, { name: v })}
-            />
-            <View className="flex-row gap-2">
-              {(['Text', 'Number', 'Dropdown'] as const).map((type) => (
-                <Pressable
-                  key={type}
-                  onPress={() => updateCustomField(field.id, { type })}
-                  className={`px-3 py-[6px] rounded-full ${field.type === type ? 'bg-gold' : 'bg-surface'}`}
-                >
-                  <Typography className={`text-[12px] font-bold ${field.type === type ? 'text-navy' : 'text-slate'}`}>
-                    {type}
-                  </Typography>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ))}
-
-        {customFields.length < 5 ? (
-          <Pressable
-            onPress={addCustomField}
-            className="flex-row items-center gap-2 border-[1.5px] border-dashed border-hairline rounded-lg px-4 py-[14px]"
-          >
-            <PlusIcon />
-            <Typography className="text-[13.5px] font-bold text-gold">Add a custom field</Typography>
-          </Pressable>
-        ) : null}
+        <View className="mt-5">
+          <CustomFieldsEditor />
+        </View>
       </ScrollView>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
         <Button label="Continue" onPress={() => router.push('/(app)/events/new/templates')} className="w-full" />

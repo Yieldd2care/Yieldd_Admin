@@ -26,10 +26,13 @@ function GoogleG() {
   );
 }
 
-export function GoogleButton(props: PressableProps) {
+export function GoogleButton({
+  className = '',
+  ...props
+}: PressableProps & { className?: string }) {
   return (
     <Pressable
-      className="w-full h-[52px] flex-row items-center justify-center gap-[10px] bg-white rounded-full active:opacity-80 transition-all duration-200"
+      className={`w-full h-[52px] flex-row items-center justify-center gap-[10px] bg-white rounded-full active:opacity-80 transition-all duration-200 ${className}`}
       {...props}
     >
       <GoogleG />

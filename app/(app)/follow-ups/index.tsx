@@ -1,4 +1,4 @@
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -50,7 +50,10 @@ function FollowUpCard({
           <Typography className="text-[13.5px] font-bold text-white">Call</Typography>
         </Pressable>
         <Pressable
-          onPress={() => Alert.alert('WhatsApp', "Messaging isn't wired up yet.")}
+          onPress={() => {
+            const message = `Hi ${name}, following up on: ${note}`;
+            Linking.openURL(`https://wa.me/?text=${encodeURIComponent(message)}`);
+          }}
           className="w-11 h-11 rounded-md bg-surface items-center justify-center"
         >
           <WhatsAppIcon size={16} color="#25D366" strokeWidth={2} />

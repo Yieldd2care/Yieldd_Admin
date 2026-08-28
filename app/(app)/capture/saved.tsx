@@ -5,10 +5,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
-import { CheckIcon } from '../../../components/ui/icons';
+import { CheckIcon, EditIcon } from '../../../components/ui/icons';
+import { useLeadsStore } from '../../../stores/useLeadsStore';
 
 export default function SaveConfirmationScreen() {
-  const { name } = useLocalSearchParams<{ name?: string }>();
+  const { name, isDraft } = useLocalSearchParams<{ name?: string; isDraft?: string }>();
+  const leadCount = useLeadsStore((s) => s.leads.length);
+  const draftSaved = isDraft === '1';
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -28,14 +31,27 @@ export default function SaveConfirmationScreen() {
         <Typography className="text-[27px] font-extrabold text-white text-center mt-[26px]" style={{ lineHeight: 32 }}>
           {name ? `${name} saved` : 'Lead saved'}
         </Typography>
-        <Typography className="text-[14px] text-white/[0.60] font-medium mt-2">Enriched, tagged, and ready to follow up</Typography>
+        <Typography className="text-[14px] text-white/[0.60] font-medium mt-2">
+          {draftSaved ? "Saved offline — will sync once you're back online" : 'Enriched, tagged, and ready to follow up'}
+        </Typography>
 
-        <View className="flex-row items-center gap-4 bg-white/[0.06] border border-white/[0.10] rounded-2xl px-7 py-[18px] mt-[34px]">
-          <Typography className="text-[30px] font-extrabold text-gold tracking-[-0.01em]">19</Typography>
-          <Typography className="text-[12.5px] text-white/[0.65]" style={{ lineHeight: 17 }}>
-            leads captured{'\n'}today at IMTEX 2026
-          </Typography>
-        </View>
+        {draftSaved ? (
+          <View className="flex-row items-center gap-[10px] bg-gold/[0.14] border border-gold/[0.35] rounded-2xl px-6 py-[14px] mt-[34px]">
+            <View className="w-9 h-9 rounded-full bg-gold/[0.2] items-center justify-center">
+              <EditIcon size={16} color="#F4B000" strokeWidth={2} />
+            </View>
+            <Typography className="text-[12.5px] font-semibold text-gold flex-1" style={{ lineHeight: 17 }}>
+              Saved as a draft. It'll move into your leads automatically once you're back online.
+            </Typography>
+          </View>
+        ) : (
+          <View className="flex-row items-center gap-4 bg-white/[0.06] border border-white/[0.10] rounded-2xl px-7 py-[18px] mt-[34px]">
+            <Typography className="text-[30px] font-extrabold text-gold tracking-[-0.01em]">{leadCount}</Typography>
+            <Typography className="text-[12.5px] text-white/[0.65]" style={{ lineHeight: 17 }}>
+              leads captured{'\n'}today at IMTEX 2026
+            </Typography>
+          </View>
+        )}
 
         <Typography className="text-[12.5px] font-semibold text-white/[0.50] mt-10">Returning to scan&#8230;</Typography>
       </View>

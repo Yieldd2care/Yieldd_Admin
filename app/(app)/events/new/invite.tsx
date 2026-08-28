@@ -6,19 +6,20 @@ import { router } from 'expo-router';
 import { Typography } from '../../../../components/ui/Typography';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { CloseIcon, PlusIcon, UsersIcon, WhatsAppIcon } from '../../../../components/ui/icons';
-
-interface Rep {
-  id: string;
-  name: string;
-  phone: string;
-}
+import { useEventDraftStore, type DraftRep as Rep } from '../../../../stores/useEventDraftStore';
 
 let nextId = 1;
 
 export default function InviteRepsScreen() {
-  const [reps, setReps] = useState<Rep[]>([{ id: 'r0', name: '', phone: '' }]);
+  const savedReps = useEventDraftStore((s) => s.invitedReps);
+  const eventName = useEventDraftStore((s) => s.name);
 
-  const readyCount = reps.filter((r) => r.name.trim() && r.phone.trim()).length;
+  const [reps, setReps] = useState<Rep[]>(
+    savedReps.length ? savedReps : [{ id: 'r0', name: '', phone: '' }]
+  );
+
+  const ready = reps.filter((r) => r.name.trim() && r.phone.trim());
+  const readyCount = ready.length;
 
   const updateRep = (id: string, patch: Partial<Rep>) =>
     setReps((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -26,11 +27,23 @@ export default function InviteRepsScreen() {
   const addRep = () => setReps((prev) => [...prev, { id: `r${nextId++}`, name: '', phone: '' }]);
   const removeRep = (id: string) => setReps((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
 
+  // Only the complete rows are recorded — a half-typed row is not an invite,
+  // and the summary at the end must not count it as one.
+  const commit = () => useEventDraftStore.getState().setInvitedReps(ready);
+
   const sendInvites = () => {
-    const message = `You're invited to help capture leads on Yieldd for our upcoming event.`;
+    commit();
+    const message = eventName
+      ? `You're invited to help capture leads on Yieldd for ${eventName}.`
+      : `You're invited to help capture leads on Yieldd for our upcoming event.`;
     Linking.openURL(`https://wa.me/?text=${encodeURIComponent(message)}`).finally(() =>
       router.push('/(app)/events/new/fields')
     );
+  };
+
+  const skip = () => {
+    commit();
+    router.push('/(app)/events/new/fields');
   };
 
   return (
@@ -82,7 +95,7 @@ export default function InviteRepsScreen() {
           <WhatsAppIcon size={16} color="#fff" />
           <Typography className="text-white font-bold text-base">Send invites via WhatsApp</Typography>
         </Pressable>
-        <Pressable onPress={() => router.push('/(app)/events/new/fields')}>
+        <Pressable onPress={skip}>
           <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
         </Pressable>
       </View>

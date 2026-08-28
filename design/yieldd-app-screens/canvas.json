@@ -52,7 +52,21 @@
     { "file": "TeamManagement.dc.html", "x": 940, "y": 5544, "w": 390, "h": 844, "title": "J3. Team management" },
 
     { "file": "BulkSend.dc.html", "x": -470, "y": 6468, "w": 390, "h": 844, "title": "F4. Bulk select and send" },
-    { "file": "SendQueue.dc.html", "x": 0, "y": 6468, "w": 390, "h": 844, "title": "F5. Send handoff" }
+    { "file": "SendQueue.dc.html", "x": 0, "y": 6468, "w": 390, "h": 844, "title": "F5. Send handoff" },
+
+    { "file": "HomeQuietAuthority.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "A. Quiet Authority", "page": "home-redesign" },
+    { "file": "HomeOneButton.dc.html", "x": 470, "y": 0, "w": 390, "h": 844, "title": "B. One-Button Purity", "page": "home-redesign" },
+    { "file": "HomeEventCommand.dc.html", "x": 940, "y": 0, "w": 390, "h": 844, "title": "C. Event Command Center", "page": "home-redesign" },
+    { "file": "HomeLayeredEditorial.dc.html", "x": 1410, "y": 0, "w": 390, "h": 844, "title": "D. Layered Editorial", "page": "home-redesign" },
+    { "file": "HomeMergedAB.dc.html", "x": 1880, "y": 0, "w": 390, "h": 844, "title": "E. Merged (A top half + B bottom half)", "page": "home-redesign" },
+    { "file": "HomeFlatTabBar.dc.html", "x": 2350, "y": 0, "w": 390, "h": 844, "title": "F. E, with a flat tab bar (camera centered inline, no Profile)", "page": "home-redesign" }
   ],
-  "launch": { "view": "canvas" }
+  "annotations": [
+    { "id": "home-redesign-note", "x": 0, "y": -110, "w": 1840, "page": "home-redesign", "text": "Home screen redesign — inspired by a wallet-app reference (hero stat, pill actions, quick-action row, recent list, floating tab bar), reskinned in Yieldd navy/gold.\nA: closest evolution of the current app. B: purest \"one button, nothing competes\" spec reading, most whitespace. C: event-switcher as the primary surface, for reps running multiple shows. D: boldest — layered card depth, embedded FAB, a featured \"just captured\" lead card.\nE: the user's pick — A's header/hero/event-switcher/quick-actions on top, B's stat-strip/recent-leads/tab-bar on the bottom. Hero rebalanced to a 2-column layout, no scan/manual buttons (camera FAB is the only scan entry point), Profile tab removed (avatar in header covers that).\nF: same as E, but the tab bar is flat (not a floating pill) and the camera sits centered inline in the bar row, level with Home/Events — nothing floats or overlaps above it." }
+  ],
+  "pages": [
+    { "id": "app-screens", "name": "App Screens" },
+    { "id": "home-redesign", "name": "Home Redesign" }
+  ],
+  "launch": { "view": "canvas", "page": "home-redesign" }
 }

@@ -6,15 +6,53 @@ import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { NavyGlowBackdrop } from '../../../../components/app/NavyGlowBackdrop';
 import { CheckIcon, WifiIcon } from '../../../../components/ui/icons';
-
-const SUMMARY = [
-  { label: 'EVENT', value: 'IMTEX 2026 · Bengaluru' },
-  { label: 'DATES', value: '18–22 Feb 2026' },
-  { label: 'TEAM', value: '3 reps invited' },
-  { label: 'EVENT COST', value: '₹8,40,000' },
-];
+import {
+  draftTotalCost,
+  formatDateRange,
+  useEventDraftStore,
+} from '../../../../stores/useEventDraftStore';
 
 export default function EventSetupCompleteScreen() {
+  // Read one field at a time rather than deriving inside a selector — a
+  // selector that builds a new array or object returns a fresh reference on
+  // every render and loops.
+  const name = useEventDraftStore((s) => s.name);
+  const city = useEventDraftStore((s) => s.city);
+  const startDate = useEventDraftStore((s) => s.startDate);
+  const endDate = useEventDraftStore((s) => s.endDate);
+  const costs = useEventDraftStore((s) => s.costs);
+  const invitedReps = useEventDraftStore((s) => s.invitedReps);
+
+  const totalCost = draftTotalCost(costs);
+  const dates = formatDateRange(startDate, endDate);
+  const repCount = invitedReps.length;
+
+  // Every row shows what was actually submitted (PENDING.md #3). A step that
+  // was skipped says so plainly rather than borrowing an example value —
+  // "₹0" would read as a real answer, and "not added yet" is the truth.
+  const summary = [
+    { label: 'EVENT', value: [name, city].filter(Boolean).join(' · ') || 'Not named yet' },
+    { label: 'DATES', value: dates || 'Not set' },
+    {
+      label: 'TEAM',
+      value:
+        repCount === 0
+          ? 'No reps invited yet'
+          : `${repCount} rep${repCount === 1 ? '' : 's'} invited`,
+    },
+    {
+      label: 'EVENT COST',
+      value: totalCost > 0 ? `₹${totalCost.toLocaleString('en-IN')}` : 'Not added yet',
+    },
+  ];
+
+  const goHome = () => {
+    // The draft has served its purpose. Leaving it behind would pre-fill the
+    // next event with this one's answers.
+    useEventDraftStore.getState().reset();
+    router.replace('/(app)');
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
@@ -23,22 +61,24 @@ export default function EventSetupCompleteScreen() {
           <CheckIcon />
         </View>
         <Typography className="mt-6 text-[25px] font-extrabold tracking-[-0.01em] text-white text-center leading-[1.28]">
-          You&apos;re set up for{'\n'}IMTEX 2026
+          {name ? `You're set up for\n${name}` : "You're all set up"}
         </Typography>
         <Typography className="mt-[10px] text-[14px] text-white/[0.62] text-center leading-[1.5] max-w-[270px]">
           Your team can start scanning the moment they sign in &mdash; nothing here needs a network.
         </Typography>
 
         <View className="w-full bg-white/[0.05] border border-white/[0.12] rounded-lg mt-8 overflow-hidden">
-          {SUMMARY.map((row, i) => (
+          {summary.map((row, i) => (
             <View
               key={row.label}
-              className={`flex-row items-center justify-between px-[18px] py-[14px] ${
-                i < SUMMARY.length - 1 ? 'border-b border-white/[0.08]' : ''
+              className={`flex-row items-center justify-between gap-4 px-[18px] py-[14px] ${
+                i < summary.length - 1 ? 'border-b border-white/[0.08]' : ''
               }`}
             >
               <Typography className="text-[12.5px] text-white/[0.55]">{row.label}</Typography>
-              <Typography className="text-[13.5px] font-bold text-white">{row.value}</Typography>
+              <Typography className="text-[13.5px] font-bold text-white flex-1 text-right">
+                {row.value}
+              </Typography>
             </View>
           ))}
         </View>
@@ -50,7 +90,7 @@ export default function EventSetupCompleteScreen() {
       </ScrollView>
 
       <View className="items-center gap-[14px] px-8 pb-8 pt-4">
-        <Button label="Go to home" shape="pill" onPress={() => router.replace('/(app)')} className="w-full" />
+        <Button label="Go to home" shape="pill" onPress={goHome} className="w-full" />
         <Pressable onPress={() => router.push('/(app)/events/new/invite')}>
           <Typography className="text-[13px] font-semibold text-white/[0.75]">Invite more reps</Typography>
         </Pressable>

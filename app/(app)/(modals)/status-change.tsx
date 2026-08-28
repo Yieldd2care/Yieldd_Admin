@@ -5,9 +5,11 @@ import { router } from 'expo-router';
 import { Typography } from '../../../components/ui/Typography';
 import { SheetShell } from '../../../components/app/SheetShell';
 import { AlertCircleIcon, CheckIcon } from '../../../components/ui/icons';
+import type { LeadStatus } from '../../../data/leads';
 
-type Status = 'New' | 'Contacted' | 'Qualified' | 'Won' | 'Lost';
-const STATUSES: { key: Status; color: string; hint?: string }[] = [
+// Imported rather than redeclared: a locally-defined union is how `Lost` came
+// to be offered here while data/leads.ts had never heard of it.
+const STATUSES: { key: LeadStatus; color: string; hint?: string }[] = [
   { key: 'New', color: '#8A98B0' },
   { key: 'Contacted', color: '#1D3F8A' },
   { key: 'Qualified', color: '#F4B000' },
@@ -16,7 +18,7 @@ const STATUSES: { key: Status; color: string; hint?: string }[] = [
 ];
 
 export default function StatusChangeModal() {
-  const [status, setStatus] = useState<Status>('Qualified');
+  const [status, setStatus] = useState<LeadStatus>('Qualified');
 
   const confirm = () => {
     if (status === 'Won') {

@@ -63,6 +63,13 @@ changes — edit them first, then port the change into the real component.
 
 ## Status (as of this snapshot — 2026-08-25, updated via Impeccable)
 
+> **Superseded 2026-08-27 — everything below is approved.** The user reviewed
+> the built screens directly in Expo Go on 27 Aug and approved all of them.
+> The per-screen "Designed, needs review" labels further down are historical
+> notes from the 25 Aug snapshot; they no longer mean a screen is pending.
+> Nothing is awaiting design approval. Remaining work is backend/wiring, not
+> design — see `TASKS.md` Phases 1-6.
+
 **Approved:**
 - Sign up / Sign in — `AuthNavy.dc.html` (interactive tabs, both states)
 - Team or Solo fork — `Fork.dc.html` (original line-art illustration — clipboard
@@ -261,6 +268,105 @@ truncated — added a "+ 5 more selected" row so the math is legible
 approved screens into real Expo Router code following the same pattern
 used for the 13 screens already ported (see "Wired into real code" above).
 
+## Home screen redesign options (2026-08-27)
+
+User shared a fintech wallet-app screenshot as a structural reference
+(greeting header, dark hero balance card, two pill actions, a
+currency-tab row, a 4-icon quick-action grid, a recent-list, a floating
+tab bar with a raised center action) and asked for 3-4 options in
+Yieldd's own navy/gold theme before committing to one. Built on a new
+canvas **page** ("Home Redesign", not the main spine — the canvas now
+has multiple pages; `launch` opens straight to this one) since these
+are drafts, not yet part of the approved flow:
+
+- **`HomeQuietAuthority.dc.html`** ("A") — closest evolution of the
+  current shipped Home: navy hero (stat + delta), a gold Scan pill +
+  quiet outline "Add manually" pill, a small secondary event-chip row,
+  a 4-icon quick-action grid (Follow-ups/All leads/Search/Reports), the
+  existing Recent leads list, and a redesigned floating navy pill tab
+  bar with the gold Scan FAB inset into its top edge (replaces today's
+  flat white full-width bar + separately-floating FAB).
+- **`HomeOneButton.dc.html`** ("B") — the purest reading of the
+  product spec's "one button, nothing competes for the thumb": one
+  huge hero CTA, manual entry demoted to a plain text link (matches
+  today's real pattern), no event-tabs row, a single quiet stat strip
+  (reuses `LeadList.dc.html`'s divider-stat pattern) instead of stat
+  cards, most whitespace of the four.
+- **`HomeEventCommand.dc.html`** ("C") — for reps/admins juggling
+  multiple concurrent events: a prominent horizontally-scrollable
+  event-switcher row (live/upcoming, today's count per card) sits
+  *above* the hero, mirroring the reference's wallet-tabs placement
+  most literally; hero and recent-leads both scope to the selected
+  event.
+- **`HomeLayeredEditorial.dc.html`** ("D") — boldest/most distinctive:
+  a layered ghost-card stack behind the hero (echoes
+  `EveningReview.dc.html`'s card-depth motif and the landing page's
+  hero art), the gold Scan FAB embedded into the hero card's own
+  bottom-right corner instead of floating separately, quick actions as
+  a horizontal-scroll card row, and the most-recent lead shown as a
+  featured "Just captured" card (slightly rotated, drop shadow) above a
+  quieter flat list for the rest.
+
+All four share exact tokens lifted from `tailwind.config.js` (navy
+`#0B132B`/elevated `#101C3E`, gold `#F4B000`, slate `#5A6B87`, hairline
+`#E3E7EF`, section `#F5F7FB`, surface `#EEF1F7`, success `#4ED17F`),
+`Typography.tsx`'s type ramp, and exact SVG paths copied from
+`components/ui/icons.tsx` (Camera, Clock, Users, Edit, BarChart,
+Bell, Home/Calendar/Profile, Mic, ChevronRight, Search) — no new icon
+vocabulary invented. Sample data reuses the Rajesh Menon/Sneha
+Kulkarni/Amit Shah leads already used in `data/leads.ts` and
+`LeadList.dc.html` for cross-surface continuity.
+
+**2026-08-27 (later):** user picked a hybrid — A's header/hero/event-
+switcher/quick-actions on top, B's stat-strip/recent-leads/tab-bar on
+the bottom. Built as a 5th artboard, **`HomeMergedAB.dc.html`** ("E.
+Merged"), on the same Home Redesign page rather than baked straight
+into `Main.dc.html` — the user explicitly wants it reviewed as its own
+option first, not silently promoted. `Main.dc.html` was reverted back
+to its pre-existing content (offline banner, old FAB cluster, 4-tab
+bar including Leads) — it is untouched by this whole redesign effort
+so far.
+
+**2026-08-27 (later still):** user liked E overall but asked for the
+hero's Scan/Add-manually buttons removed (camera FAB is the only scan
+entry point now), then picked F (flat tab bar, camera centered inline)
+over E's inset-FAB pill bar, then requested a full polish + real-code
+port:
+- Camera button fixed from a stretched oval to a true circle — React
+  Native's `borderRadius` isn't a per-axis CSS percentage, so
+  `rounded-full` on a non-square box renders a stadium/pill shape, not
+  a smooth ellipse. This is why "a little bit oval" (the original ask)
+  read as malformed once built — a real RN constraint worth
+  remembering for any future non-square rounded shape.
+- Added a header "draft" icon (pencil, `EditIcon`) beside the bell —
+  represents offline-captured leads pending sync, per the product's
+  offline-first story. Stubbed for now (no real drafts/sync queue
+  exists yet).
+- Stat strip ("64 this event · 7 follow-ups due · N need a note") was
+  overflowing its card with no way to see the rest — wrapped in a
+  horizontal-scroll container as a safety net and tightened its sizing
+  so it fits without scrolling in the common case.
+- Quick-action columns widened (76px → 80px) and label font reduced
+  slightly (11px → 10.5px) — "Follow-ups" was wrapping to two lines.
+- Recent-leads rows: status pill + time replaced with a small color
+  dot (gold/slate/blue/green matching Qualified/New/Contacted/Won,
+  now `STATUS_DOT` in `data/leads.ts`) + 4 small touchable action
+  icons — Call, WhatsApp (green, real-brand-color exception, matching
+  `LeadList.dc.html`'s precedent), Email, Save-to-contacts — in that
+  order, matching the sequence already established in
+  `LeadDetailNew.dc.html`'s action row. Time moved inline after
+  company name to make room.
+
+**Ported into real code** (not just designed): `app/(app)/(tabs)/index.tsx`
+and `components/app/TabBar.tsx` now implement F, including all the
+polish above. `app/(app)/(tabs)/_layout.tsx` hides `profile` from tab
+linking (`href: null`, same pattern as `leads`) since the header avatar
+is now its only entry point. `Main.dc.html` (the pre-existing approved
+Home mockup) is still untouched/superseded-but-not-updated — worth
+reconciling next: either promote F's content into `Main.dc.html` now
+that it's live in the app, or treat `HomeFlatTabBar.dc.html` as the new
+source of truth going forward and retire `Main.dc.html`.
+
 **Alternate (un-chosen) sign-in directions**, kept for reference:
 `Auth.dc.html` (warm cream), `AuthLight.dc.html` (token-safe light),
 `AuthEditorial.dc.html` (typographic).
@@ -314,6 +420,7 @@ used for the 13 screens already ported (see "Wired into real code" above).
      --artboard LeadDetailNew.dc.html --artboard LogOutcome.dc.html --artboard StatusChange.dc.html --artboard DealValue.dc.html \
      --artboard EventList.dc.html --artboard EventDashboard.dc.html --artboard Export.dc.html --artboard TeamManagement.dc.html \
      --artboard BulkSend.dc.html --artboard SendQueue.dc.html \
+     --artboard HomeQuietAuthority.dc.html --artboard HomeOneButton.dc.html --artboard HomeEventCommand.dc.html --artboard HomeLayeredEditorial.dc.html --artboard HomeMergedAB.dc.html \
      --image yieldd-lockup-transparent-sm.png --image yieldd-mark-transparent-sm.png \
      --canvas canvas.json
    ```

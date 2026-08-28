@@ -3,82 +3,205 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
-import { BellIcon, ClockIcon, UsersIcon, WifiIcon } from '../../../components/ui/icons';
+import { LeadRow } from '../../../components/app/LeadRow';
+import {
+  BarChartIcon,
+  BellIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  EditIcon,
+  SearchIcon,
+  TrendUpIcon,
+  UsersIcon,
+  WhatsAppIcon,
+} from '../../../components/ui/icons';
 import { useSessionStore } from '../../../stores/useSessionStore';
+import { useLeadsStore } from '../../../stores/useLeadsStore';
 
 function stubComingSoon(what: string) {
   Alert.alert('Coming soon', `${what} isn't designed yet.`);
 }
 
+function timeGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function HomeScreen() {
   const user = useSessionStore((s) => s.user);
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? 'Y';
+  const firstName = user?.name?.trim()?.split(' ')?.[0] ?? 'there';
+  const allLeads = useLeadsStore((s) => s.leads);
+  const syncedLeads = allLeads.filter((l) => l.syncStatus === 'synced');
+  const draftCount = allLeads.filter((l) => l.syncStatus === 'draft').length;
+  const RECENT_LEADS = syncedLeads.slice(0, 3);
+  const NEEDS_NOTE_COUNT = syncedLeads.filter((l) => l.needsNote).length;
+  const WHATSAPP_PENDING_COUNT = syncedLeads.filter((l) => l.status === 'New').length;
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top']}>
-      <View className="flex-row items-center justify-between px-5 pt-5">
-        <View className="w-[34px] h-[34px] rounded-md bg-gold items-center justify-center">
-          <Typography className="text-[13.5px] font-extrabold text-navy">{initial}</Typography>
-        </View>
-        <Pressable
-          onPress={() => stubComingSoon('Notifications')}
-          className="w-[34px] h-[34px] rounded-md bg-white border border-hairline items-center justify-center"
-        >
-          <BellIcon />
+      <View className="flex-row items-center justify-between px-5 pt-3">
+        <Pressable onPress={() => router.push('/(app)/(tabs)/qr')} className="flex-row items-center gap-[10px]">
+          <View className="w-[34px] h-[34px] rounded-md bg-gold items-center justify-center">
+            <Typography className="text-[13.5px] font-extrabold text-navy">{initial}</Typography>
+          </View>
+          <View>
+            <Typography className="text-[12px] text-slate">{timeGreeting()}</Typography>
+            <Typography className="text-[16px] font-extrabold text-navy">{firstName}</Typography>
+          </View>
         </Pressable>
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            onPress={() => router.push('/(app)/leads/drafts')}
+            className="w-[34px] h-[34px] rounded-md bg-white border border-hairline items-center justify-center relative"
+          >
+            <EditIcon size={16} color="#0B132B" strokeWidth={1.75} />
+            {draftCount > 0 ? (
+              <View className="absolute -top-[5px] -right-[5px] min-w-[16px] h-[16px] px-[3px] rounded-full bg-gold items-center justify-center border-[1.5px] border-white">
+                <Typography className="text-[9px] font-extrabold text-navy">{draftCount}</Typography>
+              </View>
+            ) : null}
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(app)/notifications')}
+            className="w-[34px] h-[34px] rounded-md bg-white border border-hairline items-center justify-center relative"
+          >
+            <BellIcon />
+            <View className="absolute top-[6px] right-[6px] w-[7px] h-[7px] rounded-full bg-gold border-[1.5px] border-white" />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View className="flex-row items-center gap-3 bg-navy-elevated rounded-lg mx-5 mt-5 px-4 py-[14px]">
-          <View className="w-[34px] h-[34px] rounded-full bg-success/[0.16] items-center justify-center">
-            <WifiIcon />
+        <View className="mx-5 mt-3 bg-navy rounded-xl p-4">
+          <View className="flex-row items-center gap-[6px]">
+            <View className="w-[6px] h-[6px] rounded-full bg-success" />
+            <Typography className="text-[12px] font-semibold text-white/60">IMTEX 2026 &middot; B-42</Typography>
           </View>
-          <View className="flex-1">
-            <Typography className="text-[13.5px] font-bold text-white">Works fully offline</Typography>
-            <Typography className="text-[11.5px] text-white/[0.55] mt-[2px]">
-              Nothing here needs signal &mdash; syncs when you&apos;re back
-            </Typography>
+          <View className="flex-row items-center justify-between mt-[12px]">
+            <View>
+              <Typography className="text-[13px] text-white/60">Leads captured today</Typography>
+              <View className="flex-row items-center gap-1 bg-gold/[0.14] self-start rounded-full px-[10px] py-[5px] mt-[10px]">
+                <TrendUpIcon />
+                <Typography className="text-[11.5px] font-bold text-gold">+4 since noon</Typography>
+              </View>
+            </View>
+            <Typography className="text-[72px] leading-none font-extrabold tracking-[-0.03em] text-white">18</Typography>
           </View>
         </View>
 
-        <Pressable onPress={() => stubComingSoon('Switching events')} className="items-center pt-10 px-8">
-          <Typography variant="caption" className="text-slate">
-            IMTEX 2026 &middot; B-42
+        <View className="mx-5 mt-3">
+          <Typography className="text-[11px] font-bold tracking-[0.06em] text-slate" style={{ textTransform: 'uppercase' }}>
+            Your events
           </Typography>
-          <Typography className="mt-[10px] text-[44px] leading-none font-extrabold tracking-[-0.02em] text-navy">
-            18
-          </Typography>
-          <Typography className="mt-1 text-[14.5px] text-slate">leads captured today</Typography>
-        </Pressable>
-
-        <View className="flex-row gap-3 px-5 pt-8">
-          <Pressable
-            onPress={() => router.push('/(app)/(tabs)/leads')}
-            className="flex-1 bg-white border border-hairline rounded-lg p-4 gap-[10px]"
-          >
-            <View className="w-9 h-9 rounded-md bg-surface items-center justify-center">
-              <UsersIcon />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 mt-[8px]">
+            <View className="bg-navy rounded-full px-4 py-2">
+              <Typography className="text-[12.5px] font-bold text-white">IMTEX 2026</Typography>
             </View>
             <View>
-              <Typography className="text-[20px] font-extrabold tracking-[-0.01em] text-navy">64</Typography>
-              <Typography className="text-[12.5px] text-slate mt-[2px]">Leads this event</Typography>
+              <Pressable onPress={() => stubComingSoon('Switching events')} className="bg-surface rounded-full px-4 py-2">
+                <Typography className="text-[12.5px] font-bold text-navy">Auto Expo Q3</Typography>
+              </Pressable>
             </View>
+            <View>
+              <Pressable onPress={() => router.push('/(app)/events/new')} className="border border-dashed border-hairline rounded-full px-4 py-2">
+                <Typography className="text-[12.5px] font-bold text-slate">+ Add event</Typography>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+
+        <View className="flex-row justify-between mx-5 mt-3">
+          <Pressable onPress={() => router.push('/(app)/follow-ups')} className="items-center gap-2 w-[80px]">
+            <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
+              <ClockIcon size={19} />
+            </View>
+            <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Follow-ups</Typography>
+          </Pressable>
+          <Pressable onPress={() => router.push('/(app)/(tabs)/leads')} className="items-center gap-2 w-[80px]">
+            <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
+              <UsersIcon size={19} />
+            </View>
+            <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>All leads</Typography>
+          </Pressable>
+          <Pressable onPress={() => stubComingSoon('Search')} className="items-center gap-2 w-[80px]">
+            <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
+              <SearchIcon size={19} color="#0B132B" strokeWidth={1.75} />
+            </View>
+            <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Search</Typography>
           </Pressable>
           <Pressable
-            onPress={() => router.push('/(app)/follow-ups')}
-            className="flex-1 bg-white border border-hairline rounded-lg p-4 gap-[10px]"
+            onPress={() => router.push({ pathname: '/(app)/events/[id]/roi', params: { id: 'imtex-2026' } })}
+            className="items-center gap-2 w-[80px]"
           >
-            <View className="w-9 h-9 rounded-md bg-surface items-center justify-center">
-              <ClockIcon />
+            <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
+              <BarChartIcon size={19} />
             </View>
-            <View>
-              <Typography className="text-[20px] font-extrabold tracking-[-0.01em] text-navy">7</Typography>
-              <Typography className="text-[12.5px] text-slate mt-[2px]">Follow-ups due</Typography>
-            </View>
+            <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Reports</Typography>
           </Pressable>
         </View>
 
-        <View className="h-[100px]" />
+        <View className="bg-navy-elevated rounded-[14px] mx-5 mt-3 overflow-hidden">
+          <View className="flex-row">
+            <View className="flex-1 px-4 py-3">
+              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                This event
+              </Typography>
+              <Typography className="text-[16px] font-extrabold text-white mt-[3px]">64</Typography>
+            </View>
+            <View className="w-px bg-white/[0.14]" />
+            <View className="flex-1 px-4 py-3">
+              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                Follow-ups
+              </Typography>
+              <View className="flex-row items-center gap-[6px] mt-[5px]">
+                <View className="w-[6px] h-[6px] rounded-full bg-gold" />
+                <Typography className="text-[13px] font-bold text-white">7 due</Typography>
+              </View>
+            </View>
+          </View>
+          <View className="h-px bg-white/[0.14]" />
+          <View className="flex-row">
+            <View className="flex-1 px-4 py-3">
+              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                Needs a note
+              </Typography>
+              <View className="flex-row items-center gap-[6px] mt-[5px]">
+                <View className="w-[6px] h-[6px] rounded-full bg-success" />
+                <Typography className="text-[13px] font-bold text-white">{NEEDS_NOTE_COUNT}</Typography>
+              </View>
+            </View>
+            <View className="w-px bg-white/[0.14]" />
+            <View className="flex-1 px-4 py-3">
+              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                WhatsApp
+              </Typography>
+              <View className="flex-row items-center gap-[6px] mt-[5px]">
+                <WhatsAppIcon size={11} color="#25D366" />
+                <Typography className="text-[13px] font-bold text-white">{WHATSAPP_PENDING_COUNT} pending</Typography>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View className="mx-5 mt-4">
+          <View className="flex-row items-center justify-between">
+            <Typography className="text-[15px] font-extrabold text-navy">Recent leads</Typography>
+            <Pressable onPress={() => router.push('/(app)/(tabs)/leads')} className="flex-row items-center gap-[2px]">
+              <Typography className="text-[12.5px] font-bold text-blue">See all</Typography>
+              <ChevronRightIcon size={11} color="#1D3F8A" strokeWidth={2.5} />
+            </Pressable>
+          </View>
+          <View className="mt-3 gap-[10px]">
+            {RECENT_LEADS.map((lead) => (
+              <LeadRow key={lead.id} lead={lead} />
+            ))}
+          </View>
+        </View>
+
+        <View className="h-[130px]" />
       </ScrollView>
     </SafeAreaView>
   );

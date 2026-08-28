@@ -1,4 +1,4 @@
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -28,7 +28,7 @@ export default function FirstScanPromptScreen() {
           label="Scan a card"
           shape="pill"
           icon={<CameraIcon size={18} />}
-          onPress={() => Alert.alert('Coming soon', 'Camera capture is being designed next.')}
+          onPress={() => router.push({ pathname: '/(app)/capture/camera', params: { mode: 'profile' } })}
           className="w-full"
         />
         <Pressable onPress={() => router.replace('/(app)')}>

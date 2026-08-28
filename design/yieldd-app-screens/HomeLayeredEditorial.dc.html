@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0B132B; --navy-elevated: #101C3E; --blue: #1D3F8A;
+      --gold: #F4B000; --gold-hover: #FFC53D; --slate: #5A6B87;
+      --hairline: #E3E7EF; --section: #F5F7FB; --surface: #EEF1F7;
+      --success: #4ED17F;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { color: var(--navy); }
+    .frame { width: 390px; height: 844px; background: var(--section); position: relative; overflow: hidden; }
+    .scroll { position: absolute; inset: 0; overflow-y: auto; }
+    .ghost-back {
+      position: absolute; left: 14px; right: 14px; top: 14px; bottom: -8px;
+      background: var(--navy-elevated); border-radius: 24px; transform: rotate(-3deg); z-index: 0;
+    }
+    .ghost-mid {
+      position: absolute; left: 8px; right: 8px; top: 8px; bottom: -4px;
+      background: color-mix(in srgb, var(--navy) 45%, var(--navy-elevated) 55%);
+      border-radius: 24px; transform: rotate(2deg); z-index: 1;
+    }
+    .qa-card {
+      flex-shrink: 0; width: 78px; height: 84px; border-radius: 16px; background: #fff;
+      border: 1px solid var(--hairline); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+    }
+    .status-pill { border-radius: 999px; padding: 3px 8px; font-size: 10px; font-weight: 700; }
+    .lead-row {
+      background: #fff; border: 1px solid var(--hairline); border-radius: 16px;
+      padding: 13px 14px; display: flex; align-items: center; gap: 12px;
+    }
+    .tabbar {
+      position: absolute; left: 20px; right: 20px; bottom: 16px; height: 64px;
+      background: var(--navy); border-radius: 999px; display: flex;
+      align-items: center; justify-content: space-around; box-shadow: 0 12px 26px rgba(11,19,43,0.3);
+    }
+    .fab-in {
+      position: absolute; bottom: -22px; right: 22px; width: 60px; height: 60px; border-radius: 50%;
+      background: var(--gold); display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 14px 28px rgba(244,176,0,0.4); border: 4px solid var(--section); z-index: 3;
+    }
+    .tab-item { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 60px; }
+  </style>
+</helmet>
+
+<div class="frame">
+  <div class="scroll">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:46px 20px 0 20px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:34px;height:34px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:13.5px;font-weight:800;color:var(--navy);">A</span>
+        </div>
+        <div style="display:flex;flex-direction:column;line-height:1.25;">
+          <span style="font-size:12px;color:var(--slate);">Good afternoon</span>
+          <span style="font-size:16px;font-weight:800;color:var(--navy);">Aditya</span>
+        </div>
+      </div>
+      <div style="width:34px;height:34px;border-radius:10px;background:#fff;border:1px solid var(--hairline);display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 004 0"/></svg>
+      </div>
+    </div>
+
+    <!-- Layered hero -->
+    <div style="position:relative;margin:26px 20px 40px 20px;">
+      <div class="ghost-back"></div>
+      <div class="ghost-mid"></div>
+      <div style="position:relative;z-index:2;background:var(--navy);border-radius:24px;padding:24px 24px 30px 24px;box-shadow:0 20px 40px rgba(11,19,43,0.28);">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.45);">IMTEX 2026 &middot; B-42</span>
+        <div style="margin-top:14px;">
+          <span style="font-size:13px;color:rgba(255,255,255,0.6);">Leads captured today</span>
+          <div style="font-size:46px;font-weight:800;letter-spacing:-0.02em;color:#fff;line-height:1;margin-top:6px;">18</div>
+        </div>
+        <div style="margin-top:22px;">
+          <span style="font-size:12.5px;font-weight:700;color:rgba(255,255,255,0.6);border-bottom:1px solid rgba(255,255,255,0.25);padding-bottom:1px;">Add manually</span>
+        </div>
+        <div class="fab-in">
+          <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 012-2h2l1.4-2h5.2L16 6h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick actions: horizontal scroll cards -->
+    <div style="margin-top:8px;">
+      <span style="padding:0 20px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--slate);">Shortcuts</span>
+      <div style="display:flex;gap:10px;margin-top:10px;padding:0 20px;overflow-x:auto;">
+        <div class="qa-card">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+          <span style="font-size:10.5px;font-weight:700;color:var(--navy);">Follow-ups</span>
+        </div>
+        <div class="qa-card">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <span style="font-size:10.5px;font-weight:700;color:var(--navy);">Leads</span>
+        </div>
+        <div class="qa-card">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+          <span style="font-size:10.5px;font-weight:700;color:var(--navy);">Search</span>
+        </div>
+        <div class="qa-card">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+          <span style="font-size:10.5px;font-weight:700;color:var(--navy);">Reports</span>
+        </div>
+        <div class="qa-card" style="opacity:0.55;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <span style="font-size:10.5px;font-weight:700;color:var(--navy);">Team</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent: featured latest + quiet history -->
+    <div style="margin:26px 20px 0 20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:15px;font-weight:800;color:var(--navy);">Recent leads</span>
+        <div style="display:flex;align-items:center;gap:2px;">
+          <span style="font-size:12.5px;font-weight:700;color:var(--blue);">See all</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1D3F8A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+
+      <div style="position:relative;margin-top:16px;">
+        <div style="position:absolute;left:6px;right:6px;top:6px;bottom:-4px;background:var(--surface);border-radius:18px;transform:rotate(-1.5deg);z-index:0;"></div>
+        <div style="position:relative;z-index:1;background:#fff;border:1px solid var(--hairline);border-radius:18px;padding:16px;box-shadow:0 10px 22px rgba(11,19,43,0.08);transform:rotate(-0.6deg);">
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--success);">Just captured &middot; 4:12 PM</span>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span style="font-size:15px;font-weight:800;color:var(--navy);">R</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <span style="font-size:14.5px;font-weight:800;color:var(--navy);display:block;">Rajesh Menon</span>
+              <span style="font-size:12px;color:var(--slate);">Northline Engineering</span>
+            </div>
+            <span class="status-pill" style="background:rgba(244,176,0,0.14);color:#8A6100;">Qualified</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;">
+        <div class="lead-row">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:800;color:var(--navy);">S</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <span style="font-size:13.5px;font-weight:700;color:var(--navy);display:block;">Sneha Kulkarni</span>
+            <span style="font-size:11.5px;color:var(--slate);">Vertex Industries</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+            <span class="status-pill" style="background:var(--surface);color:var(--slate);">New</span>
+            <span style="font-size:10.5px;color:var(--slate);">3:40 PM</span>
+          </div>
+        </div>
+        <div class="lead-row">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:800;color:var(--navy);">A</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:13.5px;font-weight:700;color:var(--navy);">Amit Shah</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8A98B0" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4"/></svg>
+            </div>
+            <span style="font-size:11.5px;color:var(--slate);">Prime Fabtech</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+            <span class="status-pill" style="background:rgba(29,63,138,0.10);color:#1D3F8A;">Contacted</span>
+            <span style="font-size:10.5px;color:var(--slate);">3:05 PM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:118px;"></div>
+  </div>
+
+  <!-- Floating tab bar -->
+  <div class="tabbar">
+    <div style="position:absolute;top:-26px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 14px 30px rgba(244,176,0,0.42);border:4px solid var(--section);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B132B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 012-2h2l1.4-2h5.2L16 6h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+    </div>
+    <div class="tab-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4B000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      <span style="font-size:10.5px;font-weight:700;color:#F4B000;">Home</span>
+    </div>
+    <div class="tab-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+      <span style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.55);">Events</span>
+    </div>
+    <div class="tab-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>
+      <span style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.55);">Profile</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -6,8 +6,9 @@ export default function TabsLayout() {
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="leads" />
+      <Tabs.Screen name="leads" options={{ href: null }} />
       <Tabs.Screen name="events" />
+      <Tabs.Screen name="qr" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );

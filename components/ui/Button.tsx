@@ -34,9 +34,13 @@ const TEXT_CLASSES: Record<Variant, string> = {
   ghost: 'text-gold font-semibold text-base',
 };
 
-export function Button({ label, variant = 'primary', shape = 'default', icon, className = '', ...rest }: Props) {
+export function Button({ label, variant = 'primary', shape = 'default', icon, className = '', disabled, ...rest }: Props) {
   return (
-    <Pressable className={`${BASE} ${SHAPE_CLASSES[shape]} ${VARIANT_CLASSES[variant]} gap-[9px] ${className}`} {...rest}>
+    <Pressable
+      disabled={disabled}
+      className={`${BASE} ${SHAPE_CLASSES[shape]} ${VARIANT_CLASSES[variant]} gap-[9px] ${disabled ? 'opacity-40' : ''} ${className}`}
+      {...rest}
+    >
       {icon}
       <Typography className={TEXT_CLASSES[variant]}>{label}</Typography>
     </Pressable>

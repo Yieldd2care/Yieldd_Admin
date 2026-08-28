@@ -4,26 +4,7 @@ import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { CalendarIcon, PlusIcon } from '../../../components/ui/icons';
-
-type Status = 'live' | 'upcoming' | 'closed';
-
-const EVENTS: { id: string; name: string; sub: string; status: Status; leads?: number; dayLabel?: string }[] = [
-  { id: 'imtex-2026', name: 'IMTEX 2026', sub: 'Bengaluru · 18–22 Feb', status: 'live', leads: 413, dayLabel: 'Live · Day 3' },
-  { id: 'plastindia-2026', name: 'Plastindia 2026', sub: 'Ahmedabad · 4–9 Apr', status: 'upcoming' },
-  { id: 'auto-expo-2025', name: 'Auto Expo 2025', sub: 'New Delhi · 12–16 Nov', status: 'closed', leads: 286 },
-];
-
-const STATUS_LABEL: Record<Status, string> = { live: 'Live', upcoming: 'Upcoming', closed: 'Closed' };
-const STATUS_CLASSES: Record<Status, string> = {
-  live: 'bg-gold/[0.16]',
-  upcoming: 'bg-blue/[0.10]',
-  closed: 'bg-surface',
-};
-const STATUS_TEXT: Record<Status, string> = {
-  live: 'text-[#8A6100]',
-  upcoming: 'text-blue',
-  closed: 'text-slate',
-};
+import { EVENTS, STATUS_CLASSES, STATUS_LABEL, STATUS_TEXT, type EventStatus } from '../../../data/events';
 
 export default function EventListScreen() {
   return (
@@ -39,7 +20,7 @@ export default function EventListScreen() {
       </View>
 
       <ScrollView contentContainerClassName="px-5 pt-4 pb-8" showsVerticalScrollIndicator={false}>
-        {(['live', 'upcoming', 'closed'] as Status[]).map((group) => {
+        {(['live', 'upcoming', 'closed'] as EventStatus[]).map((group) => {
           const items = EVENTS.filter((e) => e.status === group);
           if (!items.length) return null;
           return (
