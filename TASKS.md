@@ -21,7 +21,7 @@ Everything needed to take the app from "database exists, auth screens look right
 **Screens with real UI today:** all 60 route files exist with final design.
 **Screens reading or writing the real database:** events (list, wizard, dashboard, ROI, custom fields), capture (confirm, manual, saved, drafts), leads (list, detail, status, deal value), follow-ups, log outcome, team, member detail, reassign, export picker, home.
 
-**Still on mock or placeholder data:** bulk send, send queue, evening review, the digital card screens, the hosted public card page, notifications, and payment. Camera photo upload, voice recording upload and card reading (OCR) are not built — the capture screens save everything except the image and audio.
+**Still on mock or placeholder data:** bulk send, send queue, evening review, the digital card screens, the hosted public card page, notifications, and payment. **Voice notes are not built** — recording, upload, transcript and summary. The AI company summary is not built either; both keys are already on the project.
 
 ### What was built on 2026-08-28
 
@@ -33,8 +33,10 @@ Everything needed to take the app from "database exists, auth screens look right
 Two checks are runnable at any time:
 
 ```
-npm run verify:roi      # 31 arithmetic checks on lib/roi.ts
-npm run verify:stats    # 32 checks against the live database, cleans up after itself
+npm run verify:roi            # 31 arithmetic checks on lib/roi.ts
+npm run verify:stats          # 32 checks against the live database, cleans up after itself
+npm run verify:card           # card reading + the storage upload rules, end to end
+npm run compare:card-models   # accuracy/latency/tokens per model, to justify the choice
 ```
 
 ### Dependency order, plainly
@@ -143,7 +145,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** An authenticated rep can upload to their own event's folder; another org's rep gets denied.
 
 #### 2.3 — Card OCR extraction (Edge Function)
-- **Status:** Not Started
+- **Status:** **Complete** (2026-08-28) — `supabase/functions/extract-card`. Called from the confirm screen with the image in the request body, NOT from a storage trigger: the lead row does not exist yet at that point, and the bucket policies join back to it. Returns fields and writes nothing; the rep reviews and saves. Model chosen by measurement (`npm run compare:card-models`): Sonnet 5 scored 168/168 fields over 7 card types x 3 runs, Haiku 4.5 163/168, Opus 5 no better and slower.
 - **Files:** new `supabase/functions/extract-card/index.ts`
 - **Description:** Triggered after a card image uploads (via a DB webhook or client-invoked call). Calls Anthropic (`ANTHROPIC_API_KEY` already in `.env`) with the image, extracts name/company/designation/phone/email, writes them to the `leads` row, flips `extraction_status` to `completed` or `failed`.
 - **Acceptance criteria:** Uploading a real business card photo populates the lead's fields within a few seconds without the rep waiting on the capture screen for it.
@@ -200,7 +202,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Capture count matches the actual number of `leads` rows captured today by the signed-in rep.
 
 #### 2.12 — Camera capture (E2)
-- **Status:** Not Started
+- **Status:** **Complete** — the photo is kept on the device, the screen advances immediately, and the file uploads to `card-images` after the lead row lands (the policy requires that order). Reading the card is 2.3.
 - **Files:** new `app/(app)/capture/camera.tsx`, `expo-camera`
 - **Acceptance criteria:** Tapping capture advances to the confirm screen (2.13) immediately — the photo write and any upload happen after navigation, never blocking it.
 
