@@ -54,8 +54,18 @@ const globalRef = globalThis as GlobalWithClient;
 export const supabase: SupabaseClient<Database> =
   globalRef[GLOBAL_KEY] ??
   createClient<Database>(
-    url ?? 'https://unconfigured.supabase.co',
-    anonKey ?? 'unconfigured',
+    // `||`, not `??`. An environment variable that exists but is EMPTY is the
+    // realistic failure — someone clears the value in the Vercel UI rather than
+    // deleting the variable — and `??` passes '' straight through, at which
+    // point createClient throws "supabaseUrl is required" at module scope and
+    // takes the whole site down, marketing page included. Verified by building
+    // with both vars set to '': the page rendered blank. `||` also catches ''.
+    //
+    // This has to agree with isSupabaseConfigured above, which uses Boolean()
+    // and therefore already treated '' as unconfigured. The two disagreeing was
+    // the bug.
+    url || 'https://unconfigured.supabase.co',
+    anonKey || 'unconfigured',
     {
       auth: {
         // AsyncStorage, not SecureStore: SecureStore caps values at ~2KB on
