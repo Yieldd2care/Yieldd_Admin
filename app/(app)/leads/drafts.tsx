@@ -7,12 +7,16 @@ import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { EditIcon, MicIcon, WifiIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
+import { useSessionStore } from '../../../stores/useSessionStore';
 
 export default function DraftsScreen() {
   const [isOnline, setIsOnline] = useState(true);
   const allLeads = useLeadsStore((s) => s.leads);
   const drafts = allLeads.filter((l) => l.syncStatus === 'draft');
+  const blocked = allLeads.filter((l) => l.syncError);
   const syncDrafts = useLeadsStore((s) => s.syncDrafts);
+  const isSyncing = useLeadsStore((s) => s.isSyncing);
+  const userId = useSessionStore((s) => s.user?.id);
 
   useEffect(() => {
     let mounted = true;
@@ -59,13 +63,33 @@ export default function DraftsScreen() {
           </Typography>
         </View>
         {isOnline && drafts.length > 0 ? (
-          <Pressable onPress={syncDrafts} className="bg-navy rounded-full px-4 py-2">
-            <Typography className="text-[12px] font-bold text-white">Sync now</Typography>
+          <Pressable
+            onPress={() => syncDrafts(userId)}
+            disabled={isSyncing}
+            className={`bg-navy rounded-full px-4 py-2 ${isSyncing ? 'opacity-60' : ''}`}
+          >
+            <Typography className="text-[12px] font-bold text-white">
+              {isSyncing ? 'Syncing…' : 'Sync now'}
+            </Typography>
           </Pressable>
         ) : null}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="px-5 pt-4 pb-10">
+        {/* A lead the server refused for good — usually the rep was taken off
+            the event. Retrying forever would just hide it, so it is shown. */}
+        {blocked.map((lead) => (
+          <View
+            key={lead.id}
+            className="bg-white border border-[#C23B3B]/[0.35] rounded-2xl px-4 py-[14px] mb-3"
+          >
+            <Typography className="text-[14px] font-bold text-navy">{lead.name}</Typography>
+            <Typography className="text-[12px] text-[#A32E2E] mt-[3px] leading-[1.45]">
+              {lead.syncError}
+            </Typography>
+          </View>
+        ))}
+
         {drafts.length === 0 ? (
           <View className="items-center pt-16">
             <View className="w-14 h-14 rounded-full bg-surface items-center justify-center">

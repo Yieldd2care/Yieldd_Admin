@@ -1,27 +1,45 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Typography } from '../../../components/ui/Typography';
 import { LeadRow } from '../../../components/app/LeadRow';
 import { ChevronRightIcon, SearchIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
+import { useCurrentEvent } from '../../../hooks/useEvents';
 
+// `Lost` belongs here: the status sheet offers it, so without a filter a lost
+// lead can be set and then never found again.
 const FILTERS: { key: string; label: string; dot?: string }[] = [
   { key: 'All', label: 'All' },
   { key: 'Needs a note', label: 'Needs a note', dot: '#F4B000' },
   { key: 'Qualified', label: 'Qualified', dot: '#8A6100' },
   { key: 'Won', label: 'Won', dot: '#1F8A50' },
+  { key: 'Lost', label: 'Lost', dot: '#C23B3B' },
 ];
 
 export default function LeadListScreen() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('All');
   const [query, setQuery] = useState('');
   const allLeads = useLeadsStore((s) => s.leads);
-  const leads = allLeads.filter((l) => l.syncStatus === 'synced');
+  const isRefreshing = useLeadsStore((s) => s.isRefreshing);
+  const loadError = useLeadsStore((s) => s.loadError);
+  const { event } = useCurrentEvent();
+
+  // Drafts are excluded here and shown on the drafts screen instead — a lead
+  // the server has not accepted should not be counted in "this event".
+  const leads = allLeads.filter(
+    (l) => l.syncStatus === 'synced' && (!event || !l.eventId || l.eventId === event.id)
+  );
 
   const needsNoteCount = leads.filter((l) => l.needsNote).length;
   const whatsappPendingCount = leads.filter((l) => l.status === 'New').length;
+
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const followUpsDue = leads.filter(
+    (l) => l.followUpDate && new Date(l.followUpDate).getTime() <= today.getTime()
+  ).length;
 
   const filtered = leads.filter((l) => {
     if (query && !l.name.toLowerCase().includes(query.toLowerCase()) && !l.company.toLowerCase().includes(query.toLowerCase())) return false;
@@ -39,7 +57,9 @@ export default function LeadListScreen() {
             <Typography className="text-[26px] font-extrabold text-navy tracking-[-0.01em]">Leads</Typography>
             <Pressable className="flex-row items-center gap-[5px] mt-1">
               <Typography className="text-[11px] font-bold text-slate tracking-[0.06em]" style={{ textTransform: 'uppercase' }}>
-                IMTEX 2026 &middot; B-42
+                {event
+                  ? [event.name, event.stallNumber ?? event.city].filter(Boolean).join(' · ')
+                  : 'No event selected'}
               </Typography>
               <ChevronRightIcon size={11} color="#5A6B87" strokeWidth={2.5} />
             </Pressable>
@@ -61,7 +81,7 @@ export default function LeadListScreen() {
               </Typography>
               <View className="flex-row items-center gap-[6px] mt-[5px]">
                 <View className="w-[6px] h-[6px] rounded-full bg-gold" />
-                <Typography className="text-[13px] font-bold text-white">7 due</Typography>
+                <Typography className="text-[13px] font-bold text-white">{followUpsDue} due</Typography>
               </View>
             </View>
           </View>
@@ -120,7 +140,37 @@ export default function LeadListScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="px-5 pt-4 gap-3">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="px-5 pt-4 gap-3 flex-grow"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => useLeadsStore.getState().refresh()}
+          />
+        }
+      >
+        {isRefreshing && !allLeads.length ? <ActivityIndicator color="#F4B000" /> : null}
+
+        {loadError && !allLeads.length ? (
+          <Typography className="text-[13px] text-slate text-center mt-10 leading-[1.5]">
+            {loadError}
+          </Typography>
+        ) : null}
+
+        {!isRefreshing && !filtered.length ? (
+          <View className="items-center justify-center py-16 px-6">
+            <Typography className="text-[15px] font-bold text-navy text-center">
+              {leads.length ? 'Nothing matches that' : 'No leads yet'}
+            </Typography>
+            <Typography className="text-[13px] text-slate text-center mt-2 leading-[1.5] max-w-[260px]">
+              {leads.length
+                ? 'Try a different filter or clear the search.'
+                : 'Scan a card or add someone by hand and they will appear here.'}
+            </Typography>
+          </View>
+        ) : null}
+
         {filtered.map((lead) => (
           <LeadRow key={lead.id} lead={lead} />
         ))}

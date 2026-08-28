@@ -44,6 +44,28 @@ export default function HomeScreen() {
 
   const { data: events } = useEvents();
   const { event } = useCurrentEvent();
+
+  // Counted from what is actually on the device, drafts included: a lead
+  // captured offline still happened, and showing it only after it syncs makes
+  // the number look like it went backwards.
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const noon = new Date();
+  noon.setHours(12, 0, 0, 0);
+
+  const forThisEvent = allLeads.filter((l) => !event || !l.eventId || l.eventId === event.id);
+  const capturedToday = forThisEvent.filter(
+    (l) => new Date(l.capturedAt).getTime() >= startOfDay.getTime()
+  );
+  const capturedSinceNoon = capturedToday.filter(
+    (l) => new Date(l.capturedAt).getTime() >= noon.getTime()
+  ).length;
+
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  const followUpsDue = forThisEvent.filter(
+    (l) => l.followUpDate && new Date(l.followUpDate).getTime() <= endOfToday.getTime()
+  ).length;
   const selectEvent = useCurrentEventStore((s) => s.selectEvent);
   const isAdmin = user?.role === 'admin';
 
@@ -100,10 +122,14 @@ export default function HomeScreen() {
               <Typography className="text-[13px] text-white/60">Leads captured today</Typography>
               <View className="flex-row items-center gap-1 bg-gold/[0.14] self-start rounded-full px-[10px] py-[5px] mt-[10px]">
                 <TrendUpIcon />
-                <Typography className="text-[11.5px] font-bold text-gold">+4 since noon</Typography>
+                <Typography className="text-[11.5px] font-bold text-gold">
+                  +{capturedSinceNoon} since noon
+                </Typography>
               </View>
             </View>
-            <Typography className="text-[72px] leading-none font-extrabold tracking-[-0.03em] text-white">18</Typography>
+            <Typography className="text-[72px] leading-none font-extrabold tracking-[-0.03em] text-white">
+              {capturedToday.length}
+            </Typography>
           </View>
         </View>
 
@@ -184,7 +210,9 @@ export default function HomeScreen() {
               <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
                 This event
               </Typography>
-              <Typography className="text-[16px] font-extrabold text-white mt-[3px]">64</Typography>
+              <Typography className="text-[16px] font-extrabold text-white mt-[3px]">
+                {forThisEvent.length}
+              </Typography>
             </View>
             <View className="w-px bg-white/[0.14]" />
             <View className="flex-1 px-4 py-3">
@@ -193,7 +221,7 @@ export default function HomeScreen() {
               </Typography>
               <View className="flex-row items-center gap-[6px] mt-[5px]">
                 <View className="w-[6px] h-[6px] rounded-full bg-gold" />
-                <Typography className="text-[13px] font-bold text-white">7 due</Typography>
+                <Typography className="text-[13px] font-bold text-white">{followUpsDue} due</Typography>
               </View>
             </View>
           </View>

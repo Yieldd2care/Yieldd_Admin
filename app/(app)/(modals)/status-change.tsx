@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { SheetShell } from '../../../components/app/SheetShell';
 import { AlertCircleIcon, CheckIcon } from '../../../components/ui/icons';
+import { useLeadsStore } from '../../../stores/useLeadsStore';
 import type { LeadStatus } from '../../../data/leads';
 
 // Imported rather than redeclared: a locally-defined union is how `Lost` came
@@ -18,11 +19,21 @@ const STATUSES: { key: LeadStatus; color: string; hint?: string }[] = [
 ];
 
 export default function StatusChangeModal() {
-  const [status, setStatus] = useState<LeadStatus>('Qualified');
+  const { leadId } = useLocalSearchParams<{ leadId?: string }>();
+  const leads = useLeadsStore((s) => s.leads);
+  const lead = leads.find((l) => l.id === leadId);
+
+  // Opens on what the lead is now, not on a fixed guess — picking "Qualified"
+  // by default meant confirming without thinking silently changed the status.
+  const [status, setStatus] = useState<LeadStatus>(lead?.status ?? 'New');
 
   const confirm = () => {
+    if (leadId && status !== lead?.status) {
+      useLeadsStore.getState().editLead(leadId, { status });
+      void useLeadsStore.getState().syncDrafts();
+    }
     if (status === 'Won') {
-      router.replace('/(app)/(modals)/deal-value');
+      router.replace(`/(app)/(modals)/deal-value?leadId=${leadId ?? ''}`);
       return;
     }
     router.back();
@@ -31,7 +42,9 @@ export default function StatusChangeModal() {
   return (
     <SheetShell>
       <Typography className="text-[19px] font-bold text-navy">Change status</Typography>
-      <Typography className="text-[12.5px] text-slate mt-[5px]">Rajesh Menon &middot; Northline Engineering</Typography>
+      <Typography className="text-[12.5px] text-slate mt-[5px]">
+        {lead ? [lead.name, lead.company].filter(Boolean).join(' · ') : 'This lead'}
+      </Typography>
 
       <View className="gap-2 mt-5">
         {STATUSES.map((s) => {

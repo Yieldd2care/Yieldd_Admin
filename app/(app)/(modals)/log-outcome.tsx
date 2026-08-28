@@ -1,15 +1,29 @@
 import { useState } from 'react';
 import { Pressable, TextInput as RNTextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { SheetShell } from '../../../components/app/SheetShell';
+import { DateField } from '../../../components/app/DateField';
 import { CheckIcon, PhoneIcon } from '../../../components/ui/icons';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
+import { useLeadsStore } from '../../../stores/useLeadsStore';
+import { useSessionStore } from '../../../stores/useSessionStore';
+import { logLeadActivity, OUTCOME_FROM_LABEL } from '../../../lib/api/leadActivity';
+import { toDateOnly } from '../../../lib/dates';
 
 type Outcome = 'Connected' | 'No answer' | 'Not interested' | 'Meeting set';
 const OUTCOMES: Outcome[] = ['Connected', 'No answer', 'Not interested', 'Meeting set'];
 const DATES = ['Tomorrow', 'In 3 days', 'Next week', 'Custom'] as const;
+
+/** Turns a chip into an actual calendar day. */
+function dateFromChoice(choice: (typeof DATES)[number], custom: Date | null): Date | null {
+  if (choice === 'Custom') return custom;
+  const days = choice === 'Tomorrow' ? 1 : choice === 'In 3 days' ? 3 : 7;
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date;
+}
 
 function OutcomeIcon({ outcome, active }: { outcome: Outcome; active: boolean }) {
   const color = active ? '#0B132B' : '#5A6B87';
@@ -38,14 +52,56 @@ function OutcomeIcon({ outcome, active }: { outcome: Outcome; active: boolean })
 }
 
 export default function LogOutcomeModal() {
+  const { leadId } = useLocalSearchParams<{ leadId?: string }>();
+  const leads = useLeadsStore((s) => s.leads);
+  const lead = leads.find((l) => l.id === leadId);
+  const user = useSessionStore((s) => s.user);
+
   const [outcome, setOutcome] = useState<Outcome>('Connected');
-  const [note, setNote] = useState("Confirmed they'll review the quote internally and revert by Friday.");
-  const [date, setDate] = useState<(typeof DATES)[number]>('In 3 days');
+  // Starts from whatever note the lead already carries, not from an invented
+  // sentence about reviewing a quote by Friday.
+  const [note, setNote] = useState(lead?.note ?? '');
+  // Nothing preselected: a chip that is already active writes a follow-up date
+  // the rep never chose, and then the follow-up list is full of dates nobody set.
+  const [date, setDate] = useState<(typeof DATES)[number] | null>(null);
+  const [customDate, setCustomDate] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const save = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+
+    const next = date ? dateFromChoice(date, customDate) : null;
+
+    if (leadId) {
+      useLeadsStore.getState().editLead(leadId, {
+        ...(note.trim() !== (lead?.note ?? '') ? { note } : {}),
+        ...(next ? { followUpDate: toDateOnly(next) } : {}),
+      });
+      void useLeadsStore.getState().syncDrafts(user?.id);
+
+      // History is best-effort. The lead's own fields are what the app reads,
+      // so a lost entry must never cost the rep the outcome they just logged.
+      if (user) {
+        void logLeadActivity({
+          leadId,
+          actorId: user.id,
+          type: 'outcome_logged',
+          outcome: OUTCOME_FROM_LABEL[outcome],
+          metadata: next ? { follow_up_date: toDateOnly(next) } : {},
+        });
+      }
+    }
+
+    router.back();
+  };
 
   return (
     <SheetShell>
       <Typography className="text-[19px] font-bold text-navy">Log outcome</Typography>
-      <Typography className="text-[12.5px] text-slate mt-[5px]">Rajesh Menon &middot; Northline Engineering</Typography>
+      <Typography className="text-[12.5px] text-slate mt-[5px]">
+        {lead ? [lead.name, lead.company].filter(Boolean).join(' · ') : 'This lead'}
+      </Typography>
 
       <View className="gap-[10px] mt-5">
         {OUTCOMES.map((o) => {
@@ -84,7 +140,7 @@ export default function LogOutcomeModal() {
         {DATES.map((d) => (
           <Pressable
             key={d}
-            onPress={() => setDate(d)}
+            onPress={() => setDate(date === d ? null : d)}
             className={`rounded-full px-[14px] py-[9px] ${date === d ? 'bg-navy' : 'bg-surface'}`}
           >
             <Typography className={`text-[12.5px] font-semibold ${date === d ? 'text-white' : 'text-navy'}`}>{d}</Typography>
@@ -92,8 +148,26 @@ export default function LogOutcomeModal() {
         ))}
       </View>
 
-      <Pressable onPress={() => router.back()} className="h-[54px] rounded-md bg-gold items-center justify-center mt-6">
-        <Typography className="text-[16px] font-bold text-navy">Save</Typography>
+      {date === 'Custom' ? (
+        <View className="mt-3">
+          <DateField
+            label="Follow-up date"
+            value={customDate}
+            placeholder="Pick a day"
+            minDate={new Date()}
+            onChange={setCustomDate}
+          />
+        </View>
+      ) : null}
+
+      <Pressable
+        onPress={save}
+        disabled={isSaving}
+        className={`h-[54px] rounded-md bg-gold items-center justify-center mt-6 ${isSaving ? 'opacity-60' : ''}`}
+      >
+        <Typography className="text-[16px] font-bold text-navy">
+          {isSaving ? 'Saving…' : 'Save'}
+        </Typography>
       </Pressable>
     </SheetShell>
   );

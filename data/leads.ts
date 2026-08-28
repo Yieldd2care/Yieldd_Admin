@@ -38,6 +38,11 @@ export type Lead = {
   status: LeadStatus;
   hasVoice: boolean;
   needsNote: boolean;
+  /** Consent to follow up, confirmed verbally at the stall. */
+  consentGiven: boolean;
+  source: 'card_scan' | 'manual';
+  /** ISO. When the rep actually captured it, not when it reached the server. */
+  capturedAt: string;
   phone?: string;
   email?: string;
   designation?: string;
@@ -48,6 +53,13 @@ export type Lead = {
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   imageUri?: string;
+  /** `'2026-03-04'` — the day this lead is due to be chased. */
+  followUpDate?: string;
+  /** Rupees. Set when the lead is marked Won — this is what makes ROI real. */
+  dealValue?: number;
+  dealClosedAt?: string;
+  /** Set once the evening review has been through this lead. */
+  reviewedAt?: string;
   /**
    * The team member this lead belongs to, as a useTeamStore member id.
    * Undefined means the person who captured it — which for now is always the
@@ -55,13 +67,3 @@ export type Lead = {
    */
   assignedToId?: string;
 };
-
-export const LEADS: Lead[] = [
-  { id: '1', initial: 'R', name: 'Rajesh Menon', company: 'Northline Engineering', time: '4:12 PM', status: 'Qualified', hasVoice: true, needsNote: false },
-  { id: '2', initial: 'S', name: 'Sneha Kulkarni', company: 'Vertex Industries', time: '3:40 PM', status: 'New', hasVoice: false, needsNote: true },
-  { id: '3', initial: 'A', name: 'Amit Shah', company: 'Prime Fabtech', time: '3:05 PM', status: 'Contacted', hasVoice: true, needsNote: false },
-  { id: '4', initial: 'K', name: 'Kavita Rao', company: 'Suntech Moulds', time: '2:48 PM', status: 'New', hasVoice: false, needsNote: true },
-  { id: '5', initial: 'V', name: 'Vikram Nair', company: 'Delta Precision', time: '2:20 PM', status: 'Won', hasVoice: true, needsNote: false },
-  { id: '6', initial: 'P', name: 'Priyanka Iyer', company: 'Orbit Castings', time: '1:55 PM', status: 'Qualified', hasVoice: false, needsNote: false },
-  { id: '7', initial: 'D', name: 'Deepak Verma', company: 'Gharda Alloys', time: '1:10 PM', status: 'New', hasVoice: false, needsNote: true },
-];

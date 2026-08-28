@@ -7,11 +7,22 @@ import { Typography } from '../../../components/ui/Typography';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
 import { CheckIcon, EditIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
+import { useCurrentEvent } from '../../../hooks/useEvents';
 
 export default function SaveConfirmationScreen() {
   const { name, isDraft } = useLocalSearchParams<{ name?: string; isDraft?: string }>();
-  const leadCount = useLeadsStore((s) => s.leads.length);
+  const { event } = useCurrentEvent();
+  // Read the raw list and count outside the selector — filtering inside one
+  // returns a fresh array every render and loops.
+  const allLeads = useLeadsStore((s) => s.leads);
   const draftSaved = isDraft === '1';
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const leadCount = allLeads.filter(
+    (l) =>
+      (!event || l.eventId === event.id) && new Date(l.capturedAt).getTime() >= startOfDay.getTime()
+  ).length;
 
   useEffect(() => {
     const t = setTimeout(() => {

@@ -7,6 +7,7 @@ import { Typography } from '../../components/ui/Typography';
 import { Button } from '../../components/ui/Button';
 import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
 import { useSessionStore } from '../../stores/useSessionStore';
+import { useLeadsSync } from '../../hooks/useLeadsSync';
 import { profileNeedsCompletion } from '../../types/session';
 
 /**
@@ -62,6 +63,10 @@ export default function AppLayout() {
   const session = useSessionStore((s) => s.session);
   const isInitializing = useSessionStore((s) => s.isInitializing);
   const pathname = usePathname();
+
+  // Before the guards below, because a hook cannot sit after an early return.
+  // It no-ops until there is a signed-in user.
+  useLeadsSync();
 
   // The root layout already holds the splash until this is false, but a guard
   // that redirects on a not-yet-known session is exactly how a logged-in user

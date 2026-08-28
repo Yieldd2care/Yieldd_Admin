@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -8,20 +8,27 @@ import { TextInput } from '../../../components/ui/TextInput';
 import { Toggle } from '../../../components/ui/Toggle';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CustomFieldInput, isCustomFieldFilled } from '../../../components/app/CustomFieldInput';
+import { NoEventNotice } from '../../../components/app/NoEventNotice';
 import { AlertCircleIcon, ChevronRightIcon, MicIcon, SparkleIcon, TrashIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { useEventFieldsStore } from '../../../stores/useEventFieldsStore';
+import { useSessionStore } from '../../../stores/useSessionStore';
+import { useCurrentEvent } from '../../../hooks/useEvents';
+import { fetchEventFields } from '../../../lib/api/eventFields';
 import type { CustomFieldValue } from '../../../data/leads';
 
 export default function ConfirmLeadScreen() {
-  const [name, setName] = useState('Rajesh Menon');
-  const [designation, setDesignation] = useState('Purchase Head');
-  const [phone, setPhone] = useState('98204 41720');
-  const [email, setEmail] = useState('rajesh@northline.co.in');
+  // Blank, not pre-filled. Card reading is not built yet, and seeding the form
+  // with a plausible-looking stranger is how "Rajesh Menon" ends up saved as a
+  // real lead by a rep moving fast between conversations.
+  const [name, setName] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
 
-  const [company, setCompany] = useState('Northline Engineering');
+  const [company, setCompany] = useState('');
   const [companyLandline, setCompanyLandline] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
@@ -34,21 +41,42 @@ export default function ConfirmLeadScreen() {
   const hasVoice = useCaptureDraftStore((s) => s.hasVoice);
   const imageUri = useCaptureDraftStore((s) => s.imageUri);
   const customFields = useEventFieldsStore((s) => s.customFields);
+  const setFields = useEventFieldsStore((s) => s.setFields);
+
+  const user = useSessionStore((s) => s.user);
+  const { event } = useCurrentEvent();
+  const [isSaving, setIsSaving] = useState(false);
+
+  // The fields on this form belong to this event, and an admin can change them
+  // mid-show — so they are loaded here rather than trusted from whatever the
+  // editor happened to leave behind.
+  useEffect(() => {
+    if (!event?.id) return;
+    let cancelled = false;
+    fetchEventFields(event.id)
+      .then((fields) => {
+        if (!cancelled) setFields(fields);
+      })
+      .catch(() => {
+        /* Offline: the fields already cached on the device are used instead. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [event?.id, setFields]);
 
   const missingRequired = customFields.some((f) => f.required && !isCustomFieldFilled(f, customValues[f.id]));
-  const canSave = name.trim().length > 0 && !missingRequired;
+  const canSave = name.trim().length > 0 && !missingRequired && Boolean(event && user) && !isSaving;
 
   const generateCompanySummary = () => {
-    if (summaryLoading) return;
-    setSummaryLoading(true);
-    setTimeout(() => {
-      setCompanySummary(
-        `${company || 'This company'} looks to operate in the industrial/manufacturing space${
-          companyWebsite ? `, based on ${companyWebsite}` : ''
-        }. AI-generated summary — verify before sharing.`
-      );
-      setSummaryLoading(false);
-    }, 1500);
+    // Deliberately not faked. The old version invented a sentence about a real
+    // company and labelled it "AI-generated" — a rep would have forwarded that
+    // to a customer. It stays switched off until the extraction service is
+    // actually wired up.
+    Alert.alert(
+      'Not switched on yet',
+      'Company summaries need the AI service, which is not connected yet. Type anything you already know instead.'
+    );
   };
 
   return (
@@ -64,6 +92,7 @@ export default function ConfirmLeadScreen() {
       />
 
       <ScrollView contentContainerClassName="px-5 pt-5 pb-6" showsVerticalScrollIndicator={false}>
+        {!event ? <NoEventNotice /> : null}
         <View className="flex-row items-center gap-3 mb-[18px]">
           <View className="w-16 h-11 rounded-lg bg-navy overflow-hidden relative">
             {imageUri ? (
@@ -216,7 +245,14 @@ export default function ConfirmLeadScreen() {
         <Pressable
           disabled={!canSave}
           onPress={async () => {
+            if (!event || !user) return;
+            setIsSaving(true);
             const lead = await useLeadsStore.getState().addLead({
+              organizationId: user.organizationId,
+              eventId: event.id,
+              capturedBy: user.id,
+              source: 'card_scan',
+              consentGiven: consent,
               name,
               company,
               phone,

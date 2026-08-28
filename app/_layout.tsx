@@ -56,8 +56,8 @@ export default function RootLayout() {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
 
-  // Connectivity: drives react-query's online state on native, and still
-  // flushes the mock draft queue until Phase 2's real outbox replaces it.
+  // Connectivity: drives react-query's online state on native, and drains the
+  // lead outbox the moment a connection comes back.
   useEffect(() => {
     let wasOffline = false;
 
@@ -76,7 +76,11 @@ export default function RootLayout() {
           wasOffline = true;
         } else if (wasOffline) {
           wasOffline = false;
-          useLeadsStore.getState().syncDrafts();
+          const userId = useSessionStore.getState().user?.id;
+          if (userId) {
+            await useLeadsStore.getState().syncDrafts(userId);
+            await useLeadsStore.getState().refresh();
+          }
         }
       } catch {
         // ignore transient check failures

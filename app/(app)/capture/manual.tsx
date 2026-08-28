@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, TextInput as RNTextInput, View, type TextInputProps } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, TextInput as RNTextInput, View, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -7,10 +7,14 @@ import { Typography } from '../../../components/ui/Typography';
 import { Toggle } from '../../../components/ui/Toggle';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CustomFieldInput, isCustomFieldFilled } from '../../../components/app/CustomFieldInput';
+import { NoEventNotice } from '../../../components/app/NoEventNotice';
 import { ChevronRightIcon, MicIcon, SparkleIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { useEventFieldsStore } from '../../../stores/useEventFieldsStore';
+import { useSessionStore } from '../../../stores/useSessionStore';
+import { useCurrentEvent } from '../../../hooks/useEvents';
+import { fetchEventFields } from '../../../lib/api/eventFields';
 import type { CustomFieldValue } from '../../../data/leads';
 
 function BigField({ label, ...rest }: { label: string } & TextInputProps) {
@@ -56,21 +60,42 @@ export default function ManualEntryScreen() {
 
   const hasVoice = useCaptureDraftStore((s) => s.hasVoice);
   const customFields = useEventFieldsStore((s) => s.customFields);
+  const setFields = useEventFieldsStore((s) => s.setFields);
+
+  const user = useSessionStore((s) => s.user);
+  const { event } = useCurrentEvent();
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!event?.id) return;
+    let cancelled = false;
+    fetchEventFields(event.id)
+      .then((fields) => {
+        if (!cancelled) setFields(fields);
+      })
+      .catch(() => {
+        /* Offline: whatever is cached on the device is used instead. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [event?.id, setFields]);
 
   const missingRequired = customFields.some((f) => f.required && !isCustomFieldFilled(f, customValues[f.id]));
-  const canSave = name.trim().length > 0 && phone.trim().length > 0 && !missingRequired;
+  const canSave =
+    name.trim().length > 0 &&
+    phone.trim().length > 0 &&
+    !missingRequired &&
+    Boolean(event && user) &&
+    !isSaving;
 
   const generateCompanySummary = () => {
-    if (summaryLoading) return;
-    setSummaryLoading(true);
-    setTimeout(() => {
-      setCompanySummary(
-        `${company || 'This company'} looks to operate in the industrial/manufacturing space${
-          companyWebsite ? `, based on ${companyWebsite}` : ''
-        }. AI-generated summary — verify before sharing.`
-      );
-      setSummaryLoading(false);
-    }, 1500);
+    // Not faked. See the same note on the confirm screen — a made-up sentence
+    // about a real company, labelled as AI, is something a rep would forward on.
+    Alert.alert(
+      'Not switched on yet',
+      'Company summaries need the AI service, which is not connected yet. Type anything you already know instead.'
+    );
   };
 
   return (
@@ -78,6 +103,7 @@ export default function ManualEntryScreen() {
       <ScreenHeader title="Manual entry" />
 
       <ScrollView contentContainerClassName="px-5 pt-[26px] pb-6" showsVerticalScrollIndicator={false}>
+        {!event ? <NoEventNotice /> : null}
         <Typography className="text-[13.5px] text-slate mb-6">
           No card, no problem. Just a name and number saves the lead.
         </Typography>
@@ -204,7 +230,14 @@ export default function ManualEntryScreen() {
         <Pressable
           disabled={!canSave}
           onPress={async () => {
+            if (!event || !user) return;
+            setIsSaving(true);
             const lead = await useLeadsStore.getState().addLead({
+              organizationId: user.organizationId,
+              eventId: event.id,
+              capturedBy: user.id,
+              source: 'manual',
+              consentGiven: consent,
               name,
               phone,
               company,
