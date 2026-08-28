@@ -8,7 +8,7 @@ import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CheckIcon, ClockIcon, ContactsIcon, EditIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { STATUS_CLASSES, STATUS_TEXT } from '../../../data/leads';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
-import { useTeamStore } from '../../../stores/useTeamStore';
+import { useTeam } from '../../../hooks/useTeam';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useEvent } from '../../../hooks/useEvents';
 import { fetchEventFields } from '../../../lib/api/eventFields';
@@ -35,7 +35,7 @@ export default function LeadDetailScreen() {
   const leads = useLeadsStore((s) => s.leads);
   const lead = leads.find((l) => l.id === id);
 
-  const members = useTeamStore((s) => s.members);
+  const { data: members } = useTeam();
   const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
   const { data: event } = useEvent(lead?.eventId || undefined);
 
@@ -82,7 +82,7 @@ export default function LeadDetailScreen() {
 
   // An unassigned lead belongs to whoever captured it, which today is always
   // the signed-in user.
-  const assignee = lead.assignedToId ? members.find((m) => m.id === lead.assignedToId) : undefined;
+  const assignee = lead.assignedToId ? members?.find((m) => m.id === lead.assignedToId) : undefined;
   const assignedLabel = !assignee || assignee.isSelf ? 'Assigned to you' : `Assigned to ${assignee.name}`;
 
   const followUp = followUpLabel(lead.followUpDate);

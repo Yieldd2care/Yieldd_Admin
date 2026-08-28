@@ -6,7 +6,7 @@ import { Typography } from '../../../components/ui/Typography';
 import { SheetShell } from '../../../components/app/SheetShell';
 import { AlertCircleIcon, CheckIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
-import { useTeamStore } from '../../../stores/useTeamStore';
+import { useTeam } from '../../../hooks/useTeam';
 
 /**
  * Hand a lead to someone else on the team (PENDING.md #6).
@@ -20,13 +20,13 @@ export default function ReassignModal() {
 
   const leads = useLeadsStore((s) => s.leads);
   const reassignLead = useLeadsStore((s) => s.reassignLead);
-  const members = useTeamStore((s) => s.members);
+  const { data: members } = useTeam();
 
   const lead = leads.find((l) => l.id === leadId);
 
   // Deactivated members are deliberately excluded: their access is gone, so a
   // lead parked on their name would be nobody's.
-  const assignable = members.filter((m) => m.status === 'active');
+  const assignable = (members ?? []).filter((m) => m.status === 'active');
 
   const currentId = lead?.assignedToId ?? assignable.find((m) => m.isSelf)?.id ?? null;
   const [selected, setSelected] = useState<string | null>(currentId);

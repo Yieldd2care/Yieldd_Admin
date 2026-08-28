@@ -9,7 +9,7 @@ import { Toggle } from '../../../components/ui/Toggle';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useTemplatesStore } from '../../../stores/useTemplatesStore';
 import { useCompanyStore } from '../../../stores/useCompanyStore';
-import { useTeamStore } from '../../../stores/useTeamStore';
+import { useTeam } from '../../../hooks/useTeam';
 import {
   ChevronRightIcon,
   DownloadIcon,
@@ -56,7 +56,8 @@ export default function ProfileScreen() {
   const whatsappTemplateCount = useTemplatesStore((s) => s.whatsappTemplates.length);
   const emailTemplateCount = useTemplatesStore((s) => s.emailTemplates.length);
   const companyCategory = useCompanyStore((s) => s.selectedCategory);
-  const activeMemberCount = useTeamStore((s) => s.members.filter((m) => m.status === 'active').length);
+  const { data: teamMembers } = useTeam();
+  const activeMemberCount = teamMembers?.filter((m) => m.status === 'active').length ?? 0;
 
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const checkForUpdate = () => {

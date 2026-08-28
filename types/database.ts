@@ -1059,11 +1059,45 @@ export type Database = {
       active_event_count: { Args: never; Returns: number }
       can_use_ai: { Args: never; Returns: boolean }
       current_organization_id: { Args: never; Returns: string }
+      event_hourly_capture: {
+        Args: { p_day?: string; p_event_id: string }
+        Returns: {
+          hour_of_day: number
+          lead_count: number
+        }[]
+      }
+      event_leaderboard: {
+        Args: { p_event_id: string }
+        Returns: {
+          deals_won: number
+          full_name: string
+          lead_count: number
+          profile_id: string
+        }[]
+      }
       event_leaderboard_visible: {
         Args: { p_event_id: string }
         Returns: boolean
       }
       event_organization_id: { Args: { p_event_id: string }; Returns: string }
+      event_stats: {
+        Args: { p_event_id: string }
+        Returns: {
+          consent_given: number
+          count_contacted: number
+          count_lost: number
+          count_new: number
+          count_qualified: number
+          count_won: number
+          deals_won: number
+          leads_today: number
+          needs_note: number
+          spend_paisa: number
+          total_leads: number
+          with_voice_note: number
+          won_value_paisa: number
+        }[]
+      }
       find_duplicate_lead: {
         Args: { p_event_id: string; p_phone: string }
         Returns: {

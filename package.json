@@ -58,7 +58,9 @@
     "db:push": "supabase db push --linked",
     "db:lint": "supabase db lint --linked --fail-on error",
     "db:types": "supabase gen types typescript --linked --schema public > types/database.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:roi": "node scripts/verify-roi.mjs",
+    "verify:stats": "node --env-file=.env scripts/verify-stats.mjs"
   },
   "private": true
 }

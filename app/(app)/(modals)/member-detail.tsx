@@ -4,18 +4,20 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../../../components/ui/Typography';
 import { SheetShell } from '../../../components/app/SheetShell';
 import { MailIcon, PhoneIcon } from '../../../components/ui/icons';
-import { useTeamStore } from '../../../stores/useTeamStore';
+import { usePendingInvites, useRevokeInvite, useSetMemberStatus, useTeam } from '../../../hooks/useTeam';
+import { useSessionStore } from '../../../stores/useSessionStore';
 
 export default function MemberDetailModal() {
   const { id, kind } = useLocalSearchParams<{ id?: string; kind?: 'member' | 'invite' }>();
 
-  const members = useTeamStore((s) => s.members);
-  const pendingInvites = useTeamStore((s) => s.pendingInvites);
-  const revokeAccess = useTeamStore((s) => s.revokeAccess);
-  const revokeInvite = useTeamStore((s) => s.revokeInvite);
+  const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
+  const { data: members } = useTeam();
+  const { data: pendingInvites } = usePendingInvites();
+  const setMemberStatus = useSetMemberStatus();
+  const revokeInviteMutation = useRevokeInvite();
 
-  const member = kind === 'member' ? members.find((m) => m.id === id) : undefined;
-  const invite = kind === 'invite' ? pendingInvites.find((i) => i.id === id) : undefined;
+  const member = kind === 'member' ? members?.find((m) => m.id === id) : undefined;
+  const invite = kind === 'invite' ? pendingInvites?.find((i) => i.id === id) : undefined;
 
   if (!member && !invite) {
     return (
@@ -34,18 +36,33 @@ export default function MemberDetailModal() {
   const email = member?.email;
   const badgeLabel = member ? (member.badge === 'admin' ? 'Admin' : 'Rep') : 'Pending invite';
 
+  const changeStatus = (status: 'active' | 'deactivated') => {
+    if (!member) return;
+    setMemberStatus.mutate(
+      { id: member.id, status },
+      {
+        onSuccess: () => router.back(),
+        onError: (e) => Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.'),
+      }
+    );
+  };
+
   const confirmRevokeAccess = () => {
     if (!member) return;
-    Alert.alert('Revoke access', `${member.name} will lose access to this event. Their captured leads are kept.`, [
+    // Deactivating closes every door at once — `current_organization_id()` and
+    // `is_admin()` both require an active profile — while leaving every lead
+    // they captured exactly where it is. That is the promise this text makes.
+    Alert.alert('Revoke access', `${member.name} will lose access. Their captured leads are kept.`, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Revoke access',
-        style: 'destructive',
-        onPress: () => {
-          revokeAccess(member.id);
-          router.back();
-        },
-      },
+      { text: 'Revoke access', style: 'destructive', onPress: () => changeStatus('deactivated') },
+    ]);
+  };
+
+  const confirmRestoreAccess = () => {
+    if (!member) return;
+    Alert.alert('Restore access', `${member.name} will be able to sign in and capture again.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Restore access', onPress: () => changeStatus('active') },
     ]);
   };
 
@@ -56,10 +73,12 @@ export default function MemberDetailModal() {
       {
         text: 'Revoke invite',
         style: 'destructive',
-        onPress: () => {
-          revokeInvite(invite.id);
-          router.back();
-        },
+        onPress: () =>
+          revokeInviteMutation.mutate(invite.id, {
+            onSuccess: () => router.back(),
+            onError: (e) =>
+              Alert.alert('Could not revoke', e instanceof Error ? e.message : 'Try again.'),
+          }),
       },
     ]);
   };
@@ -106,6 +125,14 @@ export default function MemberDetailModal() {
         ) : null}
       </View>
 
+      {member?.leadCount != null ? (
+        <View className="bg-surface rounded-md px-[14px] py-3 mt-5">
+          <Typography className="text-[12.5px] font-semibold text-navy">
+            {member.leadCount} lead{member.leadCount === 1 ? '' : 's'} captured
+          </Typography>
+        </View>
+      ) : null}
+
       {member?.status === 'deactivated' ? (
         <View className="flex-row items-center gap-2 bg-surface rounded-md px-[14px] py-3 mt-5">
           <Typography className="text-[12px] font-medium text-slate flex-1">
@@ -114,21 +141,43 @@ export default function MemberDetailModal() {
         </View>
       ) : null}
 
-      {member && member.status === 'active' && !member.isSelf ? (
+      {/* Only an admin can change someone's status, and never their own — the
+          profile guard trigger refuses both, so offering the button would only
+          produce an error. */}
+      {isAdmin && member && member.status === 'active' && !member.isSelf ? (
         <Pressable
           onPress={confirmRevokeAccess}
-          className="h-[52px] rounded-md border border-[#C23B3B]/[0.35] bg-[#C23B3B]/[0.06] items-center justify-center mt-5"
+          disabled={setMemberStatus.isPending}
+          className={`h-[52px] rounded-md border border-[#C23B3B]/[0.35] bg-[#C23B3B]/[0.06] items-center justify-center mt-5 ${setMemberStatus.isPending ? 'opacity-60' : ''}`}
         >
-          <Typography className="text-[14.5px] font-bold text-[#C23B3B]">Revoke access</Typography>
+          <Typography className="text-[14.5px] font-bold text-[#C23B3B]">
+            {setMemberStatus.isPending ? 'Saving…' : 'Revoke access'}
+          </Typography>
         </Pressable>
       ) : null}
 
-      {invite ? (
+      {/* Revoking used to be one-way, which made an accidental tap permanent. */}
+      {isAdmin && member && member.status === 'deactivated' && !member.isSelf ? (
+        <Pressable
+          onPress={confirmRestoreAccess}
+          disabled={setMemberStatus.isPending}
+          className={`h-[52px] rounded-md bg-gold items-center justify-center mt-5 ${setMemberStatus.isPending ? 'opacity-60' : ''}`}
+        >
+          <Typography className="text-[14.5px] font-bold text-navy">
+            {setMemberStatus.isPending ? 'Saving…' : 'Restore access'}
+          </Typography>
+        </Pressable>
+      ) : null}
+
+      {isAdmin && invite ? (
         <Pressable
           onPress={confirmRevokeInvite}
-          className="h-[52px] rounded-md border border-[#C23B3B]/[0.35] bg-[#C23B3B]/[0.06] items-center justify-center mt-5"
+          disabled={revokeInviteMutation.isPending}
+          className={`h-[52px] rounded-md border border-[#C23B3B]/[0.35] bg-[#C23B3B]/[0.06] items-center justify-center mt-5 ${revokeInviteMutation.isPending ? 'opacity-60' : ''}`}
         >
-          <Typography className="text-[14.5px] font-bold text-[#C23B3B]">Revoke invite</Typography>
+          <Typography className="text-[14.5px] font-bold text-[#C23B3B]">
+            {revokeInviteMutation.isPending ? 'Revoking…' : 'Revoke invite'}
+          </Typography>
         </Pressable>
       ) : null}
 
