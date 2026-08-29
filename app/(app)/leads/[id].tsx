@@ -12,6 +12,8 @@ import { useTeam } from '../../../hooks/useTeam';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useEvent } from '../../../hooks/useEvents';
 import { fetchEventFields } from '../../../lib/api/eventFields';
+import { fetchVoiceNotes, type VoiceNote } from '../../../lib/api/voiceNotes';
+import { VoiceNoteCard } from '../../../components/app/VoiceNoteCard';
 import type { CustomFieldDef } from '../../../stores/useEventFieldsStore';
 import { formatDateRange } from '../../../lib/dates';
 
@@ -43,6 +45,7 @@ export default function LeadDetailScreen() {
   // `custom_field_values` is keyed by field id, so without the definitions the
   // values are just a list of UUIDs.
   const [fieldDefs, setFieldDefs] = useState<CustomFieldDef[]>([]);
+  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
   useEffect(() => {
     if (!lead?.eventId) return;
     let cancelled = false;
@@ -57,6 +60,40 @@ export default function LeadDetailScreen() {
       cancelled = true;
     };
   }, [lead?.eventId]);
+
+  /**
+   * The recordings on this lead.
+   *
+   * Re-checked every few seconds only while one is still being transcribed —
+   * the job takes a handful of seconds and there is nothing to push the result
+   * to the device, so the screen looks again until it settles. Once every note
+   * is finished the polling stops, rather than running for as long as the
+   * screen is open.
+   */
+  const leadId = lead?.id;
+  const [voicePoll, setVoicePoll] = useState(0);
+  useEffect(() => {
+    if (!leadId) return;
+    let cancelled = false;
+    fetchVoiceNotes(leadId)
+      .then((notes) => {
+        if (cancelled) return;
+        setVoiceNotes(notes);
+        const settling = notes.some(
+          (n) => n.status === 'pending' || n.status === 'processing'
+        );
+        if (settling) {
+          const timer = setTimeout(() => setVoicePoll((n) => n + 1), 4000);
+          return () => clearTimeout(timer);
+        }
+      })
+      .catch(() => {
+        /* Offline: the rest of the lead still renders. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [leadId, voicePoll]);
 
   // A lead can genuinely be missing now — a stale link, or one deleted on
   // another device. Falling back to `leads[0]` showed a different person's
@@ -153,21 +190,35 @@ export default function LeadDetailScreen() {
           />
         </View>
 
-        {/*
-          The transcript and its summary come from the transcription service,
-          which is not connected yet. The old version rendered a fixed waveform
-          and an invented sentence about evaluating vendors on every single
-          lead — a rep would have quoted it back to the customer.
-        */}
-        {lead.hasVoice ? (
+        {voiceNotes.map((note) => (
+          <VoiceNoteCard key={note.id} note={note} />
+        ))}
+
+        {/* Recorded but not yet sent — the lead reached the server before the
+            audio did, which is the normal order when a capture happens offline. */}
+        {lead.localVoiceUri && !voiceNotes.length ? (
           <View className="bg-white border border-hairline rounded-2xl p-4 mt-[18px]">
             <View className="flex-row items-center gap-2">
               <MicIcon size={14} color="#0B132B" strokeWidth={2} />
               <Typography className="text-[12.5px] font-bold text-navy">Voice note</Typography>
             </View>
             <Typography className="text-[12.5px] text-slate mt-2 leading-[1.5]">
-              Recorded at the stall. Playback and the written summary arrive with the
-              transcription service.
+              Recorded on this device. It uploads, and gets its transcript, once you are back
+              online.
+            </Typography>
+          </View>
+        ) : null}
+
+        {lead.voiceError ? (
+          <View className="bg-white border border-hairline rounded-2xl p-4 mt-[18px]">
+            <View className="flex-row items-center gap-2">
+              <MicIcon size={14} color="#8A98B0" strokeWidth={2} />
+              <Typography className="text-[12.5px] font-bold text-navy">
+                Voice note not attached
+              </Typography>
+            </View>
+            <Typography className="text-[12.5px] text-slate mt-2 leading-[1.5]">
+              {lead.voiceError}
             </Typography>
           </View>
         ) : null}

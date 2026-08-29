@@ -24,9 +24,25 @@ export function cardImagePath(organizationId: string, leadId: string): string {
   return `${organizationId}/${leadId}.jpg`;
 }
 
-/** `{organization_id}/{voice_note_id}.m4a` */
-export function voiceNotePath(organizationId: string, voiceNoteId: string): string {
-  return `${organizationId}/${voiceNoteId}.m4a`;
+/**
+ * `{organization_id}/{voice_note_id}.m4a`
+ *
+ * The extension follows the actual recording — a phone produces m4a, a browser
+ * produces webm — because the policy matches the key stored on the row, and a
+ * file whose name lies about its contents is a problem for whatever plays it.
+ */
+export function voiceNotePath(
+  organizationId: string,
+  voiceNoteId: string,
+  extension = '.m4a'
+): string {
+  const ext = extension.startsWith('.') ? extension : `.${extension}`;
+  return `${organizationId}/${voiceNoteId}${ext}`;
+}
+
+/** m4a on a phone, webm in a browser — both are on the bucket's allow list. */
+export function audioContentType(extension = '.m4a'): string {
+  return extension.includes('webm') ? 'audio/webm' : 'audio/m4a';
 }
 
 export type UploadOutcome =
@@ -83,9 +99,15 @@ export async function uploadCardImage(
 export async function uploadVoiceNote(
   organizationId: string,
   voiceNoteId: string,
-  uri: string
+  uri: string,
+  extension = '.m4a'
 ): Promise<UploadOutcome> {
-  return upload(VOICE_NOTES_BUCKET, voiceNotePath(organizationId, voiceNoteId), uri, 'audio/m4a');
+  return upload(
+    VOICE_NOTES_BUCKET,
+    voiceNotePath(organizationId, voiceNoteId, extension),
+    uri,
+    audioContentType(extension)
+  );
 }
 
 /**

@@ -21,7 +21,7 @@ Everything needed to take the app from "database exists, auth screens look right
 **Screens with real UI today:** all 60 route files exist with final design.
 **Screens reading or writing the real database:** events (list, wizard, dashboard, ROI, custom fields), capture (confirm, manual, saved, drafts), leads (list, detail, status, deal value), follow-ups, log outcome, team, member detail, reassign, export picker, home.
 
-**Still on mock or placeholder data:** bulk send, send queue, evening review, the digital card screens, the hosted public card page, notifications, and payment. **Voice notes are not built** — recording, upload, transcript and summary. The AI company summary is not built either; both keys are already on the project.
+**Still on mock or placeholder data:** bulk send, send queue, evening review, the digital card screens, the hosted public card page, notifications, and payment. The AI company summary on the capture screens is still not built, though the key is on the project.
 
 ### What was built on 2026-08-28
 
@@ -37,6 +37,7 @@ npm run verify:roi            # 31 arithmetic checks on lib/roi.ts
 npm run verify:stats          # 32 checks against the live database, cleans up after itself
 npm run verify:card           # card reading + the storage upload rules, end to end
 npm run compare:card-models   # accuracy/latency/tokens per model, to justify the choice
+npm run verify:voice          # recording -> upload -> transcript -> summary, plus the free-plan cap
 ```
 
 ### Dependency order, plainly
@@ -151,7 +152,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Uploading a real business card photo populates the lead's fields within a few seconds without the rep waiting on the capture screen for it.
 
 #### 2.4 — Voice transcription + summary pipeline (Edge Function)
-- **Status:** Not Started
+- **Status:** **Complete** (2026-08-29) — `supabase/functions/transcribe-voice-note`. Deepgram `nova-3` with `language=multi` (reps switch between English and Hindi mid-sentence; on clean English it transcribed identically to `en-IN`), then Haiku 4.5 for the summary — a plain text task with none of the misread-a-digit risk that made card extraction pick Sonnet. Uses the caller's token to let RLS answer "may this person touch this note?", and the service role only to read the private audio and write the result.
 - **Files:** new `supabase/functions/transcribe-voice-note/index.ts`
 - **Description:** Triggered after a voice note uploads. Deepgram (`DEEPGRAM_API_KEY`) for transcript, then an LLM call for the summary. Writes `transcript`/`summary`/`transcribed_at`, flips `transcription_status`. Per MVP_PLAN's flagged risk: *"judge success on whether the summary is useful, not whether the transcript is word-perfect."*
 - **Acceptance criteria:** A recorded voice note shows a transcript and summary in the lead detail screen (Phase 3, F2) after sync, without the rep having to do anything.
@@ -225,7 +226,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Name + phone save in under 15 seconds of interaction — no required fields beyond those two.
 
 #### 2.16 — Voice note recording (E6)
-- **Status:** Not Started
+- **Status:** **Complete** (2026-08-29) — real recording with expo-audio, a live level meter rather than a fixed waveform, playback, re-record and discard. `can_use_ai()` is checked on entry so a Free org meets the three-note limit before speaking into the phone rather than after.
 - **Files:** new `app/(app)/capture/voice.tsx`
 - **Table:** `voice_notes` (insert)
 - **Description:** On a Free org past 3 voice notes, the RLS `can_use_ai()` check rejects the insert — catch that specific failure and show the voice-lock upsell (Phase 5, 5.5) instead of a generic error.

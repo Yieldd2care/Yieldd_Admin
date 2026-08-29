@@ -40,6 +40,9 @@ export default function ConfirmLeadScreen() {
   const [customValues, setCustomValues] = useState<Record<string, CustomFieldValue>>({});
 
   const hasVoice = useCaptureDraftStore((s) => s.hasVoice);
+  const voiceUri = useCaptureDraftStore((s) => s.voiceUri);
+  const voiceDurationSeconds = useCaptureDraftStore((s) => s.voiceDurationSeconds);
+  const voiceExtension = useCaptureDraftStore((s) => s.voiceExtension);
   const imageUri = useCaptureDraftStore((s) => s.imageUri);
   const customFields = useEventFieldsStore((s) => s.customFields);
   const setFields = useEventFieldsStore((s) => s.setFields);
@@ -370,6 +373,9 @@ export default function ConfirmLeadScreen() {
               companyAddress,
               companySummary,
               hasVoice,
+              voiceUri: voiceUri ?? undefined,
+              voiceDurationSeconds,
+              voiceExtension,
               customFieldValues: customValues,
               imageUri: imageUri ?? undefined,
             });

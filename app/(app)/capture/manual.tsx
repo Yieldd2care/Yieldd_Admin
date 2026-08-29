@@ -59,6 +59,9 @@ export default function ManualEntryScreen() {
   const [customValues, setCustomValues] = useState<Record<string, CustomFieldValue>>({});
 
   const hasVoice = useCaptureDraftStore((s) => s.hasVoice);
+  const voiceUri = useCaptureDraftStore((s) => s.voiceUri);
+  const voiceDurationSeconds = useCaptureDraftStore((s) => s.voiceDurationSeconds);
+  const voiceExtension = useCaptureDraftStore((s) => s.voiceExtension);
   const customFields = useEventFieldsStore((s) => s.customFields);
   const setFields = useEventFieldsStore((s) => s.setFields);
 
@@ -249,6 +252,9 @@ export default function ManualEntryScreen() {
               companyAddress,
               companySummary,
               hasVoice,
+              voiceUri: voiceUri ?? undefined,
+              voiceDurationSeconds,
+              voiceExtension,
               customFieldValues: customValues,
             });
             useCaptureDraftStore.getState().reset();

@@ -64,7 +64,8 @@
     "verify:roi": "node scripts/verify-roi.mjs",
     "verify:stats": "node --env-file=.env scripts/verify-stats.mjs",
     "verify:card": "node --env-file=.env scripts/verify-card-scan.mjs",
-    "compare:card-models": "node --env-file=.env scripts/compare-card-models.mjs"
+    "compare:card-models": "node --env-file=.env scripts/compare-card-models.mjs",
+    "verify:voice": "node --env-file=.env scripts/verify-voice-note.mjs"
   },
   "private": true
 }

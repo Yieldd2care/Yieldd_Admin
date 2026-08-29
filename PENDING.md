@@ -70,8 +70,10 @@ rather than quietly inventing something:
   the `extract-card` Edge Function (Claude Sonnet 5, chosen on measurements —
   see `npm run compare:card-models`) and fills the confirm screen. The photo
   itself uploads to the `card-images` bucket after the lead saves.
-- **Voice notes** — recording, playback, transcript and summary. A lead marked
-  as having a voice note says the transcription service is not connected.
+- ~~Voice notes~~ — **built 2026-08-29.** Real recording (2 min cap, mono 64 kbps
+  for speech), upload, transcript via Deepgram nova-3 with `language=multi` for
+  Hinglish, and a short summary. The Free plan's three-note limit is checked
+  BEFORE recording, so nobody loses a recording to an upsell.
 - **Company summary (AI)** — the button says it is not switched on. It used to
   invent a sentence about a real company and label it AI-generated. The key is
   available; this is simply not built yet.

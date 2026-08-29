@@ -12,6 +12,7 @@ import {
 } from '../lib/api/leads';
 import { captureTimeLabel, initialOf } from '../lib/mappers/lead';
 import { cardImagePath, uploadCardImage } from '../lib/api/storage';
+import { attachVoiceNote, requestTranscription } from '../lib/api/voiceNotes';
 
 /**
  * Leads on this device.
@@ -49,6 +50,15 @@ export type StoredLead = Lead & {
    * Separate from `imageUri`, which also holds the object key once it has.
    */
   localImageUri?: string;
+  /**
+   * A recording on this device that has not been attached yet. Cleared once the
+   * `voice_notes` row and its audio are both on the server.
+   */
+  localVoiceUri?: string;
+  voiceDurationSeconds?: number;
+  voiceExtension?: string;
+  /** Set when the recording could not be attached — usually the Free plan cap. */
+  voiceError?: string;
   /** Edits made since the last successful push. Final values, not a diff log. */
   pendingPatch?: LeadPatch;
   /**
@@ -76,6 +86,9 @@ export type NewLeadInput = {
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   imageUri?: string;
+  voiceUri?: string;
+  voiceDurationSeconds?: number;
+  voiceExtension?: string;
   consentGiven?: boolean;
   source?: 'card_scan' | 'manual';
 };
@@ -146,7 +159,10 @@ export const useLeadsStore = create<LeadsState>()(
             // would silently undo what the rep just typed.
             const unsynced = new Map(
               state.leads
-                .filter((l) => l.syncStatus === 'draft' || l.pendingPatch || l.localImageUri)
+                .filter(
+                  (l) =>
+                    l.syncStatus === 'draft' || l.pendingPatch || l.localImageUri || l.localVoiceUri
+                )
                 .map((l) => [l.id, l])
             );
 
@@ -159,6 +175,10 @@ export const useLeadsStore = create<LeadsState>()(
                 capturedBy: local?.capturedBy ?? '',
                 organizationId: local?.organizationId ?? '',
                 localImageUri: local?.localImageUri,
+                localVoiceUri: local?.localVoiceUri,
+                voiceDurationSeconds: local?.voiceDurationSeconds,
+                voiceExtension: local?.voiceExtension,
+                voiceError: local?.voiceError,
               };
               if (!local?.pendingPatch) return base;
               return applyPatch({ ...base, pendingPatch: local.pendingPatch }, local.pendingPatch);
@@ -193,7 +213,10 @@ export const useLeadsStore = create<LeadsState>()(
           company: input.company ?? '',
           time: captureTimeLabel(capturedAt),
           status: 'New',
-          hasVoice: input.hasVoice ?? false,
+          // Derived from whether a recording is actually here. A lead that
+          // claims a voice note it does not have shows a microphone icon that
+          // leads nowhere.
+          hasVoice: Boolean(input.voiceUri) || (input.hasVoice ?? false),
           needsNote: !input.note?.trim(),
           phone: input.phone,
           email: input.email,
@@ -206,6 +229,9 @@ export const useLeadsStore = create<LeadsState>()(
           customFieldValues: input.customFieldValues,
           imageUri: input.imageUri,
           localImageUri: input.imageUri,
+          localVoiceUri: input.voiceUri,
+          voiceDurationSeconds: input.voiceDurationSeconds,
+          voiceExtension: input.voiceExtension,
           syncStatus: 'draft',
           eventId: input.eventId,
           capturedBy: input.capturedBy,
@@ -320,6 +346,43 @@ export const useLeadsStore = create<LeadsState>()(
                 set((state) => ({
                   leads: state.leads.map((l) =>
                     l.id === lead.id ? { ...l, localImageUri: undefined } : l
+                  ),
+                }));
+              }
+            }
+
+            // The recording, on the same rule as the photo: the voice_notes row
+            // carries the object key, so it has to exist before storage will
+            // take the audio. Transcription is asked for afterwards and is
+            // fire-and-forget — the rep has already walked away.
+            const withVoice = get().leads.find((l) => l.id === lead.id);
+            if (withVoice?.localVoiceUri && withVoice.syncStatus === 'synced' && !withVoice.voiceError) {
+              const outcome = await attachVoiceNote({
+                leadId: withVoice.id,
+                organizationId: withVoice.organizationId,
+                recordedBy: withVoice.capturedBy,
+                uri: withVoice.localVoiceUri,
+                durationSeconds: withVoice.voiceDurationSeconds ?? 1,
+                extension: withVoice.voiceExtension,
+              });
+
+              if (outcome.ok) {
+                void requestTranscription(outcome.voiceNote.id);
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id ? { ...l, localVoiceUri: undefined, hasVoice: true } : l
+                  ),
+                }));
+              } else if (outcome.reason === 'limit' || outcome.reason === 'file') {
+                // No amount of retrying gets past a plan limit or a file the
+                // OS has cleared. The lead keeps everything else, and the
+                // microphone icon comes off so it does not promise audio that
+                // is not there.
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id
+                      ? { ...l, localVoiceUri: undefined, hasVoice: false, voiceError: outcome.message }
+                      : l
                   ),
                 }));
               }
