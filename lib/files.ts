@@ -51,3 +51,32 @@ export async function fileSize(uri: string): Promise<number | null> {
     return null;
   }
 }
+
+/**
+ * base64 → bytes, without assuming a global `atob`.
+ *
+ * Hermes and the web both happen to provide one today, but this runs on the
+ * path that saves a QR image to someone's photos and a silent absence there
+ * would look like the save simply not working. Twelve lines is cheaper than
+ * finding that out from a customer.
+ */
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+export function base64ToBytes(input: string): Uint8Array {
+  const clean = input.replace(/[^A-Za-z0-9+/]/g, '');
+  const bytes = new Uint8Array((clean.length * 3) >> 2);
+
+  let buffer = 0;
+  let bits = 0;
+  let out = 0;
+
+  for (let i = 0; i < clean.length; i++) {
+    buffer = (buffer << 6) | B64.indexOf(clean[i]);
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes[out++] = (buffer >> bits) & 0xff;
+    }
+  }
+  return bytes.subarray(0, out);
+}

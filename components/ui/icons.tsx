@@ -369,6 +369,15 @@ export function GlobeIcon({ size = 16, color = '#0B132B', strokeWidth = 1.75 }: 
   );
 }
 
+export function MapPinIcon({ size = 16, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z" />
+      <Circle cx="12" cy="10" r="3" />
+    </Svg>
+  );
+}
+
 export function TagIcon({ size = 15, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">

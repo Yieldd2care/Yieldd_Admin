@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -1057,6 +1057,10 @@ export type Database = {
     }
     Functions: {
       active_event_count: { Args: never; Returns: number }
+      business_card_slug_available: {
+        Args: { p_slug: string }
+        Returns: boolean
+      }
       can_use_ai: { Args: never; Returns: boolean }
       current_organization_id: { Args: never; Returns: string }
       event_hourly_capture: {
@@ -1128,6 +1132,7 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: undefined
       }
+      suggest_card_slug: { Args: { p_base: string }; Returns: string }
     }
     Enums: {
       activity_type:
