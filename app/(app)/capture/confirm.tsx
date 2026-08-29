@@ -17,6 +17,7 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCurrentEvent } from '../../../hooks/useEvents';
 import { fetchEventFields } from '../../../lib/api/eventFields';
 import { scanCard } from '../../../lib/api/cardScan';
+import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldValue } from '../../../data/leads';
 
 export default function ConfirmLeadScreen() {
@@ -142,15 +143,39 @@ export default function ConfirmLeadScreen() {
   const missingRequired = customFields.some((f) => f.required && !isCustomFieldFilled(f, customValues[f.id]));
   const canSave = name.trim().length > 0 && !missingRequired && Boolean(event && user) && !isSaving;
 
-  const generateCompanySummary = () => {
-    // Deliberately not faked. The old version invented a sentence about a real
-    // company and labelled it "AI-generated" — a rep would have forwarded that
-    // to a customer. It stays switched off until the extraction service is
-    // actually wired up.
-    Alert.alert(
-      'Not switched on yet',
-      'Company summaries need the AI service, which is not connected yet. Type anything you already know instead.'
-    );
+  /**
+   * Reads the company's own website and summarises what is actually on it.
+   *
+   * Nothing is invented here — that was the old version's problem. With no
+   * website there is nothing to read, so the rep is told exactly that instead
+   * of being handed a confident paragraph about a company nobody looked up.
+   */
+  const generateCompanySummary = async () => {
+    if (summaryLoading) return;
+
+    if (!companyWebsite.trim()) {
+      Alert.alert(
+        'No company website',
+        'This lead does not have a company website, so there is nothing to read. Add it above, or type what you already know.'
+      );
+      return;
+    }
+
+    setSummaryLoading(true);
+    // Only the "Regenerate" press asks for a fresh read; the first press is
+    // happy with whatever the team has already fetched for this domain.
+    const result = await summariseCompany({
+      website: companyWebsite,
+      companyName: company,
+      refresh: Boolean(companySummary),
+    });
+    setSummaryLoading(false);
+
+    if (result.ok) {
+      setCompanySummary(result.summary);
+      return;
+    }
+    Alert.alert("Couldn't summarise", result.message);
   };
 
   return (

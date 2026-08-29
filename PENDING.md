@@ -74,9 +74,18 @@ rather than quietly inventing something:
   for speech), upload, transcript via Deepgram nova-3 with `language=multi` for
   Hinglish, and a short summary. The Free plan's three-note limit is checked
   BEFORE recording, so nobody loses a recording to an upsell.
-- **Company summary (AI)** — the button says it is not switched on. It used to
-  invent a sentence about a real company and label it AI-generated. The key is
-  available; this is simply not built yet.
+- ~~Company summary (AI)~~ — **built 2026-08-29, not yet deployed.** The
+  `summarise-company` Edge Function reads the company's OWN website — the URL
+  the card scan already captures — and summarises only what is actually on the
+  page. It never writes from the company name alone, which is what made the old
+  version invent things. No website on the lead means it says so; a site it
+  cannot read means it says that too. Summaries are cached per domain, so one
+  exhibitor's site is read once for the whole team rather than once per rep.
+  **Two steps left, and both need you:** apply the migration
+  `20260829140000_company_summary_cache.sql`, and deploy the function
+  (`supabase functions deploy summarise-company`). The ANTHROPIC_API_KEY it
+  needs is already on the project from card scanning. Until both are done the
+  button reports that it could not reach the service.
 - ~~Bulk WhatsApp send and the send queue~~ — **built 2026-08-29.** Deep links,
   not the WhatsApp Business API: a `wa.me` link opens the rep's own WhatsApp
   with the lead's chat and the event's template already typed, and they press

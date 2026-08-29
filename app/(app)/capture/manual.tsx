@@ -15,6 +15,7 @@ import { useEventFieldsStore } from '../../../stores/useEventFieldsStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCurrentEvent } from '../../../hooks/useEvents';
 import { fetchEventFields } from '../../../lib/api/eventFields';
+import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldValue } from '../../../data/leads';
 
 function BigField({ label, ...rest }: { label: string } & TextInputProps) {
@@ -92,13 +93,31 @@ export default function ManualEntryScreen() {
     Boolean(event && user) &&
     !isSaving;
 
-  const generateCompanySummary = () => {
-    // Not faked. See the same note on the confirm screen — a made-up sentence
-    // about a real company, labelled as AI, is something a rep would forward on.
-    Alert.alert(
-      'Not switched on yet',
-      'Company summaries need the AI service, which is not connected yet. Type anything you already know instead.'
-    );
+  /** Reads the company's own website. See the fuller note on the confirm screen. */
+  const generateCompanySummary = async () => {
+    if (summaryLoading) return;
+
+    if (!companyWebsite.trim()) {
+      Alert.alert(
+        'No company website',
+        'This lead does not have a company website, so there is nothing to read. Add it above, or type what you already know.'
+      );
+      return;
+    }
+
+    setSummaryLoading(true);
+    const result = await summariseCompany({
+      website: companyWebsite,
+      companyName: company,
+      refresh: Boolean(companySummary),
+    });
+    setSummaryLoading(false);
+
+    if (result.ok) {
+      setCompanySummary(result.summary);
+      return;
+    }
+    Alert.alert("Couldn't summarise", result.message);
   };
 
   return (
