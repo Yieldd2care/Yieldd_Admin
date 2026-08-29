@@ -1,6 +1,6 @@
 import type { Enums, Tables } from '../db';
 import { paiseToRupees } from '../db';
-import type { CustomFieldValue, Lead, LeadStatus } from '../../data/leads';
+import type { CustomFieldValue, Lead, LeadStatus, LeadTemperature } from '../../data/leads';
 
 export type LeadRow = Tables<'leads'>;
 type DbLeadStatus = Enums<'lead_status'>;
@@ -34,6 +34,24 @@ export function statusToDb(status: LeadStatus): DbLeadStatus {
 
 export function statusFromDb(status: DbLeadStatus): LeadStatus {
   return STATUS_FROM_DB[status];
+}
+
+type DbTemperature = Enums<'lead_temperature'>;
+
+const TEMPERATURE_TO_DB: Record<LeadTemperature, DbTemperature> = {
+  Hot: 'hot',
+  Warm: 'warm',
+  Cold: 'cold',
+};
+
+const TEMPERATURE_FROM_DB: Record<DbTemperature, LeadTemperature> = {
+  hot: 'Hot',
+  warm: 'Warm',
+  cold: 'Cold',
+};
+
+export function temperatureToDb(value: LeadTemperature): DbTemperature {
+  return TEMPERATURE_TO_DB[value];
 }
 
 /** `4:12 PM` — how the lead list labels when someone was captured. */
@@ -82,6 +100,7 @@ export function toLead(row: RowWithVoice): Lead {
     dealValue: row.deal_value_paisa == null ? undefined : paiseToRupees(row.deal_value_paisa),
     dealClosedAt: row.deal_closed_at ?? undefined,
     reviewedAt: row.reviewed_at ?? undefined,
+    temperature: row.temperature ? TEMPERATURE_FROM_DB[row.temperature] : undefined,
     assignedToId: row.assigned_to ?? undefined,
   };
 }

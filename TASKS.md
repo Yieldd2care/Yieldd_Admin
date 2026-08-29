@@ -21,7 +21,7 @@ Everything needed to take the app from "database exists, auth screens look right
 **Screens with real UI today:** all 60 route files exist with final design.
 **Screens reading or writing the real database:** events (list, wizard, dashboard, ROI, custom fields), capture (confirm, manual, saved, drafts), leads (list, detail, status, deal value), follow-ups, log outcome, team, member detail, reassign, export picker, home.
 
-**Still on mock or placeholder data:** evening review, the digital card screens, the hosted public card page, notifications, and payment. The AI company summary on the capture screens is still not built, though the key is on the project.
+**Still on mock or placeholder data:** the digital card screens, the hosted public card page, notifications, and payment. The AI company summary on the capture screens is still not built, though the key is on the project.
 
 ### What was built on 2026-08-28
 
@@ -39,6 +39,7 @@ npm run verify:card           # card reading + the storage upload rules, end to 
 npm run compare:card-models   # accuracy/latency/tokens per model, to justify the choice
 npm run verify:voice          # recording -> upload -> transcript -> summary, plus the free-plan cap
 npm run verify:messaging      # merge fields and wa.me/mailto links — the text customers actually read
+npm run verify:csv            # export escaping, incl. Excel formula injection
 ```
 
 ### Dependency order, plainly
@@ -255,7 +256,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Editing a field, changing status, or reassigning (admin only — DB trigger already blocks reps from changing `assigned_to`) all persist and show up in the activity log.
 
 #### 3.3 — Evening review (F3)
-- **Status:** Not Started · **Files:** new `app/(app)/leads/review.tsx`
+- **Status:** **Complete** (2026-08-29) — today's unreviewed leads, one at a time: note, temperature, follow-up date. `reviewed_at` makes it resumable; Skip deliberately leaves the flag alone so "not now" differs from "nothing to add". · **Files:** new `app/(app)/leads/review.tsx`
 - **Description:** The 10-minute ritual MVP_PLAN says the whole CRM/ROI layer depends on. Queue of today's leads missing a note, one at a time; hot/warm/cold tap; follow-up date.
 - **Acceptance criteria:** Stepping through 47 leads and marking/dating each takes a real user well under 10 minutes (informal test, not automatable, but keep the interaction count per lead minimal).
 
@@ -299,7 +300,7 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Screenshot-friendly layout (admin sends it to their MD per the spec).
 
 #### 3.13 — Export (H4)
-- **Status:** Not Started · **Files:** new `app/(app)/events/[id]/export.tsx`, likely an Edge Function generating the `.xlsx`
+- **Status:** **Complete** (2026-08-29) — **CSV, not .xlsx.** No Edge Function needed; the rows are queried under RLS (a rep exports their own leads, an admin the organisation's) and written on device. UTF-8 BOM so Excel renders Devanagari, and formula injection is neutralised — lead names come from photographs of cards, so they are untrusted input. · **Files:** new `app/(app)/events/[id]/export.tsx`, likely an Edge Function generating the `.xlsx`
 - **Acceptance criteria:** Produces a real Excel file, shareable via WhatsApp/email/Drive share sheet.
 
 ### Digital business card (C1–C4, A3, J2)

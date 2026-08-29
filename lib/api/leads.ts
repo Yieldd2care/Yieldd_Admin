@@ -3,8 +3,8 @@ import { randomUUID } from 'expo-crypto';
 
 import { supabase } from '../supabase';
 import { rupeesToPaise, type Inserts, type Updates } from '../db';
-import { statusToDb, toLead, type LeadRow } from '../mappers/lead';
-import type { CustomFieldValue, Lead, LeadStatus } from '../../data/leads';
+import { statusToDb, temperatureToDb, toLead, type LeadRow } from '../mappers/lead';
+import type { CustomFieldValue, Lead, LeadStatus, LeadTemperature } from '../../data/leads';
 
 /**
  * `voice_notes(count)` rather than the rows: the list only needs to know
@@ -187,6 +187,7 @@ export type LeadPatch = {
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   status?: LeadStatus;
+  temperature?: LeadTemperature;
   assignedToId?: string | null;
   followUpDate?: string | null;
   /** Rupees in, paise out — the conversion lives in lib/db and nowhere else. */
@@ -212,6 +213,7 @@ export function toUpdate(patch: LeadPatch): Updates<'leads'> {
     row.custom_field_values = patch.customFieldValues as Updates<'leads'>['custom_field_values'];
   }
   if (patch.status !== undefined) row.status = statusToDb(patch.status);
+  if (patch.temperature !== undefined) row.temperature = temperatureToDb(patch.temperature);
   if (patch.assignedToId !== undefined) row.assigned_to = patch.assignedToId;
   if (patch.followUpDate !== undefined) row.follow_up_date = patch.followUpDate;
   if (patch.dealValue !== undefined) {

@@ -132,6 +132,7 @@ function applyPatch(lead: StoredLead, patch: LeadPatch): StoredLead {
     ...(patch.companySummary !== undefined ? { companySummary: patch.companySummary } : {}),
     ...(patch.customFieldValues !== undefined ? { customFieldValues: patch.customFieldValues } : {}),
     ...(patch.status !== undefined ? { status: patch.status } : {}),
+    ...(patch.temperature !== undefined ? { temperature: patch.temperature } : {}),
     ...(patch.followUpDate !== undefined ? { followUpDate: patch.followUpDate ?? undefined } : {}),
     ...(patch.reviewedAt !== undefined ? { reviewedAt: patch.reviewedAt ?? undefined } : {}),
     ...(patch.dealValue !== undefined ? { dealValue: patch.dealValue ?? undefined } : {}),

@@ -27,6 +27,21 @@ export const STATUS_DOT: Record<LeadStatus, string> = {
   Lost: 'bg-[#C23B3B]',
 };
 
+/** How warm the lead felt, set during the evening review. */
+export type LeadTemperature = 'Hot' | 'Warm' | 'Cold';
+
+export const TEMPERATURE_CLASSES: Record<LeadTemperature, string> = {
+  Hot: 'bg-[#C23B3B]/[0.12]',
+  Warm: 'bg-gold/[0.16]',
+  Cold: 'bg-blue/[0.10]',
+};
+
+export const TEMPERATURE_TEXT: Record<LeadTemperature, string> = {
+  Hot: 'text-[#A32E2E]',
+  Warm: 'text-[#8A6100]',
+  Cold: 'text-blue',
+};
+
 export type CustomFieldValue = string | boolean;
 
 export type Lead = {
@@ -60,6 +75,7 @@ export type Lead = {
   dealClosedAt?: string;
   /** Set once the evening review has been through this lead. */
   reviewedAt?: string;
+  temperature?: LeadTemperature;
   /**
    * The team member this lead belongs to, as a useTeamStore member id.
    * Undefined means the person who captured it — which for now is always the

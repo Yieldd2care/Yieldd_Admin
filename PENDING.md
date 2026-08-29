@@ -84,9 +84,15 @@ rather than quietly inventing something:
   customer hears from a person they met rather than a business account. The
   trade-off is that one chat opens at a time, so the queue screen is a
   walkthrough and the copy says plainly that nothing goes out on its own.
-- **Evening review** — still on a mock list.
+- ~~Evening review~~ — **built 2026-08-29.** Walks today's unreviewed leads for a
+  note, a Hot/Warm/Cold mark and a follow-up date. Resumable: `reviewed_at`
+  means nine of fourteen done comes back as five remaining, not fourteen.
 - **Digital business card and the public card page** — still on a local store.
-- **Excel export** — the event picker is real; the file is not generated.
+- ~~Excel export~~ — **built 2026-08-29, as CSV rather than .xlsx.** The only
+  `xlsx` package on npm is 0.18.5 from 2022 with known prototype-pollution and
+  ReDoS advisories, and a file of customers' phone numbers is not the place to
+  accept that. CSV opens natively in Excel, Sheets and Tally; the screen says
+  CSV rather than implying a format it does not produce.
 - **Payments** — the whole of Phase 4.
 
 ---
