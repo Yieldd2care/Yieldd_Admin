@@ -21,7 +21,7 @@ Everything needed to take the app from "database exists, auth screens look right
 **Screens with real UI today:** all 60 route files exist with final design.
 **Screens reading or writing the real database:** events (list, wizard, dashboard, ROI, custom fields), capture (confirm, manual, saved, drafts), leads (list, detail, status, deal value), follow-ups, log outcome, team, member detail, reassign, export picker, home.
 
-**Still on mock or placeholder data:** bulk send, send queue, evening review, the digital card screens, the hosted public card page, notifications, and payment. The AI company summary on the capture screens is still not built, though the key is on the project.
+**Still on mock or placeholder data:** evening review, the digital card screens, the hosted public card page, notifications, and payment. The AI company summary on the capture screens is still not built, though the key is on the project.
 
 ### What was built on 2026-08-28
 
@@ -38,6 +38,7 @@ npm run verify:stats          # 32 checks against the live database, cleans up a
 npm run verify:card           # card reading + the storage upload rules, end to end
 npm run compare:card-models   # accuracy/latency/tokens per model, to justify the choice
 npm run verify:voice          # recording -> upload -> transcript -> summary, plus the free-plan cap
+npm run verify:messaging      # merge fields and wa.me/mailto links — the text customers actually read
 ```
 
 ### Dependency order, plainly
@@ -259,11 +260,11 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Stepping through 47 leads and marking/dating each takes a real user well under 10 minutes (informal test, not automatable, but keep the interaction count per lead minimal).
 
 #### 3.4 — Bulk select and send (F4)
-- **Status:** Not Started · **Files:** new `app/(app)/leads/bulk-send.tsx`
+- **Status:** **Complete** (2026-08-29) — real leads, the event's own template previewed with merge fields filled in, and leads with no number (or no email) left out rather than silently failing later. · **Files:** new `app/(app)/leads/bulk-send.tsx`
 - **Acceptance criteria:** Selecting N leads and a channel previews the event's template (2.9) with merge fields filled per lead.
 
 #### 3.5 — Send handoff (F5)
-- **Status:** Not Started · **Files:** new `app/(app)/leads/send-queue.tsx` · **Table:** `message_sends`
+- **Status:** **Complete** (2026-08-29) — one lead at a time, opening the rep's own WhatsApp or mail app. Records `sent` (the draft was opened for them) or `skipped` against a `message_batches` row. It never records "delivered", because a deep link cannot tell us whether the rep pressed send. · **Files:** new `app/(app)/leads/send-queue.tsx` · **Table:** `message_sends`
 - **Acceptance criteria:** Each `wa.me`/`mailto:` send logs a `message_sends` row before handing off to the OS; the queue advances to the next lead on return.
 
 ### Follow-up and pipeline (G1–G4)

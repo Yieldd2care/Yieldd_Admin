@@ -13,6 +13,9 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { useEvent } from '../../../hooks/useEvents';
 import { fetchEventFields } from '../../../lib/api/eventFields';
 import { fetchVoiceNotes, type VoiceNote } from '../../../lib/api/voiceNotes';
+import { useEventTemplate } from '../../../hooks/useMessageTemplates';
+import { openDialer, openEmail, openWhatsApp, renderTemplate } from '../../../lib/messaging';
+import { recordSend } from '../../../lib/api/messageSends';
 import { VoiceNoteCard } from '../../../components/app/VoiceNoteCard';
 import type { CustomFieldDef } from '../../../stores/useEventFieldsStore';
 import { formatDateRange } from '../../../lib/dates';
@@ -40,6 +43,9 @@ export default function LeadDetailScreen() {
   const { data: members } = useTeam();
   const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
   const { data: event } = useEvent(lead?.eventId || undefined);
+  const user = useSessionStore((s) => s.user);
+  const { template: whatsappTemplate } = useEventTemplate(lead?.eventId || undefined, 'whatsapp');
+  const { template: emailTemplate } = useEventTemplate(lead?.eventId || undefined, 'email');
 
   // The labels for this lead's answers live on the event, not the lead —
   // `custom_field_values` is keyed by field id, so without the definitions the
@@ -122,6 +128,73 @@ export default function LeadDetailScreen() {
   const assignee = lead.assignedToId ? members?.find((m) => m.id === lead.assignedToId) : undefined;
   const assignedLabel = !assignee || assignee.isSelf ? 'Assigned to you' : `Assigned to ${assignee.name}`;
 
+  /**
+   * Opens the rep's own WhatsApp with the lead's chat and the event's template
+   * already typed. Nothing is sent by the app — the rep presses send — so the
+   * record below says the draft was opened, not that it was delivered.
+   */
+  const sendWhatsApp = async () => {
+    const body = whatsappTemplate?.body ?? 'Hi {{name}}, great meeting you at {{event}}.';
+    const message = renderTemplate(body, {
+      name: lead.name,
+      company: lead.company,
+      event: event?.name,
+      sender: user?.name,
+      senderCompany: user?.company,
+    });
+
+    const outcome = await openWhatsApp(lead.phone, message);
+    if (!outcome.ok) {
+      Alert.alert('Cannot open WhatsApp', outcome.message);
+      return;
+    }
+    if (user) {
+      void recordSend({
+        leadId: lead.id,
+        sentBy: user.id,
+        channel: 'whatsapp',
+        templateUsed: whatsappTemplate?.name,
+        templateId: whatsappTemplate?.id,
+        status: 'sent',
+      });
+    }
+  };
+
+  const sendEmail = async () => {
+    if (!lead.email?.trim()) {
+      Alert.alert('No email', 'This lead was captured without an email address.');
+      return;
+    }
+    const body = emailTemplate?.body ?? 'Hi {{name}}, thank you for stopping by our stall.';
+    const context = {
+      name: lead.name,
+      company: lead.company,
+      event: event?.name,
+      sender: user?.name,
+      senderCompany: user?.company,
+    };
+
+    const outcome = await openEmail(
+      lead.email,
+      renderTemplate(emailTemplate?.subject ?? 'Great meeting you at {{event}}', context),
+      renderTemplate(body, context)
+    );
+    if (!outcome.ok) {
+      Alert.alert('Cannot open mail', outcome.message);
+      return;
+    }
+    if (user) {
+      void recordSend({
+        leadId: lead.id,
+        sentBy: user.id,
+        channel: 'email',
+        templateUsed: emailTemplate?.name,
+        templateId: emailTemplate?.id,
+        status: 'sent',
+      });
+    }
+  };
+
   const followUp = followUpLabel(lead.followUpDate);
   const answered = fieldDefs.filter((def) => {
     const value = lead.customFieldValues?.[def.id];
@@ -171,22 +244,25 @@ export default function LeadDetailScreen() {
           <ActionButton
             icon={<PhoneIcon size={16} color="#0B132B" strokeWidth={1.75} />}
             label="Call"
-            onPress={() => Alert.alert('Call', "Calling isn't wired up yet.")}
+            onPress={async () => {
+              const outcome = await openDialer(lead.phone);
+              if (!outcome.ok) Alert.alert('Cannot call', outcome.message);
+            }}
           />
           <ActionButton
             icon={<WhatsAppIcon size={16} color="#25D366" strokeWidth={1.75} />}
             label="WhatsApp"
-            onPress={() => Alert.alert('WhatsApp', "Messaging isn't wired up yet.")}
+            onPress={() => void sendWhatsApp()}
           />
           <ActionButton
             icon={<MailIcon size={16} color="#0B132B" strokeWidth={1.75} />}
             label="Email"
-            onPress={() => Alert.alert('Email', "Email isn't wired up yet.")}
+            onPress={() => void sendEmail()}
           />
           <ActionButton
             icon={<ContactsIcon size={16} />}
             label="Contacts"
-            onPress={() => Alert.alert('Contacts', "Saving to contacts isn't wired up yet.")}
+            onPress={() => Alert.alert('Contacts', "Saving to your phone's contacts isn't built yet.")}
           />
         </View>
 

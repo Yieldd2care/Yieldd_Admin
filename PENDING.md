@@ -77,7 +77,14 @@ rather than quietly inventing something:
 - **Company summary (AI)** — the button says it is not switched on. It used to
   invent a sentence about a real company and label it AI-generated. The key is
   available; this is simply not built yet.
-- **Bulk WhatsApp send, send queue, evening review** — still on mock lists.
+- ~~Bulk WhatsApp send and the send queue~~ — **built 2026-08-29.** Deep links,
+  not the WhatsApp Business API: a `wa.me` link opens the rep's own WhatsApp
+  with the lead's chat and the event's template already typed, and they press
+  send. No Meta approval, no per-message fee, no 24-hour window — and the
+  customer hears from a person they met rather than a business account. The
+  trade-off is that one chat opens at a time, so the queue screen is a
+  walkthrough and the copy says plainly that nothing goes out on its own.
+- **Evening review** — still on a mock list.
 - **Digital business card and the public card page** — still on a local store.
 - **Excel export** — the event picker is real; the file is not generated.
 - **Payments** — the whole of Phase 4.
