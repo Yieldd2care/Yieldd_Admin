@@ -82,6 +82,7 @@
     "verify:card-links": "node scripts/verify-card-links.mjs",
     "verify:business-card": "node --env-file=.env scripts/verify-business-card.mjs",
     "verify:deletion": "node scripts/verify-account-deletion.mjs",
+    "verify:deletion-live": "node --env-file=.env scripts/verify-deletion-live.mjs",
     "verify:applinks": "node scripts/verify-app-links.mjs"
   },
   "private": true

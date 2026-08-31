@@ -9,7 +9,17 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done (move to Done se
 
 ## Open
 
-### 12. Email sending — one setup that unblocks three things (NEEDS YOU)
+### 12. ~~Email sending~~ — DONE 2026-08-31. Kept for the reasoning and the traps.
+
+**Everything in this item is finished.** `care@yieldd.co` sends through Google Workspace SMTP;
+the App Password is on Supabase Auth *and* as the `GMAIL_APP_PASSWORD` function secret. A real
+password-reset email was sent and received end to end. Both features it blocked are built:
+**password reset (#7)** and the **weekly digest (TASKS 6.6)**.
+
+The steps below are left in place because they took several wrong turns to get right —
+particularly that *Google Cloud* has no email service, that App Passwords has no menu entry
+any more, and that Resend's MX record would have collided with the existing mailbox.
+
 Decided 2026-08-31: the weekly digest goes out by **email**, not WhatsApp.
 
 **Why one setup matters:** the same sender unblocks **password reset (#7)**, the **weekly
@@ -238,7 +248,7 @@ rather than quietly inventing something:
 Audited against Google Play and Apple App Store rules. Two hard blockers remain; both would
 be an automatic rejection, so neither store can be submitted to until they are done.
 
-#### ~~Account deletion~~ — built AND DEPLOYED 2026-08-31, but never actually run
+#### ~~Account deletion~~ — built, deployed AND TESTED 2026-08-31. Done.
 - Settings → Delete account. Shows what will go, then asks you to type DELETE.
 - **Your rule, with one refinement:** an admin deleting their account takes the whole
   organisation only when they are the **last** admin. With another admin still in place it is
@@ -266,8 +276,22 @@ be an automatic rejection, so neither store can be submitted to until they are d
   2. `supabase functions deploy delete-account`
   3. `npm run db:types` — then delete the `UntypedRpc` cast in `lib/api/deleteAccount.ts`,
      which only exists because the generated types predate the migration.
-- **Not yet tested against a real database.** The SQL has never run. Test it on a throwaway
-  account before letting anyone near it — this is the one feature where a bug is unrecoverable.
+- ~~**Not yet tested against a real database.**~~ **TESTED 2026-08-31 — `npm run verify:deletion-live`,
+  26 checks, all passing.** It really deletes throwaway `deltest-…@yieldd-test.local` accounts
+  and then inspects what is left, because the delete order is circular unless done by hand and
+  the failure mode was a runtime error in front of someone who had just typed DELETE. All four
+  paths were exercised:
+  - **solo user** → organisation, events, leads, profile and login all gone;
+  - **rep leaves** → login gone, **their lead survives and now belongs to the admin** (the
+    assertion that matters commercially — a rep must not take the company's leads with them);
+  - **one of two admins leaves** → handover, the organisation and the other admin survive;
+  - **the last admin leaves** → *now* the organisation goes, and the inherited lead with it.
+  Plus: a wrong confirmation word is refused and the account still exists, an unauthenticated
+  caller is refused, and **every real account was asserted untouched** before and after.
+- **Deployment confirmed:** migration `20260831120000` is applied, `delete-account` is ACTIVE
+  (v2), and the `UntypedRpc` cast is already gone from `lib/api/deleteAccount.ts` — all three
+  deploy steps above are done.
+- **Nothing left on this item.**
 #### iOS privacy manifest — NOT BUILT (blocks Apple)
 - Apple has required `PrivacyInfo.xcprivacy` since May 2024.
 - `app.json` has no `ios.privacyManifests` and no `ios.infoPlist` block at all.
