@@ -75,6 +75,7 @@
     "verify:summary": "node --env-file=.env scripts/verify-summary.mjs",
     "verify:settings": "node --env-file=.env scripts/verify-settings.mjs",
     "verify:password-reset": "node --env-file=.env scripts/verify-password-reset.mjs",
+    "verify:digest": "node --env-file=.env scripts/verify-digest.mjs",
     "verify:phone": "node scripts/verify-phone.mjs",
     "verify:duplicate": "node --env-file=.env scripts/verify-duplicate.mjs",
     "verify:contacts": "node scripts/verify-contacts.mjs",

@@ -47,6 +47,7 @@ npm run verify:csv            # export escaping, incl. Excel formula injection
 npm run verify:summary        # 19 live checks on summarise-company, incl. 8 SSRF refusals
 npm run verify:settings       # 27 live checks on the Settings data path and the rep/admin boundaries
 npm run verify:password-reset # 13 live checks — incl. that the OLD password stops working
+npm run verify:digest         # 23 live checks on the weekly digest's numbers and safeguards
 npm run verify:phone          # 20 checks on phoneMatchKey — mirrors the duplicate-match SQL
 npm run verify:duplicate      # 31 live checks on duplicate detection, incl. the anon refusal
 npm run verify:contacts       # 36 checks on the contact/vCard shape a lead becomes
@@ -485,8 +486,15 @@ Per MVP_PLAN: **"greyed rather than hidden, so the user knows what exists"** —
   - [ ] Payment pending verification (UPI can hang) — needs Phase 4
   - [ ] Free plan, feature locked (greyed, not hidden) — Phase 5
 
-#### 6.6 — Weekly WhatsApp digest + annual renewal message
-- **Status:** **Blocked on a decision, not on code.** · **Files:** new `supabase/functions/weekly-digest/index.ts` (scheduled)
+#### 6.6 — Weekly digest (email, not WhatsApp)
+- **Status:** **Built and deployed 2026-08-31 — NOT YET SCHEDULED.** · **Files:** `supabase/functions/weekly-digest/index.ts`, migration `20260831140000_weekly_digest.sql`
+- **It runs on demand and sends nothing until it is scheduled.** Enabling `pg_cron`/`pg_net` and adding the weekly job is the last step, and it is deliberately left off: switching it on starts emailing real customers.
+- **Checked by `npm run verify:digest`** — 23 live checks against a built-to-order organisation, so every number in the email is verified rather than eyeballed: 10 leads, 4 contacted this week, 3 pending (excluding a won-but-overdue lead, a lost one, and one due next week), 2 won worth ₹35,000 against a ₹1,00,000 event = ROI 35%. It asserts the exact MVP_PLAN line: `Digest Expo: 10 leads · 4 contacted this week · 3 pending · 2 won (₹35,000) · ROI 35% recovered`.
+- **`dry_run` renders without sending and without claiming**, which is how it is tested against real data without mailing anyone or consuming their once-a-week slot. Asserted.
+- **An organisation with no leads is skipped entirely** rather than emailed "0 leads" — a digest saying nothing happened is a reason to unsubscribe.
+- **ROI is omitted, not shown as 0%, when no event cost was entered.** A zero there is a wrong number, not a missing one.
+- **Opting out works:** `profiles.notifications_enabled` is honoured and the skip reason is reported.
+- **Both SQL functions are service-role only** — they read every organisation's figures, so `public`, `anon` *and* `authenticated` are revoked. Asserted for anon and for a signed-in admin.
 - **The blocker, stated plainly:** every message this product sends today goes out through a **deep link** — `wa.me` opens the rep's own WhatsApp and they press send (3.4/3.5). That was a deliberate choice to avoid Meta approval, per-message fees and the 24-hour window. **A scheduled digest cannot use a deep link, because nobody is there to press send.** So this feature needs one of:
   - the **WhatsApp Business API** (Meta approval, a template submitted for review, per-message cost) — the thing the whole messaging design was built to avoid; or
   - **email instead of WhatsApp**, which needs the same SMTP sender that password reset needs (PENDING #7); or
