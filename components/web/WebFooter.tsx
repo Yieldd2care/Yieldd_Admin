@@ -8,9 +8,22 @@ import { BrandLockup } from '../ui/BrandLockup';
 const PRODUCT_LINKS = ['How it works', 'Features', 'Event ROI', 'Industries', 'FAQ', 'Sign in'];
 const COMPANY_LINKS = ['About Yieldd', 'Book a demo', 'Privacy policy', 'Terms of use'];
 
+/**
+ * Where each footer label goes. Labels not listed here have no page yet, and
+ * are left inert rather than pointed at a URL that would 404 — a legal link
+ * that 404s is an App Store rejection under 5.1.1, and was one until the
+ * privacy and terms pages were added.
+ */
+const LINK_TARGETS: Record<string, string> = {
+  'Sign in': '/(auth)',
+  'Privacy policy': '/privacy',
+  'Terms of use': '/terms',
+};
+
 function FooterLink({ label }: { label: string }) {
+  const target = LINK_TARGETS[label];
   return (
-    <Pressable onPress={label === 'Sign in' ? () => router.push('/(auth)') : undefined}>
+    <Pressable onPress={target ? () => router.push(target) : undefined}>
       <Typography className="text-[15px] text-white/[0.70] hover:text-gold transition-colors duration-200">
         {label}
       </Typography>

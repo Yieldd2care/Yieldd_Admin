@@ -1,4 +1,12 @@
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import {
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MotiView } from 'moti';
 
@@ -170,13 +178,18 @@ export function AuthFormNative(form: AuthFormState) {
           </MotiView>
 
           <View className="flex-row items-center justify-center gap-[10px] py-8 mt-auto">
-            <Pressable>
+            {/*
+              These were underlined like links and did nothing. Someone is
+              being asked to hand over their details on this very screen, so
+              the two links that say what happens to them have to work.
+            */}
+            <Pressable onPress={() => Linking.openURL('https://yieldd.co/privacy')}>
               <Typography className="text-[11.5px] font-medium text-white/[0.55] underline">
                 Privacy Policy
               </Typography>
             </Pressable>
             <View className="w-[3px] h-[3px] rounded-full bg-white/[0.25]" />
-            <Pressable>
+            <Pressable onPress={() => Linking.openURL('https://yieldd.co/terms')}>
               <Typography className="text-[11.5px] font-medium text-white/[0.55] underline">
                 Terms of Service
               </Typography>
