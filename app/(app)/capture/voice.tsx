@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -214,8 +214,17 @@ export default function VoiceNoteScreen() {
             Voice notes need the microphone. Turn it on for Yieldd in your phone&rsquo;s settings,
             or type the details on the lead instead.
           </Typography>
-          <Pressable onPress={() => router.back()} className="bg-gold rounded-full px-6 py-3 mt-2">
-            <Typography className="text-[14px] font-bold text-navy">Go back</Typography>
+          {/* It said "go to your settings" and then offered no way to get
+              there. Once the microphone has been denied the OS will not ask
+              again, so this link is the only route back. */}
+          <Pressable
+            onPress={() => void Linking.openSettings()}
+            className="bg-gold rounded-full px-6 py-3 mt-2"
+          >
+            <Typography className="text-[14px] font-bold text-navy">Open settings</Typography>
+          </Pressable>
+          <Pressable onPress={() => router.back()}>
+            <Typography className="text-[13px] font-semibold text-slate">Go back</Typography>
           </Pressable>
         </View>
       </SafeAreaView>

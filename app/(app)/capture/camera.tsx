@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
@@ -35,13 +35,32 @@ export default function CameraScreen() {
   }
 
   if (!permission.granted) {
+    /**
+     * `canAskAgain` is the whole point of this branch.
+     *
+     * Once someone has denied the camera, iOS ignores requestPermission()
+     * entirely — the OS prompt never appears again. A "Grant permission" button
+     * at that point does nothing at all when tapped, which reads as a broken
+     * app. When the OS will not ask again, the only real route is Settings.
+     */
+    const canAsk = permission.canAskAgain;
     return (
       <View className="flex-1 bg-[#05070d] items-center justify-center px-8 gap-5">
         <Typography className="text-[15px] font-semibold text-white text-center">
           Camera access is needed to scan business cards
         </Typography>
-        <Pressable onPress={requestPermission} className="bg-gold rounded-full px-6 py-3">
-          <Typography className="text-[14px] font-bold text-navy">Grant permission</Typography>
+        {!canAsk ? (
+          <Typography className="text-[13px] text-white/[0.62] text-center leading-[1.5] max-w-[280px]">
+            It is switched off for Yieldd in your phone&rsquo;s settings.
+          </Typography>
+        ) : null}
+        <Pressable
+          onPress={() => (canAsk ? void requestPermission() : void Linking.openSettings())}
+          className="bg-gold rounded-full px-6 py-3"
+        >
+          <Typography className="text-[14px] font-bold text-navy">
+            {canAsk ? 'Grant permission' : 'Open settings'}
+          </Typography>
         </Pressable>
         <Pressable onPress={() => router.replace(isProfileScan ? '/(app)/card/edit' : '/(app)/capture/manual')}>
           <Typography className="text-[13px] font-semibold text-white/[0.80]">Enter manually instead</Typography>

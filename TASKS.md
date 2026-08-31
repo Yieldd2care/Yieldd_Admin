@@ -457,28 +457,39 @@ Per MVP_PLAN: **"greyed rather than hidden, so the user knows what exists"** —
 - **Acceptance criteria:** "Deactivating" a rep sets `profiles.status = 'deactivated'` — never deletes the row (the `leads.captured_by` foreign key is `ON DELETE RESTRICT` specifically so this can't be gotten wrong).
 
 #### 6.3 — Offline/sync indicator (shared component)
-- **Status:** Not Started · **Files:** new `components/shared/SyncIndicator.tsx`
+- **Status:** **Complete** (2026-08-31) · **Files:** new `components/shared/SyncIndicator.tsx`
 - **Description:** Visible only when it needs attention — MVP_PLAN: *"sync is invisible unless it fails."* Reads from the offline queue (2.1).
+- **Two exports.** `SyncIndicator` is the banner and renders **null** when there is nothing pending — a permanent green "Synced" badge trains people to ignore it, and then it is ignored on the day it matters. `SyncStatusRow` is the Settings row, which always answers because someone who opened Settings to check on sync deserves one.
+- **It replaced a hardcoded green "Synced"** whose "Sync now" had no `onPress` at all — it looked like a button and did nothing, while captures sat queued.
+- **The copy never says "lost".** A queued capture is safe on the device, and a rep who thinks a lead evaporated stops trusting the app mid-show.
+- Counting is done in a `useMemo`, not inside the zustand selector — a selector that builds a new object re-renders forever.
 
 #### 6.4 — Event context bar (shared component)
-- **Status:** Not Started · **Files:** new `components/shared/EventContextBar.tsx`
+- **Status:** **Complete** (2026-08-31) · **Files:** new `components/shared/EventContextBar.tsx`, used on `capture/confirm.tsx` and `capture/manual.tsx`
 - **Description:** "Which event am I capturing into" — MVP_PLAN calls getting this wrong "the single worst data error in the product." Appears on all capture/lead screens.
+- **It was already wrong, in exactly the way MVP_PLAN warns about.** `confirm.tsx` printed **"IMTEX 2026 · B-42" as literal text**, so the confirm screen named the wrong event for every customer of this product except one. This is the quiet kind of error: nothing breaks, the lead saves, and it only surfaces weeks later when one show's ROI is built partly from another show's leads.
+- Tappable, so a rep who spots the wrong name fixes it in one move at the stall rather than hunting for the Events tab.
 
 #### 6.5 — Empty and error states
-- **Status:** Not Started · **Files:** spread across the relevant screens above
+- **Status:** **Complete except the two that need Phases 4 and 5** (2026-08-31) · **Files:** spread across the relevant screens above
 - **Checklist** (each is one line of copy + one action, per the UI plan):
-  - [ ] No leads yet (lead list)
-  - [ ] No follow-ups today (good-news state, not a failure)
-  - [ ] No event created (admin skipped setup)
-  - [ ] Extraction failed (offer manual entry, keep the image attached)
-  - [ ] Camera permission denied (path to Settings)
-  - [ ] Microphone permission denied (same)
-  - [ ] Sync failed (what failed, what's safe, retry — never imply data loss)
-  - [ ] Payment pending verification (UPI can hang)
-  - [ ] Free plan, feature locked (greyed, not hidden — reused across Phase 5)
+  - [x] No leads yet (lead list) — already there
+  - [x] No follow-ups today — already there, and correctly framed as good news ("Nothing due")
+  - [x] No event created — `components/app/NoEventNotice.tsx`, with different copy for an admin (create one) and a rep (ask your admin)
+  - [x] Extraction failed — now says to type it in and that **the photo stays attached to the lead**, which is the part a rep would otherwise assume was lost
+  - [x] Camera permission denied — **branches on `canAskAgain`.** Once denied, iOS ignores `requestPermission()` entirely, so the old "Grant permission" button did nothing at all when tapped. It now offers Settings instead, and keeps the "Enter manually" escape hatch
+  - [x] Microphone permission denied — it *told* people to go to their settings and gave them no way to get there. Now opens Settings
+  - [x] Sync failed — 6.3
+  - [ ] Payment pending verification (UPI can hang) — needs Phase 4
+  - [ ] Free plan, feature locked (greyed, not hidden) — Phase 5
 
 #### 6.6 — Weekly WhatsApp digest + annual renewal message
-- **Status:** Not Started · **Files:** new `supabase/functions/weekly-digest/index.ts` (scheduled)
+- **Status:** **Blocked on a decision, not on code.** · **Files:** new `supabase/functions/weekly-digest/index.ts` (scheduled)
+- **The blocker, stated plainly:** every message this product sends today goes out through a **deep link** — `wa.me` opens the rep's own WhatsApp and they press send (3.4/3.5). That was a deliberate choice to avoid Meta approval, per-message fees and the 24-hour window. **A scheduled digest cannot use a deep link, because nobody is there to press send.** So this feature needs one of:
+  - the **WhatsApp Business API** (Meta approval, a template submitted for review, per-message cost) — the thing the whole messaging design was built to avoid; or
+  - **email instead of WhatsApp**, which needs the same SMTP sender that password reset needs (PENDING #7); or
+  - a **push notification** into the app, which is free and already has `profiles.notifications_enabled` for consent, but reaches only people who still have the app installed — and MVP_PLAN's whole point here is the ~340 dormant days a year when they do not open it.
+- Pick one before building. My recommendation is **email**, because it shares the SMTP work already needed for password reset and reaches someone who has not opened the app in six months.
 - **Description:** MVP_PLAN's retention mechanism for the ~340 dormant days/year: *"IMTEX: 312 leads · 41 contacted this week · 12 pending · 1 won (₹4.2L) · ROI 35% recovered."* No login required. Needs a scheduled Edge Function (`pg_cron` or Supabase's scheduled triggers) and a WhatsApp send integration — the latter isn't scoped anywhere else in this doc, worth a decision on which WhatsApp API you'll use before building this one.
 
 ---

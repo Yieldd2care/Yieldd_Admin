@@ -10,6 +10,8 @@ import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CustomFieldInput, isCustomFieldFilled } from '../../../components/app/CustomFieldInput';
 import { NoEventNotice } from '../../../components/app/NoEventNotice';
 import { DuplicateFlag } from '../../../components/capture/DuplicateFlag';
+import { EventContextBar } from '../../../components/shared/EventContextBar';
+import { SyncIndicator } from '../../../components/shared/SyncIndicator';
 import { AlertCircleIcon, MicIcon, SparkleIcon, TrashIcon } from '../../../components/ui/icons';
 import { useDuplicateLead } from '../../../hooks/useDuplicateLead';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
@@ -197,7 +199,8 @@ export default function ConfirmLeadScreen() {
       />
 
       <ScrollView contentContainerClassName="px-5 pt-5 pb-6" showsVerticalScrollIndicator={false}>
-        {!event ? <NoEventNotice /> : null}
+        {!event ? <NoEventNotice /> : <EventContextBar className="mb-4" />}
+        <SyncIndicator className="mb-4" />
 
         {scanState === 'reading' ? (
           <View className="flex-row items-center gap-[10px] bg-navy/[0.04] border border-hairline rounded-md px-4 py-3 mb-4">
@@ -231,6 +234,12 @@ export default function ConfirmLeadScreen() {
             <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
               {scanMessage}
             </Typography>
+            {/* The rep is already on the form, so the recovery is to type — say
+                so. The photo stays attached either way and still uploads with
+                the lead, so nothing about the failed read is lost. */}
+            <Typography className="text-[12px] text-slate mt-[6px] leading-[1.45]">
+              Type the details in below. The photo stays attached to the lead.
+            </Typography>
           </View>
         ) : null}
         <View className="flex-row items-center gap-3 mb-[18px]">
@@ -242,8 +251,14 @@ export default function ConfirmLeadScreen() {
             )}
           </View>
           <View className="flex-1">
-            <Typography className="text-[13.5px] font-semibold text-navy">Card captured</Typography>
-            <Typography className="text-[11.5px] text-slate mt-[1px]">IMTEX 2026 &middot; B-42</Typography>
+            <Typography className="text-[13.5px] font-semibold text-navy">
+              {imageUri ? 'Card captured' : 'No photo'}
+            </Typography>
+            {/* The event name lives in EventContextBar above, read from the real
+                current event. This line used to print "IMTEX 2026 · B-42". */}
+            <Typography className="text-[11.5px] text-slate mt-[1px]">
+              {imageUri ? 'Check the details below' : 'Type the details in'}
+            </Typography>
           </View>
           <Pressable onPress={() => router.replace('/(app)/capture/camera')}>
             <Typography className="text-[12px] font-bold text-blue">Retake</Typography>

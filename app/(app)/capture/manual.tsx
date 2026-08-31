@@ -9,6 +9,8 @@ import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CustomFieldInput, isCustomFieldFilled } from '../../../components/app/CustomFieldInput';
 import { NoEventNotice } from '../../../components/app/NoEventNotice';
 import { DuplicateFlag } from '../../../components/capture/DuplicateFlag';
+import { EventContextBar } from '../../../components/shared/EventContextBar';
+import { SyncIndicator } from '../../../components/shared/SyncIndicator';
 import { ChevronRightIcon, MicIcon, SparkleIcon } from '../../../components/ui/icons';
 import { useDuplicateLead } from '../../../hooks/useDuplicateLead';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
@@ -130,7 +132,8 @@ export default function ManualEntryScreen() {
       <ScreenHeader title="Manual entry" />
 
       <ScrollView contentContainerClassName="px-5 pt-[26px] pb-6" showsVerticalScrollIndicator={false}>
-        {!event ? <NoEventNotice /> : null}
+        {!event ? <NoEventNotice /> : <EventContextBar className="mb-4" />}
+        <SyncIndicator className="mb-4" />
         <Typography className="text-[13.5px] text-slate mb-6">
           No card, no problem. Just a name and number saves the lead.
         </Typography>

@@ -10,6 +10,7 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { useTeam } from '../../../hooks/useTeam';
 import { useOrganization } from '../../../hooks/useOrganization';
 import { useTemplates } from '../../../hooks/useMessageTemplates';
+import { SyncStatusRow } from '../../../components/shared/SyncIndicator';
 import {
   ChevronRightIcon,
   DownloadIcon,
@@ -205,20 +206,12 @@ export default function ProfileScreen() {
 
         <SectionLabel>Sync</SectionLabel>
         <Card>
-          <Row
-            icon={<StorageIcon size={15} />}
-            label="Sync status"
-            right={
-              <View className="flex-row items-center gap-[10px]">
-                <View className="flex-row items-center gap-[5px]">
-                  <View className="w-[6px] h-[6px] rounded-full bg-success" />
-                  <Typography className="text-[12px] font-bold text-[#2E9C61]">Synced</Typography>
-                </View>
-                <Typography className="text-[11.5px] font-bold text-gold">Sync now</Typography>
-              </View>
-            }
-            isLast
-          />
+          {/*
+            Was a hardcoded green "Synced" and a "Sync now" label with no
+            onPress — it looked like a button and did nothing, and it read
+            "Synced" while captures sat queued on the device.
+          */}
+          <Row icon={<StorageIcon size={15} />} label="Sync status" right={<SyncStatusRow />} isLast />
         </Card>
 
         <SectionLabel>Data</SectionLabel>
