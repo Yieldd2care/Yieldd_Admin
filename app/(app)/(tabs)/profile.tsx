@@ -11,6 +11,7 @@ import { useTeam } from '../../../hooks/useTeam';
 import { useOrganization } from '../../../hooks/useOrganization';
 import { useTemplates } from '../../../hooks/useMessageTemplates';
 import { SyncStatusRow } from '../../../components/shared/SyncIndicator';
+import { openEmail } from '../../../lib/messaging';
 import {
   ChevronRightIcon,
   DownloadIcon,
@@ -25,6 +26,9 @@ import {
 } from '../../../components/ui/icons';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
+
+/** The address already published on the website footer and the legal pages. */
+const SUPPORT_EMAIL = 'care@yieldd.co';
 
 function Row({
   icon,
@@ -257,11 +261,40 @@ export default function ProfileScreen() {
 
         <SectionLabel>Support</SectionLabel>
         <Card>
+          {/*
+            care@yieldd.co — the address already published on the website
+            footer, the legal pages and the privacy policy, so support is not
+            being pointed somewhere new.
+
+            The account details are pre-filled into the body because the first
+            thing support asks is "which account?", and a rep at a stall should
+            not have to hunt for it. Email rather than WhatsApp by your call:
+            it works for someone without WhatsApp and needs no number published.
+          */}
           <Row
-            icon={<WhatsAppIcon size={15} color="#25D366" />}
-            label="Chat with support"
-            right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
-            onPress={() => Alert.alert('Chat with support', "Support chat isn't wired up yet.")}
+            icon={<MailIcon size={15} color="#0B132B" strokeWidth={1.75} />}
+            label="Email support"
+            right={
+              <View className="flex-row items-center gap-[6px]">
+                <Typography className="text-[12px] font-semibold text-slate">care@yieldd.co</Typography>
+                <ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />
+              </View>
+            }
+            onPress={async () => {
+              const outcome = await openEmail(
+                SUPPORT_EMAIL,
+                'Yieldd support',
+                `\n\n---\nSo we can find your account, please leave this below:\n` +
+                  `Name: ${user?.name ?? '—'}\n` +
+                  `Company: ${user?.company ?? '—'}\n` +
+                  `Email: ${user?.email ?? '—'}\n` +
+                  `Plan: ${isPro ? 'Pro' : 'Free'}\n` +
+                  `App version: ${APP_VERSION}\n`
+              );
+              if (!outcome.ok) {
+                Alert.alert('No mail app', `Write to ${SUPPORT_EMAIL} and we'll pick it up.`);
+              }
+            }}
             isLast
           />
         </Card>

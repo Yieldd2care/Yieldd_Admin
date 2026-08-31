@@ -449,7 +449,8 @@ Per MVP_PLAN: **"greyed rather than hidden, so the user knows what exists"** —
   - the company category was device-local, invisible to the team, while `organizations.category` went unused since `20260827130400`.
   - the **template editor wrote to a device-local store while every send read `message_templates`** — a rep could rewrite their follow-up, watch it save, and change nothing the customer saw. `stores/useTemplatesStore.ts` is deleted.
 - **Removed:** "Check for updates" always answered "You're up to date" after a 900 ms fake wait — `expo-updates` is not installed and there is no channel to ask. Version number only now.
-- **Still to do:** storage used, and GST invoices (needs `payments`, so Phase 4). **"Chat with support" is still unwired — there is no support number anywhere in the codebase and one should not be invented.**
+- **Support is email, not WhatsApp** (your call, 2026-08-31) — `care@yieldd.co`, the address already published on the website footer, the legal pages and the privacy policy, so nobody is pointed somewhere new. The account name, company, email, plan and app version are pre-filled into the body, because the first thing support asks is "which account?" and a rep at a stall should not have to hunt for it. Falls back to showing the address if there is no mail app.
+- **Still to do:** storage used, and GST invoices (needs `payments`, so Phase 4).
 - **Checked by** `npm run verify:settings` — 27 live checks, most of them boundaries.
 
 #### 6.2 — Team management (J3)
@@ -489,7 +490,10 @@ Per MVP_PLAN: **"greyed rather than hidden, so the user knows what exists"** —
   - the **WhatsApp Business API** (Meta approval, a template submitted for review, per-message cost) — the thing the whole messaging design was built to avoid; or
   - **email instead of WhatsApp**, which needs the same SMTP sender that password reset needs (PENDING #7); or
   - a **push notification** into the app, which is free and already has `profiles.notifications_enabled` for consent, but reaches only people who still have the app installed — and MVP_PLAN's whole point here is the ~340 dormant days a year when they do not open it.
-- Pick one before building. My recommendation is **email**, because it shares the SMTP work already needed for password reset and reaches someone who has not opened the app in six months.
+- **DECIDED 2026-08-31: email.** It shares the sender setup already needed for password reset (PENDING #7), reaches someone who has uninstalled the app — which is exactly who this message is for — and needs no Meta approval, so it can ship without a multi-week review. WhatsApp can be added later once volume justifies the per-message fee.
+- **Blocked on you:** an email sending account and its API key. See PENDING #12 for the exact steps. Until that exists the function cannot be tested, and an untested function that emails real customers is not something to switch on.
+- **Then buildable:** a scheduled Edge Function (`pg_cron` or Supabase scheduled triggers) running the `event_stats` aggregate per organisation and sending MVP_PLAN's line — *"IMTEX: 312 leads · 41 contacted this week · 12 pending · 1 won (₹4.2L) · ROI 35% recovered."* No login required to read it.
+- **Respect `profiles.notifications_enabled`** — it is now a real stored preference (6.1), and it is the opt-out this digest must honour.
 - **Description:** MVP_PLAN's retention mechanism for the ~340 dormant days/year: *"IMTEX: 312 leads · 41 contacted this week · 12 pending · 1 won (₹4.2L) · ROI 35% recovered."* No login required. Needs a scheduled Edge Function (`pg_cron` or Supabase's scheduled triggers) and a WhatsApp send integration — the latter isn't scoped anywhere else in this doc, worth a decision on which WhatsApp API you'll use before building this one.
 
 ---

@@ -9,6 +9,34 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done (move to Done se
 
 ## Open
 
+### 12. Email sending — one setup that unblocks three things (NEEDS YOU)
+Decided 2026-08-31: the weekly digest goes out by **email**, not WhatsApp.
+
+**Why one setup matters:** the same sender unblocks **password reset (#7)**, the **weekly
+digest (TASKS 6.6)** and any future receipt or invoice email. Supabase's built-in mailer is
+rate-limited to a handful of messages an hour and is explicitly not something to launch on.
+
+**Recommended: Resend.** Simplest of the options, free tier covers this product for a long
+time, and it is a first-class Supabase SMTP option.
+
+**Steps (about 20 minutes, all yours — I cannot do these):**
+1. Create an account at resend.com.
+2. **Domains → Add domain → `yieldd.co`.** It will show a handful of DNS records
+   (DKIM, SPF, and usually a return-path CNAME).
+3. Add those records wherever `yieldd.co` DNS is managed — the same place the Vercel
+   records live. Verification is usually minutes, occasionally an hour.
+   **Do not skip this.** Sending from an unverified domain lands in spam, and a digest
+   nobody sees is worse than no digest.
+4. **API Keys → Create.** Send that key over and I will put it on the Supabase project
+   as a function secret (never committed — same handling as `ANTHROPIC_API_KEY`).
+5. Decide the *from* address. `care@yieldd.co` is already the published support address,
+   so replies landing there is a feature rather than a problem.
+
+**Then I can build:** the scheduled digest function, and password reset.
+
+**Note:** the digest must honour `profiles.notifications_enabled`, which became a real
+stored preference on 2026-08-31 — before that the toggle forgot on close.
+
 ### 11. Pricing — the app is publishing the sales-room price (DECISION NEEDED)
 - **Where:** [app/(app)/(modals)/upgrade.tsx:38-39](app/(app)/(modals)/upgrade.tsx),
   [app/(app)/payment/success.tsx:21](app/(app)/payment/success.tsx)
@@ -169,16 +197,36 @@ rather than quietly inventing something:
 Audited against Google Play and Apple App Store rules. Two hard blockers remain; both would
 be an automatic rejection, so neither store can be submitted to until they are done.
 
-#### 11a. Account deletion — NOT BUILT (blocks both stores)
-- Apple **5.1.1(v)**: an app that offers account creation must offer account deletion in-app.
-- Google Play: needs in-app deletion **and** a public web URL for deletion requests.
-- Nothing exists in the codebase today. The privacy policy currently promises deletion by
-  email to care@yieldd.co within 30 days, which is honest but is **not** what the stores ask for.
-- **Needs a product decision first:** when an *admin* deletes their account, what happens to
-  the organisation’s events, leads and team members? Delete it all with them, block deletion
-  until ownership is transferred, or delete the person and keep the org’s data? Different
-  answers mean materially different work, so nothing was guessed.
-
+#### 11a. ~~Account deletion~~ — built 2026-08-31, NOT DEPLOYED
+- Settings → Delete account. Shows what will go, then asks you to type DELETE.
+- **Your rule, with one refinement:** an admin deleting their account takes the whole
+  organisation only when they are the **last** admin. With another admin still in place it is
+  a handover instead — otherwise one of two admins could destroy the other’s company data
+  without their consent. A solo user is always the "delete everything" case, because a solo
+  user is an organisation of one.
+- **A rep** hands their leads, events, templates and voice notes to the longest-standing
+  active admin, then their login goes.
+- **Files are cleared too** — card photos, card images, voice recordings. Nothing else would
+  ever have removed those, and the privacy policy promises they go.
+- **Bug caught while building, worth remembering:** nine columns point at `profiles` and only
+  three are declared `on delete restrict`. The other six were written with no delete rule,
+  which means `no action`, which blocks a delete exactly as hard while looking like nothing.
+  The first draft handled only the three and would have failed at runtime in front of someone
+  who had just typed DELETE. `npm run verify:deletion` now checks all of them from the
+  migrations, with no database needed — add a table with a profile foreign key and forget it,
+  and that script fails before a user does.
+- **Where:** [supabase/migrations/20260831120000_account_deletion.sql](supabase/migrations/20260831120000_account_deletion.sql),
+  [supabase/functions/delete-account/index.ts](supabase/functions/delete-account/index.ts),
+  [lib/api/deleteAccount.ts](lib/api/deleteAccount.ts),
+  `app/(app)/settings/delete-account.tsx`,
+  [app/(web)/delete-account.tsx](app/(web)/delete-account.tsx) — the public URL Play Console asks for.
+- **To deploy, and all three are needed:**
+  1. `supabase db push` — applies the migration
+  2. `supabase functions deploy delete-account`
+  3. `npm run db:types` — then delete the `UntypedRpc` cast in `lib/api/deleteAccount.ts`,
+     which only exists because the generated types predate the migration.
+- **Not yet tested against a real database.** The SQL has never run. Test it on a throwaway
+  account before letting anyone near it — this is the one feature where a bug is unrecoverable.
 #### 11b. iOS privacy manifest — NOT BUILT (blocks Apple)
 - Apple has required `PrivacyInfo.xcprivacy` since May 2024.
 - `app.json` has no `ios.privacyManifests` and no `ios.infoPlist` block at all.
