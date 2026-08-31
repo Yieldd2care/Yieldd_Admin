@@ -16,43 +16,54 @@ Decided 2026-08-31: the weekly digest goes out by **email**, not WhatsApp.
 digest (TASKS 6.6)** and any future receipt or invoice email. Supabase's built-in mailer is
 rate-limited to a handful of messages an hour and is explicitly not something to launch on.
 
-**Recommended: Resend.** Simplest of the options, free tier covers this product for a long
-time, and it is a first-class Supabase SMTP option.
+**DECIDED 2026-08-31: Google Workspace SMTP, not Resend.** Your call — no new vendor.
 
-**DNS is on GoDaddy, and `care@yieldd.co` is a live mailbox** (confirmed 2026-08-31). Those
-two facts together create the one real hazard here — read the warning before starting.
+> **Note the distinction, because it caused confusion:** *Google Cloud* has **no** email
+> sending service. Google's own Compute Engine docs say so and point you at SendGrid,
+> Mailgun or Mailjet. What does work is **Google Workspace**, which you already have —
+> confirmed by `yieldd.co` MX pointing at `aspmx.l.google.com`.
 
-> ⚠️ **Send from the SUBDOMAIN, never the root domain.**
-> Resend requires an **MX** record, and MX is the record that decides where mail is
-> *delivered*. Putting Resend's MX on `yieldd.co` would collide with the GoDaddy mailbox
-> currently receiving support mail — i.e. **you could stop receiving `care@yieldd.co`.**
-> Resend defaults to a subdomain (`send.yieldd.co`) precisely to avoid this. Accept that
-> default; do not "tidy it up" to the bare domain.
+**It is also a better fit than Resend at this scale:** Workspace allows **2,000 messages per
+user per day** against Resend's free-tier 100/day. And it needs **no DNS changes at all** —
+the Google records are already on the domain.
 
-**Steps (about 20 minutes, all yours — I cannot do these):**
-1. Create an account at resend.com.
-2. **Domains → Add domain.** Take the subdomain it offers (`send.yieldd.co`).
-3. Add the three records in **GoDaddy → My Products → yieldd.co → DNS → Add New Record**:
+> ⚠️ **Send from a dedicated user, not `care@yieldd.co`.**
+> Exceeding the daily limit suspends *that account's* sending for up to 24 hours. If the
+> digest sent as `care@`, one runaway loop would knock out the support inbox for a day.
+> Create **`noreply@yieldd.co`** and send everything from there; then a limit hit costs a
+> delayed digest, not the ability to receive customer mail.
 
-   | Type | Name (see the trap below) | Purpose |
-   |---|---|---|
-   | MX (priority 10) | `send` | return path, `…amazonses.com` |
-   | TXT | `send` | SPF — `v=spf1 include:amazonses.com ~all` |
-   | TXT | `resend._domainkey` | DKIM — the long key Resend shows |
+**Steps (all yours — I cannot do these):**
+1. Google Admin console → **Users → Add new user** → `noreply@yieldd.co`.
+2. Sign in as that user once, then turn on **2-Step Verification** for it. Google will not
+   issue an App Password without it.
+3. **App Passwords → generate one** (a normal account password is rejected by SMTP).
+4. Send that App Password over. I put it on Supabase → Project Settings → Auth → SMTP
+   (`smtp.gmail.com`, port 587, user `noreply@yieldd.co`). Never committed.
+5. Set **reply-to `care@yieldd.co`**, so anyone who replies reaches the inbox that works.
 
-   > 🚨 **The GoDaddy trap.** GoDaddy appends the domain to whatever you type. Resend
-   > displays `send.yieldd.co`, but you must enter **`send`** alone. Paste the full value
-   > and GoDaddy stores `send.yieldd.co.yieldd.co`, which never verifies and gives no error
-   > — the single most common reason this gets stuck for hours. Same for
-   > `resend._domainkey`, not `resend._domainkey.yieldd.co`.
+**The trade-off, stated so it is not a surprise later:** Workspace gives far less delivery
+visibility than a transactional provider. When a customer says "I never got the reset
+email", there is no 30-day delivery log to check. Acceptable at this volume; revisit if
+support starts fielding that question.
 
-4. Wait for green. Usually minutes, occasionally an hour.
-   **Do not skip verification.** Unverified mail lands in spam, and a digest nobody sees is
-   worse than no digest.
-5. **API Keys → Create.** Send that key over and I will put it on the Supabase project
-   as a function secret (never committed — same handling as `ANTHROPIC_API_KEY`).
-6. *From* address: something like `noreply@send.yieldd.co`, with **reply-to
-   `care@yieldd.co`** so a customer hitting reply reaches the inbox that already works.
+**If volume ever outgrows 2,000/day:** Workspace's **SMTP relay service**
+(`smtp-relay.gmail.com`) has higher limits and is the designed-for-apps route — a config
+change in the Admin console, not a rebuild.
+
+---
+
+**Superseded, kept for the record — the Resend route:** free tier 3,000/month but capped at
+**100/day**, which the weekly digest would hit at ~100 customers. Its setup needed three DNS
+records on a **subdomain** (`send.yieldd.co`), because Resend requires an **MX** record and
+putting that on the root domain would have collided with the Google mailbox already
+receiving `care@yieldd.co`. The GoDaddy trap there: GoDaddy appends the domain, so
+`send.yieldd.co` had to be entered as `send` alone or it silently became
+`send.yieldd.co.yieldd.co`. None of this is needed now.
+
+**Facts confirmed 2026-08-31, so they are not re-derived:** DNS is on **GoDaddy**,
+`care@yieldd.co` is a **live Google Workspace mailbox**, and `yieldd.co` MX is
+`aspmx.l.google.com`.
 
 **Then I can build:** the scheduled digest function, and password reset.
 
