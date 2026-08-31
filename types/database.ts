@@ -1083,6 +1083,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      account_deletion_preview: { Args: never; Returns: Json }
       active_event_count: { Args: never; Returns: number }
       business_card_slug_available: {
         Args: { p_slug: string }
@@ -1156,6 +1157,7 @@ export type Database = {
           organization_name: string
         }[]
       }
+      perform_account_deletion: { Args: never; Returns: Json }
       set_default_message_template: {
         Args: { p_template_id: string }
         Returns: undefined

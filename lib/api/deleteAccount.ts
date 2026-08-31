@@ -34,31 +34,17 @@ type PreviewRow = {
   members_deleted: number;
 };
 
-/**
- * `types/database.ts` is generated from the deployed database, and
- * `account_deletion_preview` arrives with migration `20260831120000`, which is
- * not applied yet — so the generated union does not contain its name.
- *
- * Once the migration is live, run `npm run db:types` and delete this: the call
- * below then type-checks on its own.
- */
-type UntypedRpc = (
-  fn: string
-) => Promise<{ data: PreviewRow | null; error: { message: string } | null }>;
-
 export async function previewAccountDeletion(): Promise<
   { ok: true; preview: DeletionPreview } | { ok: false; message: string }
 > {
-  const { data, error } = await (supabase.rpc as unknown as UntypedRpc)(
-    'account_deletion_preview'
-  );
+  const { data, error } = await supabase.rpc('account_deletion_preview');
 
   if (error || !data) {
     if (__DEV__) console.warn('[deleteAccount] preview', error);
     return { ok: false, message: "Couldn't check what would be deleted. Try again in a moment." };
   }
 
-  const row = data;
+  const row = data as unknown as PreviewRow;
   return {
     ok: true,
     preview: {
