@@ -2,6 +2,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 
 import { supabase } from '../supabase';
 import type { Enums, Tables } from '../db';
+import { formatRelative } from '../dates';
 import { inviteUrl } from './invites';
 
 type ProfileRow = Tables<'profiles'>;
@@ -49,18 +50,14 @@ function initialOf(name: string): string {
   return name.trim()[0]?.toUpperCase() ?? '?';
 }
 
-/** `2 days ago`, `just now` — how long an invite has been sitting there. */
+/**
+ * `Invited 2 days ago`, `Invited just now` — how long an invite has been sitting
+ * there. The relative part is `formatRelative` in lib/dates.ts, so a component
+ * can render "2 days ago" without importing the supabase client through here.
+ */
 export function relativeLabel(iso: string, prefix = 'Invited'): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return prefix;
-  const minutes = Math.round((Date.now() - then) / 60000);
-
-  if (minutes < 1) return `${prefix} just now`;
-  if (minutes < 60) return `${prefix} ${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${prefix} ${hours} hour${hours === 1 ? '' : 's'} ago`;
-  const days = Math.round(hours / 24);
-  return `${prefix} ${days} day${days === 1 ? '' : 's'} ago`;
+  const relative = formatRelative(iso);
+  return relative ? `${prefix} ${relative}` : prefix;
 }
 
 /**

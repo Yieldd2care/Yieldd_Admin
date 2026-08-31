@@ -21,7 +21,9 @@ Everything needed to take the app from "database exists, auth screens look right
 **Screens with real UI today:** all 60 route files exist with final design.
 **Screens reading or writing the real database:** events (list, wizard, dashboard, ROI, custom fields), capture (confirm, manual, saved, drafts), leads (list, detail, status, deal value), follow-ups, log outcome, team, member detail, reassign, export picker, home.
 
-**Still on mock or placeholder data:** the digital card screens, the hosted public card page, notifications, and payment. The AI company summary on the capture screens is still not built, though the key is on the project.
+**Still on mock or placeholder data:** notifications, and payment (the whole of Phase 4).
+
+The digital card screens and the hosted public card page went real in `6e8991e`; the AI company summary in `5e1560e` (built, **not yet deployed** — `supabase functions deploy summarise-company`; its migration is already applied). Duplicate detection and save-to-contacts went real on 2026-08-31, which closes MVP_PLAN's six-step build sequence: only Phases 4–6 remain.
 
 ### What was built on 2026-08-28
 
@@ -30,7 +32,7 @@ Everything needed to take the app from "database exists, auth screens look right
 - **Team** — `profiles` and `invites`, with seats from `seats_included + seats_purchased`. Deactivating is reversible.
 - **Event figures** — migration `20260828140000` adds `event_stats`, `event_hourly_capture` and `event_leaderboard` as `security definer` aggregates. Necessary, not tidy-up: `leads_select_own_or_admin` hides other reps' leads, so counting on the device gave a rep a fraction of the total and cost-per-lead then divided the full event cost by that fraction. Money is admin-only and the database returns NULL for a rep rather than trusting the client to hide it.
 
-Two checks are runnable at any time:
+These checks are runnable at any time:
 
 ```
 npm run verify:roi            # 31 arithmetic checks on lib/roi.ts
@@ -40,7 +42,24 @@ npm run compare:card-models   # accuracy/latency/tokens per model, to justify th
 npm run verify:voice          # recording -> upload -> transcript -> summary, plus the free-plan cap
 npm run verify:messaging      # merge fields and wa.me/mailto links — the text customers actually read
 npm run verify:csv            # export escaping, incl. Excel formula injection
+npm run verify:phone          # 20 checks on phoneMatchKey — mirrors the duplicate-match SQL
+npm run verify:duplicate      # 31 live checks on duplicate detection, incl. the anon refusal
+npm run verify:contacts       # 36 checks on the contact/vCard shape a lead becomes
 ```
+
+And before any migration is pushed:
+
+```
+npm run db:rehearse -- supabase/migrations/<file>.sql --probe "select ..."
+npm run db:rehearse -- --sql "select ..."     # read-only, no transaction
+```
+
+`db:rehearse` applies a migration inside `begin; … rollback;` against the live
+database, so syntax errors, blocked drops and the resulting ACL are all visible
+before anything is committed. TASKS.md has claimed since Phase 0b that migrations
+were "each rehearsed in a rolled-back transaction" — that was done by hand and
+lived only in a commit message. It is a script now. It does **not** show lock
+contention, so a `CREATE INDEX` still needs thinking about separately.
 
 ### Dependency order, plainly
 Phase 1 unblocks everything (nothing else can write real data without a real signed-in user). Phase 2 unblocks Phase 3 (leads/events must exist before you can list, follow up on, or report on them). Phase 4 only needs Phase 1 — you can build the payment flow in parallel with Phase 2/3 if useful, but Phase 4 is **blocked on you registering a payment gateway** (see Phase 4 note). Phase 5 needs both real features to gate (Phase 3) and a real `plan_tier` source (Phase 4, or a manual flip in the meantime — see below). Phase 6 is cleanup once the core app works.
@@ -216,10 +235,14 @@ This exact work was implemented and verified working earlier this session, then 
 - **Acceptance criteria:** Saving inserts a `leads` row via the offline queue (2.1) with `captured_by` = current rep, correct `event_id`, `consent_given`/`consent_at` from the toggle. If `find_duplicate_lead()` returns a match, the duplicate flag (2.14) shows before save completes.
 
 #### 2.14 — Duplicate detail (E4)
-- **Status:** Not Started
-- **Files:** new `components/capture/DuplicateFlag.tsx`
+- **Status:** **Complete** (2026-08-31) · **Files:** new `components/capture/DuplicateFlag.tsx`, new `hooks/useDuplicateLead.ts`, rewritten `app/(app)/(modals)/duplicate-detail.tsx`, migration `20260831090000`
 - **Description:** Read-only peek via the `find_duplicate_lead()` RPC — deliberately narrow per MVP_PLAN ("reps do not browse each other's leads"); this is the one sanctioned exception.
-- **Acceptance criteria:** Shows who captured the earlier contact, when, and their note/summary — nothing else about that rep's other leads is reachable from here.
+- **Acceptance criteria:** Shows who captured the earlier contact, when, and their note/summary — nothing else about that rep's other leads is reachable from here. **Asserted**, not assumed: `verify:duplicate` check 6 has rep B read the `leads` table directly and get zero rows.
+- **It was worse than "not started."** The banner on `confirm.tsx` had no condition on it, so every capture the app ever made showed *"Possible duplicate — Captured by Amit Shah · 2 days ago"* about a person who does not exist, and the sheet behind it was hardcoded down to a fake quote. `findDuplicateLead()` had been written correctly and called by nothing.
+- **The matching had to be fixed in SQL first.** The RPC compared `l.phone = p_phone` as raw strings while `toInsert()` stores whatever the rep typed, so `9820441720` and `+91 98204 41720` never matched — the feature could not have fired. Migration `20260831090000` compares the **last 10 digits**, both sides gated at 8. Deliberately not solved by normalising the stored column: `normalizePhone()` turns a US visitor's `4155550134` into `+914155550134` and an 8-digit landline into `+24931234`, and `leads.phone` is what the dialler dials and the CSV export hands the customer.
+- **No merge button.** The mock had one; it merged nothing. A real one needs a *second* security-definer write-door into another rep's data (`leads_update_own_or_admin` blocks the write, `enforce_lead_update_rules()` makes `captured_by` immutable). `leads.duplicate_of_lead_id` is still there for a link-not-merge feature later.
+- **Self-matches branch the copy.** The RPC does not exclude the caller, and on Free (1 user) a self-match is the only case that can happen — so the "You captured this earlier" branch is the *only* one a free account sees. Compared on `captured_by`, never on names.
+- **No index, deliberately.** An expression index on `leads` would add write cost to the hottest INSERT path for an unmeasured gain, and would need `CREATE INDEX CONCURRENTLY`, which cannot share a transaction with the drop+create. If the RPC ever gets slow: `select count(*) from public.leads`, `explain analyze`, then give the index its own migration.
 
 #### 2.15 — Manual entry (E5)
 - **Status:** **Complete**
@@ -306,26 +329,32 @@ This exact work was implemented and verified working earlier this session, then 
 ### Digital business card (C1–C4, A3, J2)
 
 #### 3.14 — Card builder + preview (C1, C2)
-- **Status:** Not Started · **Files:** new `app/(app)/card/edit.tsx` · **Table:** `business_cards`
+- **Status:** **Complete** (2026-08-29, `6e8991e`) · **Files:** `app/(app)/card/edit.tsx`, `lib/api/businessCard.ts`, `hooks/useBusinessCard.ts` · **Table:** `business_cards`
 - **Acceptance criteria:** Saving creates/updates the one `business_cards` row for this profile (unique constraint already enforces one card per user); QR code renders from the public slug URL.
 
 #### 3.15 — Share sheet (C3)
-- **Status:** Not Started · **Files:** part of 3.14, native `Share` API
+- **Status:** **Complete** (2026-08-29, `6e8991e`) · **Files:** `app/(app)/card/share.tsx`, native `Share` API
 
 #### 3.16 — First scan prompt (C4)
-- **Status:** Not Started · **Files:** new `app/(app)/card/first-scan.tsx`
+- **Status:** **Complete** · **Files:** `app/(app)/card/first-scan.tsx` — a static prompt with no data behind it, so there was nothing to wire.
 
 #### 3.17 — Hosted public card page (A3)
-- **Status:** Not Started · **Files:** new `app/(web)/card/[slug].tsx`
+- **Status:** **Complete** (2026-08-29, `6e8991e`) · **Files:** `app/c/[slug].tsx` — at the route **root**, not inside `(app)` or `(web)`: both those groups guard on having a session, and the entire audience for this page has no account.
 - **Description:** Unauthenticated, must render on any device/browser. Reads `business_cards` by slug — RLS already allows public `select` where `is_published = true`.
 - **Acceptance criteria:** Opens correctly with no app installed, on a slow connection; save-to-contacts (vCard) works.
 
 #### 3.18 — Profile/card edit (J2)
-- **Status:** Not Started · **Files:** new `app/(app)/settings/card.tsx` (same fields as 3.14, reused)
+- **Status:** **Complete** (2026-08-29, `6e8991e`) · **Files:** reuses `app/(app)/card/edit.tsx` rather than a second screen at `settings/card.tsx` — same fields, one implementation.
 
 #### 3.19 — Save lead to phone contacts
-- **Status:** Not Started · **Files:** part of 3.2 (lead detail) and 2.17 (save confirmation) · **Table:** `leads.saved_to_contacts`
+- **Status:** **Complete** (2026-08-31) · **Files:** new `lib/contactCard.ts` (pure) + `lib/contacts.ts` (device), `app/(app)/leads/[id].tsx` · **Table:** `leads.saved_to_contacts`
 - **Description:** Free-tier feature explicitly called out in MVP_PLAN — don't let it slip behind a Pro gate by accident in Phase 5.
+- **Lead detail only, not the save-confirmation screen.** TASKS.md said "part of 2.17" too, but `capture/saved.tsx` auto-returns to scan after 2200 ms: a tap there opens the OS permission dialog while the timer keeps running, so the app navigates away underneath it. Making that safe means cancelling the timer and rewriting the "Returning to scan…" caption — a behaviour change to an approved screen, for a button nobody has 2.2 seconds to find. Deliberate deviation.
+- **`presentFormAsync`, not `addContactAsync`.** Expo Go on Android has no `WRITE_CONTACTS` permission, so `addContactAsync` would need a dev build there. Routing through the system contact form avoids that — and lets the rep fix a mis-OCR'd name before it lands in their address book. **So this adds no dev-build requirement** (unlike PENDING.md #8c). The cost: it resolves on dismissal and cannot report Save vs Cancel, so `saved_to_contacts` means "the form was opened", not "a contact exists" — the same honest limit `message_sends` already accepts in 3.5.
+- **The note and voice summary are deliberately left out of the contact.** A rep's address book syncs to iCloud and Google; "budget 40 lakhs, decides Friday" should not leave the app's control. `verify:contacts` asserts their absence so it cannot be helpfully re-added.
+- **The button stays tappable once saved**, showing "Saved" in the voice-note green. The flag is per-lead on the server, not per-device, so a lead saved on one phone reads as saved on another where the contact does not exist — and contacts get deleted. Disabling it would make both cases a dead end.
+- **Round-tripping needed four changes**, meaningless apart: `Lead.savedToContacts`, `toLead()`, the `applyPatch()` branch, and a named `markSavedToContacts()` store action (`editLead` alone only queues — it does not sync).
+- **One manual check, on a real device** — a live-DB script for one boolean column would be disproportionate: tap Contacts on lead detail → the system form opens pre-filled → the button flips to "Saved" → force-quit and reopen → still "Saved". That last step is what proves the patch synced rather than only updating optimistically.
 
 ---
 
@@ -392,6 +421,12 @@ Per MVP_PLAN: **"greyed rather than hidden, so the user knows what exists"** —
 #### 5.6 — Second-event lock upsell copy (H1)
 - **Status:** Not Started · **Files:** 3.10, 2.5
 - **Description:** Same pattern as 5.5 — the DB already hard-blocks it (`events_admin_insert` policy); catch the error, show the modal.
+- **Confirmed live** while building 2.14: `events_admin_insert` is `… AND (is_pro_user() OR active_event_count() = 0)`, so a Free org's second event is refused by the database, not by the app. `verify:duplicate` has to flip its throwaway org to Pro to create a second event at all.
+
+#### 5.7 — Two Free-tier features that must NOT be gated
+- **Status:** N/A — a note, not a task.
+- **Save lead to phone contacts (3.19)** is listed under MVP_PLAN's "What Free gets". Do not let a Phase 5 sweep catch it.
+- **Duplicate detection (2.14)** is listed under Pro ("Team: assignment, reassignment, roles, duplicate detection") — but Free is **1 user**, so the only match a free account can ever produce is *your own* earlier capture, which is not a team feature and genuinely stops a rep double-entering the same walk-up. It ships **ungated**. If this is gated later, gate only the other-rep branch (`captured_by !== auth.uid()`), never the self branch.
 
 ---
 

@@ -16,6 +16,7 @@ import { fetchPublicCard, type BusinessCard } from '../../lib/api/businessCard';
 import { linkedinUrl, mailtoUrl, safeExternalUrl, telUrl } from '../../lib/cardLinks';
 import { whatsappDigits } from '../../lib/messageText';
 import { buildVCard } from '../../lib/vcard';
+import { downloadVCard } from '../../lib/contacts';
 
 /**
  * Somebody's card, opened by somebody else.
@@ -110,13 +111,7 @@ function Card({ card }: { card: BusinessCard }) {
     if (Platform.OS === 'web') {
       // A .vcf is what every phone and every mail client understands; the
       // browser's download is the only route to the contacts app from here.
-      const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
-      const url = globalThis.URL.createObjectURL(blob);
-      const link = globalThis.document.createElement('a');
-      link.href = url;
-      link.download = `${card.slug}.vcf`;
-      link.click();
-      globalThis.URL.revokeObjectURL(url);
+      downloadVCard(vcard, `${card.slug}.vcf`);
       return;
     }
     void Linking.openURL(`data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`);

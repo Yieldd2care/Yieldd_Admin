@@ -4,6 +4,7 @@ import { randomUUID } from 'expo-crypto';
 import { supabase } from '../supabase';
 import { rupeesToPaise, type Inserts, type Updates } from '../db';
 import { statusToDb, temperatureToDb, toLead, type LeadRow } from '../mappers/lead';
+import { phoneMatchKey } from '../phone';
 import type { CustomFieldValue, Lead, LeadStatus, LeadTemperature } from '../../data/leads';
 
 /**
@@ -59,6 +60,8 @@ export async function fetchLeads(opts: { eventId?: string } = {}): Promise<Lead[
 
 export type DuplicateMatch = {
   leadId: string;
+  /** Compared against the signed-in user's id to tell "yours" from "theirs". */
+  capturedById: string;
   capturedByName: string;
   capturedAt: string;
   note: string | null;
@@ -76,8 +79,13 @@ export async function findDuplicateLead(
   eventId: string,
   phone: string
 ): Promise<DuplicateMatch | null> {
-  if (!phone.trim()) return null;
+  // Half a phone number cannot identify anyone, and this runs while the rep is
+  // still typing. The same 8-digit floor is enforced in SQL; this just keeps the
+  // request off the wire.
+  if (!phoneMatchKey(phone)) return null;
 
+  // The raw typed string goes over, not a normalised one — the matching rule
+  // lives in the database so there is exactly one definition of it.
   const { data, error } = await supabase.rpc('find_duplicate_lead', {
     p_event_id: eventId,
     p_phone: phone,
@@ -92,6 +100,7 @@ export async function findDuplicateLead(
   if (!row) return null;
   return {
     leadId: row.lead_id,
+    capturedById: row.captured_by,
     capturedByName: row.captured_by_name,
     capturedAt: row.captured_at,
     note: row.note,

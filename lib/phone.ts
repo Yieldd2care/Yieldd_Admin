@@ -52,6 +52,28 @@ export function normalizePhone(value: string): string {
   return `+${digits}`;
 }
 
+/**
+ * The key two numbers are compared on to decide they are the same person.
+ *
+ * The last 10 digits, and null under 8 — a mirror of the SQL in
+ * `find_duplicate_lead` (migration 20260831090000). The database is the
+ * authority; this exists so a half-typed number never reaches the network.
+ *
+ * Deliberately NOT normalizePhone(). That function is lossy — it prepends `+91`
+ * to a bare 10-digit number, so a US visitor's `4155550134` would key
+ * differently from the same number typed `+1 415-555-0134`. Comparing trailing
+ * digits gets both right without deciding what country anyone is from.
+ *
+ * Returning null under 8 digits is what makes typing safe: `982` matches
+ * nothing, so a rep entering a number one digit at a time cannot flash a
+ * duplicate warning at a customer mid-conversation.
+ */
+export function phoneMatchKey(value: string | null | undefined): string | null {
+  const digits = digitsOf(value ?? '');
+  if (digits.length < 8) return null;
+  return digits.slice(-10);
+}
+
 /** `+919876543210` -> `+91 98765 43210`. Falls back to the input untouched. */
 export function formatPhone(value: string | null | undefined): string {
   if (!value) return '';

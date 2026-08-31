@@ -85,6 +85,33 @@ export type Database = {
           },
         ]
       }
+      company_summaries: {
+        Row: {
+          created_at: string
+          domain: string
+          model: string | null
+          refreshed_at: string
+          source_urls: string[]
+          summary: string
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          model?: string | null
+          refreshed_at?: string
+          source_urls?: string[]
+          summary: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          model?: string | null
+          refreshed_at?: string
+          source_urls?: string[]
+          summary?: string
+        }
+        Relationships: []
+      }
       event_custom_field_defs: {
         Row: {
           created_at: string
@@ -1106,6 +1133,7 @@ export type Database = {
         Args: { p_event_id: string; p_phone: string }
         Returns: {
           captured_at: string
+          captured_by: string
           captured_by_name: string
           lead_id: string
           note: string

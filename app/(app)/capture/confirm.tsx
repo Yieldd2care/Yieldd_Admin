@@ -9,7 +9,9 @@ import { Toggle } from '../../../components/ui/Toggle';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CustomFieldInput, isCustomFieldFilled } from '../../../components/app/CustomFieldInput';
 import { NoEventNotice } from '../../../components/app/NoEventNotice';
-import { AlertCircleIcon, ChevronRightIcon, MicIcon, SparkleIcon, TrashIcon } from '../../../components/ui/icons';
+import { DuplicateFlag } from '../../../components/capture/DuplicateFlag';
+import { AlertCircleIcon, MicIcon, SparkleIcon, TrashIcon } from '../../../components/ui/icons';
+import { useDuplicateLead } from '../../../hooks/useDuplicateLead';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { useEventFieldsStore } from '../../../stores/useEventFieldsStore';
@@ -51,6 +53,10 @@ export default function ConfirmLeadScreen() {
   const user = useSessionStore((s) => s.user);
   const { event } = useCurrentEvent();
   const [isSaving, setIsSaving] = useState(false);
+
+  // Watches the number as the card scan fills it in, or as the rep corrects it.
+  // Never gates `canSave` — a flagged duplicate is information, not a refusal.
+  const duplicate = useDuplicateLead(event?.id, phone);
 
   const [scanState, setScanState] = useState<'idle' | 'reading' | 'done' | 'failed' | 'empty'>(
     imageUri ? 'reading' : 'idle'
@@ -244,19 +250,7 @@ export default function ConfirmLeadScreen() {
           </Pressable>
         </View>
 
-        <Pressable
-          onPress={() => router.push('/(app)/(modals)/duplicate-detail')}
-          className="flex-row items-center gap-[10px] bg-[#FFF6E0] border border-gold/[0.35] rounded-md px-[14px] py-3 mb-[18px]"
-        >
-          <View className="w-[30px] h-[30px] rounded-full bg-gold items-center justify-center">
-            <AlertCircleIcon size={16} color="#0B132B" strokeWidth={2.25} />
-          </View>
-          <View className="flex-1">
-            <Typography className="text-[12.5px] font-bold text-navy">Possible duplicate</Typography>
-            <Typography className="text-[11.5px] text-slate mt-[1px]">Captured by Amit Shah &middot; 2 days ago</Typography>
-          </View>
-          <ChevronRightIcon color="#5A6B87" />
-        </Pressable>
+        <DuplicateFlag {...duplicate} />
 
         <View className="gap-4">
           <TextInput label="Full name" value={name} onChangeText={setName} />

@@ -96,7 +96,21 @@ rather than quietly inventing something:
 - ~~Evening review~~ — **built 2026-08-29.** Walks today's unreviewed leads for a
   note, a Hot/Warm/Cold mark and a follow-up date. Resumable: `reviewed_at`
   means nine of fourteen done comes back as five remaining, not fourteen.
-- **Digital business card and the public card page** — still on a local store.
+- ~~Digital business card and the public card page~~ — **built 2026-08-29.** The
+  card is a `business_cards` row and `/c/{slug}` is a page anyone with the link
+  can open. Slugs are claimed through security-definer functions rather than
+  guessed at from the client, and every URL on the public page goes through
+  `safeExternalUrl` first — it is served from yieldd.co, so an unfiltered
+  `javascript:` href there is stored XSS against the people the card was shared
+  with.
+- ~~Duplicate detection~~ — **built 2026-08-31.** This one was not merely
+  unbuilt: the confirm screen showed *"Possible duplicate — Captured by Amit
+  Shah · 2 days ago"* on **every** capture, about a person who does not exist.
+  See the Done section below.
+- ~~Save lead to phone contacts~~ — **built 2026-08-31.** Needs **no** dev
+  build, unlike Google sign-in (#8c) — `expo-contacts` ships inside Expo Go, and
+  the system contact form is used rather than `addContactAsync`, which is the
+  call that would have required one on Android.
 - ~~Excel export~~ — **built 2026-08-29, as CSV rather than .xlsx.** The only
   `xlsx` package on npm is 0.18.5 from 2022 with known prototype-pollution and
   ReDoS advisories, and a file of customers' phone numbers is not the place to
@@ -107,6 +121,27 @@ rather than quietly inventing something:
 ---
 
 ## Done
+
+### 10. A false duplicate warning on every capture
+- **Where:** [app/(app)/capture/confirm.tsx](app/(app)/capture/confirm.tsx),
+  [app/(app)/(modals)/duplicate-detail.tsx](app/(app)/(modals)/duplicate-detail.tsx)
+- **Was:** the "Possible duplicate — Captured by Amit Shah · 2 days ago" strip had
+  **no condition on it at all**. It rendered on every capture the app has ever
+  made, and the sheet behind it was hardcoded down to a fake quote about a
+  company called Northline. This was wrong information on screen, not a missing
+  feature.
+- **Fixed 2026-08-31:** the strip now appears only on a real match, and the sheet
+  shows who actually captured the contact, when, and what they wrote.
+- **The reason it could never have worked:** the `find_duplicate_lead` function
+  compared phone numbers as exact strings, while leads are stored with whatever
+  the rep typed. `9820441720` and `+91 98204 41720` are the same person and
+  matched nothing. Migration `20260831090000` compares the last 10 digits
+  instead. It was **not** fixed by rewriting the stored numbers — that column is
+  what the dialler dials and what the customer's own copy of the export shows.
+- **"Merge into existing lead" is gone.** It merged nothing, and a real one would
+  need a second privileged write-door into another rep's data.
+- Checked by `npm run verify:duplicate` — 31 checks against the live database,
+  including that an unauthenticated caller is still refused.
 
 ### 1. Auth screens — logo too small / wrong asset
 - **Where:** [app/(auth)/index.tsx](app/(auth)/index.tsx)

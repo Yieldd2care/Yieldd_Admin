@@ -72,6 +72,12 @@
           "savePhotosPermission": "Allow Yieldd to save the dashboard image to your photos."
         }
       ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow $(PRODUCT_NAME) to save a lead you captured into your phone's contacts."
+        }
+      ],
       "expo-web-browser",
       "expo-audio"
     ]

@@ -102,5 +102,6 @@ export function toLead(row: RowWithVoice): Lead {
     reviewedAt: row.reviewed_at ?? undefined,
     temperature: row.temperature ? TEMPERATURE_FROM_DB[row.temperature] : undefined,
     assignedToId: row.assigned_to ?? undefined,
+    savedToContacts: row.saved_to_contacts ?? undefined,
   };
 }

@@ -108,6 +108,8 @@ type LeadsState = {
   editLead: (leadId: string, patch: LeadPatch) => void;
   /** Hand a lead to another team member. `null` gives it back to the person who captured it. */
   reassignLead: (leadId: string, memberId: string | null) => void;
+  /** Records that this lead was put into the phone's contacts, and pushes it. */
+  markSavedToContacts: (leadId: string) => void;
   /**
    * Pushes everything unsynced. Safe to call repeatedly and concurrently.
    * Pass the signed-in user's id to skip captures belonging to anyone else.
@@ -138,6 +140,7 @@ function applyPatch(lead: StoredLead, patch: LeadPatch): StoredLead {
     ...(patch.dealValue !== undefined ? { dealValue: patch.dealValue ?? undefined } : {}),
     ...(patch.dealClosedAt !== undefined ? { dealClosedAt: patch.dealClosedAt ?? undefined } : {}),
     ...(patch.assignedToId !== undefined ? { assignedToId: patch.assignedToId ?? undefined } : {}),
+    ...(patch.savedToContacts !== undefined ? { savedToContacts: patch.savedToContacts } : {}),
   };
 }
 
@@ -261,6 +264,20 @@ export const useLeadsStore = create<LeadsState>()(
 
       reassignLead: (leadId, memberId) => {
         get().editLead(leadId, { assignedToId: memberId });
+        void get().syncDrafts();
+      },
+
+      /**
+       * Records that this lead went into the phone's contacts.
+       *
+       * A named action rather than a bare editLead call, for the same reason
+       * reassignLead is one: editLead only queues into pendingPatch, so without
+       * the syncDrafts() the flag would look right on the device and never
+       * reach the server. For a lead still in `draft`, syncDrafts inserts the
+       * row first and applies the patch after, so the ordering works out.
+       */
+      markSavedToContacts: (leadId) => {
+        get().editLead(leadId, { savedToContacts: true });
         void get().syncDrafts();
       },
 

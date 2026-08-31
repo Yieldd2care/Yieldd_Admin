@@ -8,7 +8,9 @@ import { Toggle } from '../../../components/ui/Toggle';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CustomFieldInput, isCustomFieldFilled } from '../../../components/app/CustomFieldInput';
 import { NoEventNotice } from '../../../components/app/NoEventNotice';
+import { DuplicateFlag } from '../../../components/capture/DuplicateFlag';
 import { ChevronRightIcon, MicIcon, SparkleIcon } from '../../../components/ui/icons';
+import { useDuplicateLead } from '../../../hooks/useDuplicateLead';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { useEventFieldsStore } from '../../../stores/useEventFieldsStore';
@@ -69,6 +71,9 @@ export default function ManualEntryScreen() {
   const user = useSessionStore((s) => s.user);
   const { event } = useCurrentEvent();
   const [isSaving, setIsSaving] = useState(false);
+
+  // Information, not a gate: `canSave` below is untouched by this.
+  const duplicate = useDuplicateLead(event?.id, phone);
 
   useEffect(() => {
     if (!event?.id) return;
@@ -132,6 +137,9 @@ export default function ManualEntryScreen() {
 
         <BigField label="Name" value={name} onChangeText={setName} placeholder="Full name" />
         <BigField label="Phone" value={phone} onChangeText={setPhone} placeholder="98204 41720" keyboardType="phone-pad" />
+
+        {/* Directly under the field that produced it, so the cause is obvious. */}
+        <DuplicateFlag {...duplicate} />
 
         <Pressable
           onPress={() => setExpanded((v) => !v)}

@@ -82,4 +82,12 @@ export type Lead = {
    * signed-in user.
    */
   assignedToId?: string;
+  /**
+   * Whether this lead has been put into the rep's phone contacts.
+   *
+   * Per-lead in the database, not per-device — so a lead saved on one phone
+   * reads as saved on another where the contact does not exist. That is why the
+   * action stays available rather than being disabled once set.
+   */
+  savedToContacts?: boolean;
 };

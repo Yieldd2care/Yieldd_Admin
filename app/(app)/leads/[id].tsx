@@ -16,6 +16,7 @@ import { fetchVoiceNotes, type VoiceNote } from '../../../lib/api/voiceNotes';
 import { useEventTemplate } from '../../../hooks/useMessageTemplates';
 import { openDialer, openEmail, openWhatsApp, renderTemplate } from '../../../lib/messaging';
 import { recordSend } from '../../../lib/api/messageSends';
+import { saveLeadToContacts } from '../../../lib/contacts';
 import { VoiceNoteCard } from '../../../components/app/VoiceNoteCard';
 import type { CustomFieldDef } from '../../../stores/useEventFieldsStore';
 import { formatDateRange } from '../../../lib/dates';
@@ -195,6 +196,40 @@ export default function LeadDetailScreen() {
     }
   };
 
+  const savedToContacts = Boolean(lead.savedToContacts);
+
+  /**
+   * Into the rep's own phone contacts.
+   *
+   * Stays available after it has been done. The flag is per-lead on the server,
+   * not per-device, so a lead saved on one phone reads as saved on a second
+   * where the contact does not exist — and a contact can simply be deleted.
+   * Disabling the button would make either case a dead end.
+   *
+   * The note and the voice summary are deliberately left out of the contact;
+   * see lib/contacts.ts.
+   */
+  const saveToContacts = async () => {
+    const outcome = await saveLeadToContacts({
+      name: lead.name,
+      company: lead.company,
+      designation: lead.designation,
+      phone: lead.phone,
+      landline: lead.companyLandline,
+      email: lead.email,
+      website: lead.companyWebsite,
+      address: lead.companyAddress,
+    });
+
+    if (!outcome.ok) {
+      Alert.alert(outcome.reason === 'permission' ? 'Contacts is off' : 'Could not save', outcome.message);
+      return;
+    }
+    // The contact form reports dismissal, not Save — so this records that the
+    // form was opened, the same honest limit message sends already accept.
+    useLeadsStore.getState().markSavedToContacts(lead.id);
+  };
+
   const followUp = followUpLabel(lead.followUpDate);
   const answered = fieldDefs.filter((def) => {
     const value = lead.customFieldValues?.[def.id];
@@ -260,9 +295,10 @@ export default function LeadDetailScreen() {
             onPress={() => void sendEmail()}
           />
           <ActionButton
-            icon={<ContactsIcon size={16} />}
-            label="Contacts"
-            onPress={() => Alert.alert('Contacts', "Saving to your phone's contacts isn't built yet.")}
+            icon={<ContactsIcon size={16} color={savedToContacts ? '#2E9C61' : undefined} />}
+            label={savedToContacts ? 'Saved' : 'Contacts'}
+            active={savedToContacts}
+            onPress={() => void saveToContacts()}
           />
         </View>
 
@@ -405,11 +441,29 @@ export default function LeadDetailScreen() {
   );
 }
 
-function ActionButton({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
+function ActionButton({
+  icon,
+  label,
+  onPress,
+  active = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onPress: () => void;
+  /** Done-state treatment, reusing the voice-note button's green from capture. */
+  active?: boolean;
+}) {
   return (
-    <Pressable onPress={onPress} className="flex-1 h-14 rounded-md bg-white border border-hairline items-center justify-center gap-1">
+    <Pressable
+      onPress={onPress}
+      className={`flex-1 h-14 rounded-md border items-center justify-center gap-1 ${
+        active ? 'border-success bg-success/[0.08]' : 'bg-white border-hairline'
+      }`}
+    >
       {icon}
-      <Typography className="text-[10px] font-bold text-navy">{label}</Typography>
+      <Typography className={`text-[10px] font-bold ${active ? 'text-[#2E9C61]' : 'text-navy'}`}>
+        {label}
+      </Typography>
     </Pressable>
   );
 }
