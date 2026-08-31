@@ -65,9 +65,23 @@ will look busy.
    are allowed to turn it on. If it is already on for `care@`, skip to step 3.
 2. Sign in to **myaccount.google.com as `care@yieldd.co`** and turn on **2-Step
    Verification**. Google will not issue an App Password without it.
-3. Same place → **Security → App passwords → generate one.** Done *as that user* — an admin
-   cannot create an App Password on someone else's behalf, and a normal account password is
-   rejected by SMTP.
+3. **App Passwords is no longer in any menu** — Google removed it from the account
+   navigation, so clicking around will not find it. Go **directly** to
+   **`myaccount.google.com/apppasswords`**, signed in as `care@yieldd.co`. Name it anything,
+   Create, and copy the 16 characters — **it is shown once**. Done *as that user*; an admin
+   cannot generate one on someone else's behalf, and a normal account password is rejected
+   by SMTP.
+
+   > ⚠️ **It may refuse.** Google lists three reasons the page is unavailable, and one of
+   > them applies here: *"You're logged into a work, school, or other organizational
+   > account"* — which `care@yieldd.co` is. The other two (2SV set up with security keys
+   > only, Advanced Protection) are unlikely. If it refuses, the unblock is an Admin console
+   > setting; Google's public docs do not state which one clearly, so read the actual error
+   > rather than guessing at a menu path.
+   >
+   > **Fallback if App Passwords stay blocked:** Workspace's **SMTP relay service**
+   > (`smtp-relay.gmail.com`, Admin console → Apps → Google Workspace → Gmail → Routing) is
+   > the designed-for-applications route and does not depend on a per-user App Password.
 4. Send that App Password over. I put it on Supabase → Project Settings → Auth → SMTP
    (`smtp.gmail.com`, port 587, user `care@yieldd.co`). Never committed.
 
