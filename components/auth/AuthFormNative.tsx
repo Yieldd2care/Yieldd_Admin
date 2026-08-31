@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MotiView } from 'moti';
+import { router } from 'expo-router';
 
 import { Typography } from '../ui/Typography';
 import { Button } from '../ui/Button';
@@ -145,6 +146,19 @@ export function AuthFormNative(form: AuthFormState) {
                 autoComplete="password"
               />
             </View>
+
+            {/* Sign-in only. On the create-account tab there is no password to
+                have forgotten yet, and the link would just be noise. */}
+            {form.isCreate ? null : (
+              <Pressable
+                onPress={() => router.push('/(auth)/forgot-password')}
+                className="self-end mt-3"
+              >
+                <Typography className="text-[12.5px] font-semibold text-white/[0.70]">
+                  Forgot password?
+                </Typography>
+              </Pressable>
+            )}
 
             {form.error ? (
               <Typography className="mt-4 text-[12.5px] font-semibold text-[#FF8A8A] text-center leading-[1.45]">

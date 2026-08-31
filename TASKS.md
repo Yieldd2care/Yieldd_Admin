@@ -46,6 +46,7 @@ npm run verify:messaging      # merge fields and wa.me/mailto links — the text
 npm run verify:csv            # export escaping, incl. Excel formula injection
 npm run verify:summary        # 19 live checks on summarise-company, incl. 8 SSRF refusals
 npm run verify:settings       # 27 live checks on the Settings data path and the rep/admin boundaries
+npm run verify:password-reset # 13 live checks — incl. that the OLD password stops working
 npm run verify:phone          # 20 checks on phoneMatchKey — mirrors the duplicate-match SQL
 npm run verify:duplicate      # 31 live checks on duplicate detection, incl. the anon refusal
 npm run verify:contacts       # 36 checks on the contact/vCard shape a lead becomes

@@ -138,19 +138,36 @@ stored preference on 2026-08-31 — before that the toggle forgot on close.
 - **Blocks:** every Phase 4 and Phase 5 screen shows this number. Nothing in the upgrade
   funnel should be built until it is settled, or it gets built twice.
 
-### 7. "Forgot password?" — password reset not built
-- **Where:** sign-in screen — [app/(auth)/index.tsx](app/(auth)/index.tsx)
-- **Was:** the link was on screen but only raised an "isn't connected yet" alert. Deferred on
-  2026-08-28 by your call, so the link has been **removed** rather than left promising something
-  that does not happen.
-- **What building it actually needs** (it is a small project, not a button):
-  - the client is already on `flowType: 'pkce'` and `detectSessionInUrl` on web, so that half is done;
-  - a recovery route exempted from the `(auth)` signed-in guard, the way `app/auth/callback.tsx` is;
-  - the recovery URL added to the Supabase redirect allow list;
-  - an email template and a working SMTP sender — the project currently runs on Supabase's
-    built-in mailer, which is rate-limited to a handful of messages an hour and is not
-    something to launch on.
-- **Until then:** someone locked out has to be reset by an admin.
+### 7. ~~"Forgot password?"~~ — BUILT 2026-08-31, one thing left
+- **Where:** [app/(auth)/forgot-password.tsx](app/(auth)/forgot-password.tsx) (request),
+  [app/auth/reset-password.tsx](app/auth/reset-password.tsx) (set the new one),
+  [lib/auth/passwordReset.ts](lib/auth/passwordReset.ts), and the link is back on both
+  sign-in forms.
+- **Unblocked by** the Google Workspace SMTP setup (#12). Every other piece was already in
+  place — PKCE, `detectSessionInUrl`, the root-route pattern.
+- ⚠️ **Left to do: merge to master.** The emailed link points at
+  `https://yieldd.co/auth/reset-password`, and that page only exists on yieldd.co once master
+  is deployed. **Until the merge, a real reset email leads to a 404.** The redirect allow list
+  is already updated, so nothing else is needed.
+- **The link always goes to the web, even on a phone.** A `yieldd://` recovery link cannot
+  resolve in Expo Go — the same constraint as 8c — and someone locked out is the last person
+  to tell "install a different build first". They set the password in the browser and sign in
+  to the app with it.
+- **The reset screen sits at the route root**, outside both `(auth)` and `(app)`. Following a
+  recovery link *creates a session*: inside `(auth)` the signed-in guard would redirect them
+  to the app, and inside `(app)` they would simply be let in — still not knowing their
+  password. `handleAuthEvent` has no `PASSWORD_RECOVERY` case, so `user` stays null and no
+  guard reacts, while the supabase client still holds the session that authorises the change.
+- **It signs you out after a successful change,** on purpose. The recovery session would let
+  someone straight in, but then the new password is first actually used days later on another
+  device with no way to tell whether it saved.
+- **"No account with that email" is never shown** — the confirmation is identical either way,
+  or the form becomes a free membership check for anyone curious which of their competitors'
+  staff use Yieldd. Asserted in the script, not just intended.
+- **Checked by `npm run verify:password-reset`** — 13 live checks, including the two that
+  matter: the new password signs in, and **the old one stops working**. A reset that leaves
+  the old password valid is not a reset, it is an extra password. Also asserts the link is
+  single-use, because email gets forwarded, backed up and synced.
 
 ### 9. Not built yet — flagged so nothing here reads as finished
 

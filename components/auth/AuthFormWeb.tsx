@@ -152,6 +152,18 @@ export function AuthFormWeb(form: AuthFormState) {
                 />
               </View>
 
+              {/* Sign-in only — nothing has been forgotten on the create tab. */}
+              {form.isCreate ? null : (
+                <Pressable
+                  onPress={() => router.push('/(auth)/forgot-password')}
+                  className="self-end mt-3"
+                >
+                  <Typography className="text-[13px] font-semibold text-blue">
+                    Forgot password?
+                  </Typography>
+                </Pressable>
+              )}
+
               {form.error ? (
                 <Typography className="mt-4 text-[13px] font-semibold text-[#C23B3B] leading-[1.45] text-center">
                   {form.error}
