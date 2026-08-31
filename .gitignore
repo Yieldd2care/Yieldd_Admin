@@ -48,3 +48,10 @@ yarn-error.*
 ~$*.docx
 
 .vercel
+
+# Play Store service account (eas.json submit.production.android.serviceAccountKeyPath)
+# A Google Cloud key that can publish to your Play listing. Never commit it.
+play-service-account.json
+*-service-account.json
+google-services.json
+GoogleService-Info.plist

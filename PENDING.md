@@ -334,10 +334,40 @@ settled as the gateway in `94c00f1` and Phase 4 is unstarted, which makes now th
 
 Confirm current terms with Play directly; this policy has moved repeatedly in India.
 
-#### No build config — cannot produce a Play upload yet
-- No `eas.json` anywhere, and `app.json` has no `android.versionCode`.
-- Play rejects a re-upload whose versionCode has not gone up, so set
-  `"appVersionSource": "remote"` in eas.json and let EAS manage it.
+#### ~~No build config~~ — BUILT 2026-08-31. Needs your EAS account to run.
+- **`eas.json` added** with three profiles: `development` (dev client, APK — this is what
+  Google sign-in and invite deep links need, per 8c), `preview` (internal APK for testers) and
+  `production` (**app-bundle**, which is what Play wants).
+- **`"appVersionSource": "remote"` and `autoIncrement` on production.** Play rejects a
+  re-upload whose versionCode has not increased, and EAS then owns that number so nobody has
+  to remember. `android.versionCode: 1` and `ios.buildNumber: "1"` are set in app.json as the
+  starting point EAS initialises from.
+- **`expo-doctor` found a real bug while doing this**, and it was the kind that only shows up
+  in a real build: `expo-asset` was a missing peer dependency of `expo-audio`, warned as
+  *"Your app may crash outside of Expo Go without this dependency."* Installed. **18/18 checks
+  now pass** — worth re-running before any store upload.
+- ⚠️ **`play-service-account.json` is now gitignored** (along with `*-service-account.json`,
+  `google-services.json`, `GoogleService-Info.plist`). That file is a Google Cloud key that
+  can publish to your Play listing; `eas.json` points at it by path, so without the ignore
+  rule the natural next step would have been to drop a publishing credential into the repo.
+- **No keys are in `eas.json`.** The three `EXPO_PUBLIC_*` values the app needs at build time
+  are not committed — see the steps below.
+
+**What you need to do before the first build:**
+1. `npm i -g eas-cli` (or use `npx eas-cli`), then `eas login`.
+2. `eas init` — links this project to your Expo account and writes the project id.
+3. Set the build-time env vars once, on EAS (dashboard → Environment Variables, or
+   `eas env:create`). All three are **plaintext, not secret** — the anon key is designed to be
+   public and already ships in the yieldd.co web bundle:
+   `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_CARD_BASE_URL`.
+4. `eas build --profile development --platform android` — this is the build that finally lets
+   you test **Google sign-in** and **invite deep links**, neither of which can work in Expo Go.
+5. For Play: `eas build --profile production --platform android`, then Play Console → create
+   the app → upload. `eas submit` automates the upload once you have a service-account key
+   (Play Console → Setup → API access), saved as `play-service-account.json`.
+- **`expo-dev-client` is not installed yet** — the `development` profile needs it. `npx expo
+  install expo-dev-client` when you get to step 4. Left out for now because it is only needed
+  for that profile and adds a dependency nothing else uses.
 
 #### Fixed on 2026-08-31
 - **Dead legal links, all live in the app until now:** Settings → Privacy policy and Terms of
