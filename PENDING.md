@@ -19,18 +19,40 @@ rate-limited to a handful of messages an hour and is explicitly not something to
 **Recommended: Resend.** Simplest of the options, free tier covers this product for a long
 time, and it is a first-class Supabase SMTP option.
 
+**DNS is on GoDaddy, and `care@yieldd.co` is a live mailbox** (confirmed 2026-08-31). Those
+two facts together create the one real hazard here — read the warning before starting.
+
+> ⚠️ **Send from the SUBDOMAIN, never the root domain.**
+> Resend requires an **MX** record, and MX is the record that decides where mail is
+> *delivered*. Putting Resend's MX on `yieldd.co` would collide with the GoDaddy mailbox
+> currently receiving support mail — i.e. **you could stop receiving `care@yieldd.co`.**
+> Resend defaults to a subdomain (`send.yieldd.co`) precisely to avoid this. Accept that
+> default; do not "tidy it up" to the bare domain.
+
 **Steps (about 20 minutes, all yours — I cannot do these):**
 1. Create an account at resend.com.
-2. **Domains → Add domain → `yieldd.co`.** It will show a handful of DNS records
-   (DKIM, SPF, and usually a return-path CNAME).
-3. Add those records wherever `yieldd.co` DNS is managed — the same place the Vercel
-   records live. Verification is usually minutes, occasionally an hour.
-   **Do not skip this.** Sending from an unverified domain lands in spam, and a digest
-   nobody sees is worse than no digest.
-4. **API Keys → Create.** Send that key over and I will put it on the Supabase project
+2. **Domains → Add domain.** Take the subdomain it offers (`send.yieldd.co`).
+3. Add the three records in **GoDaddy → My Products → yieldd.co → DNS → Add New Record**:
+
+   | Type | Name (see the trap below) | Purpose |
+   |---|---|---|
+   | MX (priority 10) | `send` | return path, `…amazonses.com` |
+   | TXT | `send` | SPF — `v=spf1 include:amazonses.com ~all` |
+   | TXT | `resend._domainkey` | DKIM — the long key Resend shows |
+
+   > 🚨 **The GoDaddy trap.** GoDaddy appends the domain to whatever you type. Resend
+   > displays `send.yieldd.co`, but you must enter **`send`** alone. Paste the full value
+   > and GoDaddy stores `send.yieldd.co.yieldd.co`, which never verifies and gives no error
+   > — the single most common reason this gets stuck for hours. Same for
+   > `resend._domainkey`, not `resend._domainkey.yieldd.co`.
+
+4. Wait for green. Usually minutes, occasionally an hour.
+   **Do not skip verification.** Unverified mail lands in spam, and a digest nobody sees is
+   worse than no digest.
+5. **API Keys → Create.** Send that key over and I will put it on the Supabase project
    as a function secret (never committed — same handling as `ANTHROPIC_API_KEY`).
-5. Decide the *from* address. `care@yieldd.co` is already the published support address,
-   so replies landing there is a feature rather than a problem.
+6. *From* address: something like `noreply@send.yieldd.co`, with **reply-to
+   `care@yieldd.co`** so a customer hitting reply reaches the inbox that already works.
 
 **Then I can build:** the scheduled digest function, and password reset.
 
@@ -192,12 +214,12 @@ rather than quietly inventing something:
   CSV rather than implying a format it does not produce.
 - **Payments** — the whole of Phase 4.
 
-### 11. App store readiness — audited 2026-08-31
+### App store readiness — audited 2026-08-31
 
 Audited against Google Play and Apple App Store rules. Two hard blockers remain; both would
 be an automatic rejection, so neither store can be submitted to until they are done.
 
-#### 11a. ~~Account deletion~~ — built 2026-08-31, NOT DEPLOYED
+#### ~~Account deletion~~ — built 2026-08-31, NOT DEPLOYED
 - Settings → Delete account. Shows what will go, then asks you to type DELETE.
 - **Your rule, with one refinement:** an admin deleting their account takes the whole
   organisation only when they are the **last** admin. With another admin still in place it is
@@ -227,12 +249,31 @@ be an automatic rejection, so neither store can be submitted to until they are d
      which only exists because the generated types predate the migration.
 - **Not yet tested against a real database.** The SQL has never run. Test it on a throwaway
   account before letting anyone near it — this is the one feature where a bug is unrecoverable.
-#### 11b. iOS privacy manifest — NOT BUILT (blocks Apple)
+#### iOS privacy manifest — NOT BUILT (blocks Apple)
 - Apple has required `PrivacyInfo.xcprivacy` since May 2024.
 - `app.json` has no `ios.privacyManifests` and no `ios.infoPlist` block at all.
 - Must declare collected data types and any required-reason API use.
 
-#### 11c. Fixed on 2026-08-31
+#### Google Play billing — DECIDE BEFORE BUILDING PHASE 4
+Play requires **Google Play Billing** for anything digital bought and used inside the app. A
+Pro plan that unlocks app features is exactly that, so selling it through Razorpay in the
+Android build is a Payments policy violation — rejection, or removal later. Razorpay was
+settled as the gateway in `94c00f1` and Phase 4 is unstarted, which makes now the moment.
+
+- **Sell only on yieldd.co** — the app never offers a purchase. Cleanest for a B2B tool and
+  you keep 100%. Recommended.
+- **Google Play Billing** on Android, Razorpay on web and iOS. Play takes 15–30%.
+- **User Choice Billing** — India-only, Razorpay *alongside* Play Billing at a reduced fee.
+  Not instead of it.
+
+Confirm current terms with Play directly; this policy has moved repeatedly in India.
+
+#### No build config — cannot produce a Play upload yet
+- No `eas.json` anywhere, and `app.json` has no `android.versionCode`.
+- Play rejects a re-upload whose versionCode has not gone up, so set
+  `"appVersionSource": "remote"` in eas.json and let EAS manage it.
+
+#### Fixed on 2026-08-31
 - **Dead legal links, all live in the app until now:** Settings → Privacy policy and Terms of
   service opened `yieldd.co/privacy` and `/terms`, which **404’d**; the signup screen showed
   both underlined with no handler at all; the website footer labels were inert. Apple rejects
@@ -240,8 +281,28 @@ be an automatic rejection, so neither store can be submitted to until they are d
 - **`expo-audio` had no microphone purpose string** — a bare plugin entry, so iOS got a
   generic default while camera, photos and contacts all had proper ones. Voice notes record
   audio. Fixed in `app.json`.
-
-#### 11d. Not code — done in the consoles at submission time
+- **Contacts permission was requested and never used.** `lib/contacts.ts` asked for contacts
+  access, then only called `presentFormAsync`, which hands the contact to the system’s own
+  new-contact screen and needs no permission on either platform. READ_CONTACTS sat in the
+  manifest for nothing, and Play makes you justify it at review. Request removed;
+  READ_CONTACTS and WRITE_CONTACTS added to `android.blockedPermissions`.
+- **Photo library READ access was requested and never used.** Both save-to-gallery calls asked
+  for full read+write but only ever call `saveToLibraryAsync`. That pulls in READ_MEDIA_IMAGES,
+  which Play restricts and for which "so we can save a picture" is not an accepted reason. Now
+  `requestPermissionsAsync(true)` — write-only — in both places. The `photosPermission` string
+  still exists because `expo-image-picker` genuinely reads the library for the card photo, but
+  it now describes that rather than a dashboard image it never showed.
+- **App Links were claimed but never backed.** `app.json` claimed `yieldd.co/invite` with
+  `autoVerify` on Android and `associatedDomains` on iOS, but no `assetlinks.json` or
+  `apple-app-site-association` existed anywhere — so every invite ever sent opened the website
+  instead of the app, silently, because a failed App Link looks exactly like a normal link.
+  Both files added under `public/.well-known/` (confirmed to reach the web export), and
+  `vercel.json` now forces `Content-Type: application/json` on the Apple file, which has no
+  extension and would otherwise be served as text and ignored.
+  **Still needs you:** the two credentials cannot be invented — the Android SHA-256 signing
+  fingerprint (Play Console → Setup → App signing, or `eas credentials`) and the Apple Team ID
+  (developer.apple.com → Membership). `npm run verify:applinks` fails until both are real.
+#### Not code — done in the consoles at submission time
 - Play **Data Safety** form, and Apple **App Privacy** labels. Both must match what the privacy
   policy says, so fill them from that page rather than from memory.
 - A registered business address may be wanted; the policy names Growth Saga and care@yieldd.co
