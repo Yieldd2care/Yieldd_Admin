@@ -21,7 +21,9 @@ Everything needed to take the app from "database exists, auth screens look right
 **Screens with real UI today:** all 60 route files exist with final design.
 **Screens reading or writing the real database:** events (list, wizard, dashboard, ROI, custom fields), capture (confirm, manual, saved, drafts), leads (list, detail, status, deal value), follow-ups, log outcome, team, member detail, reassign, export picker, home.
 
-**Still on mock or placeholder data:** notifications, and payment (the whole of Phase 4).
+**Still on mock or placeholder data:** payment (the whole of Phase 4).
+
+**Notifications** went real on 2026-08-31 — see the note at 6.7 below.
 
 The digital card screens and the hosted public card page went real in `6e8991e`; the AI company summary in `5e1560e`, **deployed and verified working 2026-08-31** (`npm run verify:summary`). Duplicate detection and save-to-contacts went real on 2026-08-31, which closes MVP_PLAN's six-step build sequence: only Phases 4–6 remain.
 
@@ -430,6 +432,14 @@ Per MVP_PLAN: **"greyed rather than hidden, so the user knows what exists"** —
 - **Status:** Not Started · **Files:** 3.10, 2.5
 - **Description:** Same pattern as 5.5 — the DB already hard-blocks it (`events_admin_insert` policy); catch the error, show the modal.
 - **Confirmed live** while building 2.14: `events_admin_insert` is `… AND (is_pro_user() OR active_event_count() = 0)`, so a Free org's second event is refused by the database, not by the app. `verify:duplicate` has to flip its throwaway org to Pro to create a second event at all.
+
+#### 6.7 — Notifications → "Needs attention"
+- **Status:** **Complete** (2026-08-31) · **Files:** new `hooks/useAttention.tsx`, rewritten `app/(app)/notifications/index.tsx`, `app/(app)/(tabs)/index.tsx`
+- **Not in the original plan** — MVP_PLAN excluded it from Phase 1 and the screen was built ad hoc. It was also entirely fabricated: people who do not exist ("Priya Sharma hasn't sent today's WhatsApp"), events nobody created ("IMTEX 2026 starts in 7 days"), a cost-per-lead of ₹42 computed from nothing, timestamps like "3 days ago" typed in by hand, and a "Mark all read" button that raised a *coming soon* alert.
+- **Derived, not stored — and that is the design, not a shortcut.** There is no notifications table and no push infrastructure, so there is no such thing here as an event that happened and was seen. What exists is a set of **live conditions**: a follow-up is overdue or it is not, a lead is unsynced or it is not. Those cannot be "read", only resolved. So there is no read/unread, no "mark all read", and nothing to keep in sync — an item disappears when the work is done.
+- **Six real signals**, all computed from data already loaded for other screens (so no extra requests, and it can never disagree with the screen it links to): overdue follow-ups · due today · leads waiting to sync · today's captures with no note · an event running now or starting within 14 days · unaccepted invites (admin only, because `invites_admin_all` means a rep cannot read them at all).
+- **It fixed the Home bell too.** That gold dot was a bare `View` with no condition — lit permanently, announcing unread notifications forever. It now comes from the same hook, so the dot and the screen cannot contradict each other.
+- **Deliberately left out:** the Free-plan lead-cap warning. It belongs with Phase 5 gating and is blocked on the pricing decision (PENDING #11); adding it now means building it twice.
 
 #### 5.7 — Two Free-tier features that must NOT be gated
 - **Status:** N/A — a note, not a task.

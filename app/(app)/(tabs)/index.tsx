@@ -19,6 +19,7 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useCurrentEventStore } from '../../../stores/useCurrentEventStore';
 import { useCurrentEvent, useEvents } from '../../../hooks/useEvents';
+import { AttentionDot } from '../../../hooks/useAttention';
 
 function stubComingSoon(what: string) {
   Alert.alert('Coming soon', `${what} isn't designed yet.`);
@@ -98,7 +99,10 @@ export default function HomeScreen() {
             className="w-[34px] h-[34px] rounded-md bg-white border border-hairline items-center justify-center relative"
           >
             <BellIcon />
-            <View className="absolute top-[6px] right-[6px] w-[7px] h-[7px] rounded-full bg-gold border-[1.5px] border-white" />
+            {/* Was a bare View with no condition — lit permanently, so it
+                announced unread notifications forever. Now it appears only when
+                the screen behind it genuinely has something. */}
+            <AttentionDot />
           </Pressable>
         </View>
       </View>
