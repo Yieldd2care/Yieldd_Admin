@@ -177,7 +177,72 @@ try {
     .single();
   eq('  ...the category is unchanged', categoryNow.category, 'Machine Tools');
 
-  // ---- 8. a rep cannot promote themselves ----
+  // ---- 8. message templates: the ones the send path actually reads ----
+  // The settings editor used to write to a device-local store while every
+  // WhatsApp and email send read this table, so a rewritten follow-up changed
+  // nothing about what the customer received.
+  const { data: created, error: createError } = await admin
+    .from('message_templates')
+    .insert({
+      organization_id: orgId,
+      created_by: adminId,
+      channel: 'whatsapp',
+      name: 'Post-show follow-up',
+      body: 'Hi {{name}}, great meeting you at {{event}}.',
+      is_default: true,
+    })
+    .select()
+    .single();
+  eq('an admin can create a template', createError, null);
+  eq('  ...stored against the organisation', created?.organization_id, orgId);
+  eq('  ...as the default', created?.is_default, true);
+
+  // A WhatsApp template must not carry a subject — there is a CHECK for it.
+  const { error: subjectError } = await admin
+    .from('message_templates')
+    .insert({
+      organization_id: orgId,
+      created_by: adminId,
+      channel: 'whatsapp',
+      name: 'Bad one',
+      subject: 'WhatsApp has no subject line',
+      body: 'x',
+    });
+  eq('a WhatsApp template cannot have a subject line', Boolean(subjectError), true);
+
+  // Only one default per channel — a partial unique index enforces it, which is
+  // why the UI invalidates the whole list rather than patching one row.
+  const { error: twoDefaultsError } = await admin.from('message_templates').insert({
+    organization_id: orgId,
+    created_by: adminId,
+    channel: 'whatsapp',
+    name: 'Second default',
+    body: 'y',
+    is_default: true,
+  });
+  eq('a channel cannot have two defaults', Boolean(twoDefaultsError), true);
+
+  // The rep must be able to READ them — they are what their follow-ups send.
+  const { data: repSees } = await rep.from('message_templates').select('id, name');
+  eq('a rep can read the team templates', repSees?.length, 1);
+
+  // ...but not rewrite what the whole team sends.
+  const { data: repEditRows, error: repEditError } = await rep
+    .from('message_templates')
+    .update({ body: 'Buy my own thing instead' })
+    .eq('id', created.id)
+    .select('id');
+  eq('a rep cannot edit a team template', repEditRows?.length ?? 0, 0);
+
+  const { data: bodyNow } = await admin
+    .from('message_templates')
+    .select('body')
+    .eq('id', created.id)
+    .single();
+  eq('  ...and the body is untouched', bodyNow.body, 'Hi {{name}}, great meeting you at {{event}}.');
+  void repEditError;
+
+  // ---- 9. a rep cannot promote themselves ----
   // Guarded by enforce_profile_update_rules(); asserted here because the
   // Settings screen is where a role is displayed.
   const { error: roleError } = await rep.from('profiles').update({ role: 'admin' }).eq('id', repId);

@@ -45,6 +45,7 @@ npm run verify:voice          # recording -> upload -> transcript -> summary, pl
 npm run verify:messaging      # merge fields and wa.me/mailto links — the text customers actually read
 npm run verify:csv            # export escaping, incl. Excel formula injection
 npm run verify:summary        # 19 live checks on summarise-company, incl. 8 SSRF refusals
+npm run verify:settings       # 27 live checks on the Settings data path and the rep/admin boundaries
 npm run verify:phone          # 20 checks on phoneMatchKey — mirrors the duplicate-match SQL
 npm run verify:duplicate      # 31 live checks on duplicate detection, incl. the anon refusal
 npm run verify:contacts       # 36 checks on the contact/vCard shape a lead becomes
@@ -100,7 +101,7 @@ Also: `types/database.ts` generated, `lib/db.ts` added (money lives in exactly o
 | `yieldd-session` | Phase 1 → v2 |
 | `yieldd-leads` (7 mock leads) | Phase 2 (2.11–2.17) |
 | `yieldd-event-fields` | Phase 2 (2.8) |
-| `yieldd-templates` (2 seeded) | Phase 2 (2.9) |
+| ~~`yieldd-templates` (2 seeded)~~ | **Done 2026-08-31** — the store is deleted; templates come from `message_templates` |
 | `yieldd-card-profile` | Phase 3 (3.14) |
 | `yieldd-team` (4 fake + 1 invite) | Phase 6 (6.2) |
 | `yieldd-company` | Phase 6 (6.1) |
@@ -440,11 +441,19 @@ Per MVP_PLAN: **"greyed rather than hidden, so the user knows what exists"** —
 *Depends on: Phase 3 (most of what's being configured/polished needs to exist first).*
 
 #### 6.1 — Settings screen (J1)
-- **Status:** Not Started · **Files:** new `app/(app)/settings/index.tsx`
+- **Status:** **Mostly complete** (2026-08-31) · **Files:** `app/(app)/(tabs)/profile.tsx` (it lives on the tab, not at `settings/index.tsx`), `app/(app)/settings/category.tsx`, `components/app/MessageTemplateManager.tsx`
 - **Description:** Profile, team (admin), plan/billing, GST invoices (`payments.gst_invoice_url`), notification prefs, manual sync, storage used, WhatsApp support link, logout.
+- **The screen looked finished and was largely decoration.** Four things were fixed:
+  - the plan badge said **"Pro plan · Renews 12 Mar 2027 · ACTIVE" to every account**, including every Free one — a renewal date for a subscription nobody bought. Now reads `organizations.plan_tier`. No renewal date is shown at all, because nothing writes a `subscriptions` row until 4.2.
+  - the notifications toggle was `useState(true)` and forgot on close, while `profiles.notifications_enabled` had been unused since `20260827130700`.
+  - the company category was device-local, invisible to the team, while `organizations.category` went unused since `20260827130400`.
+  - the **template editor wrote to a device-local store while every send read `message_templates`** — a rep could rewrite their follow-up, watch it save, and change nothing the customer saw. `stores/useTemplatesStore.ts` is deleted.
+- **Removed:** "Check for updates" always answered "You're up to date" after a 900 ms fake wait — `expo-updates` is not installed and there is no channel to ask. Version number only now.
+- **Still to do:** storage used, and GST invoices (needs `payments`, so Phase 4). **"Chat with support" is still unwired — there is no support number anywhere in the codebase and one should not be invented.**
+- **Checked by** `npm run verify:settings` — 27 live checks, most of them boundaries.
 
 #### 6.2 — Team management (J3)
-- **Status:** Not Started · **Files:** new `app/(app)/settings/team.tsx` · **Table:** `profiles` (status), `invites`
+- **Status:** **Complete** — built during the Phase 3 team work; the file already reads `useTeam()`/`usePendingInvites()` against the real tables. · **Files:** `app/(app)/settings/team.tsx` · **Table:** `profiles` (status), `invites`
 - **Acceptance criteria:** "Deactivating" a rep sets `profiles.status = 'deactivated'` — never deletes the row (the `leads.captured_by` foreign key is `ON DELETE RESTRICT` specifically so this can't be gotten wrong).
 
 #### 6.3 — Offline/sync indicator (shared component)

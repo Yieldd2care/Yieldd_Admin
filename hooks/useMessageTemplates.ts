@@ -1,6 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { fetchTemplates, type MessageChannel, type MessageTemplate } from '../lib/api/messageTemplates';
+import {
+  createTemplate,
+  deleteTemplate,
+  fetchTemplates,
+  setDefaultTemplate,
+  updateTemplate,
+  type MessageChannel,
+  type MessageTemplate,
+} from '../lib/api/messageTemplates';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useEvent } from './useEvents';
 
@@ -44,4 +52,56 @@ export function useEventTemplate(
     templates?.[0];
 
   return { template, isLoading };
+}
+
+/**
+ * Create, edit, delete and default — against `message_templates`, the table the
+ * send path actually reads.
+ *
+ * These exist because the settings editor used to write to a device-local
+ * zustand store while every WhatsApp and email send read the database. A rep
+ * could rewrite their follow-up message, watch it save, and change nothing
+ * about what the customer received.
+ *
+ * Every mutation invalidates the whole template list rather than patching the
+ * cache: `is_default` is exclusive per channel (a partial unique index enforces
+ * it), so setting one default silently clears another row the client cannot see
+ * from the response.
+ */
+export function useTemplateMutations(channel: MessageChannel) {
+  const queryClient = useQueryClient();
+  const user = useSessionStore((s) => s.user);
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: templateKeys.all });
+
+  const create = useMutation({
+    mutationFn: (input: { name: string; subject?: string | null; body: string }) => {
+      if (!user) throw new Error('You need to be signed in.');
+      return createTemplate({
+        ...input,
+        channel,
+        organizationId: user.organizationId,
+        createdBy: user.id,
+      });
+    },
+    onSuccess: invalidate,
+  });
+
+  const update = useMutation({
+    mutationFn: (input: { id: string; name?: string; subject?: string | null; body?: string }) =>
+      updateTemplate(input.id, { name: input.name, subject: input.subject, body: input.body }),
+    onSuccess: invalidate,
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteTemplate(id),
+    onSuccess: invalidate,
+  });
+
+  const makeDefault = useMutation({
+    mutationFn: (id: string) => setDefaultTemplate(id),
+    onSuccess: invalidate,
+  });
+
+  return { create, update, remove, makeDefault };
 }
