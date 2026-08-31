@@ -33,14 +33,33 @@ the Google records are already on the domain.
 > Create **`noreply@yieldd.co`** and send everything from there; then a limit hit costs a
 > delayed digest, not the ability to receive customer mail.
 
+> **Three different Google consoles are in play in this project. They are easy to confuse:**
+>
+> | Purpose | Console |
+> |---|---|
+> | Workspace users for `yieldd.co` (this task) | **admin.google.com** |
+> | A single account's own 2FA and App Passwords | **myaccount.google.com** |
+> | The OAuth client for Google sign-in (#8) | **console.cloud.google.com** — and per 8a it sits under a **personal Gmail**, project "My First Project", not the org account |
+>
+> Nothing in this item touches Google Cloud.
+
+> 💰 **A new Workspace user is a paid seat.** An *alias* would be free but cannot
+> authenticate, so it cannot send — it has to be a real user. Either accept the extra seat
+> (recommended: the support inbox can then never be taken down by a sending cap), or send
+> from an existing account and accept that a cap hit stops that account's mail for 24 hours.
+
 **Steps (all yours — I cannot do these):**
-1. Google Admin console → **Users → Add new user** → `noreply@yieldd.co`.
-2. Sign in as that user once, then turn on **2-Step Verification** for it. Google will not
-   issue an App Password without it.
-3. **App Passwords → generate one** (a normal account password is rejected by SMTP).
-4. Send that App Password over. I put it on Supabase → Project Settings → Auth → SMTP
+1. **admin.google.com** → Directory → **Users → Add new user** → `noreply@yieldd.co`.
+2. Still in admin.google.com → **Security → Authentication → 2-Step Verification**, make sure
+   users are allowed to turn it on. Without this the next step is impossible.
+3. Sign in to **myaccount.google.com as `noreply@yieldd.co`** and turn on **2-Step
+   Verification** for that account. Google will not issue an App Password without it.
+4. Same place → **Security → App passwords → generate one.** Note this is done *as that
+   user*; an admin cannot create an App Password on someone else's behalf. A normal account
+   password is rejected by SMTP.
+5. Send that App Password over. I put it on Supabase → Project Settings → Auth → SMTP
    (`smtp.gmail.com`, port 587, user `noreply@yieldd.co`). Never committed.
-5. Set **reply-to `care@yieldd.co`**, so anyone who replies reaches the inbox that works.
+6. Set **reply-to `care@yieldd.co`**, so anyone who replies reaches the inbox that works.
 
 **The trade-off, stated so it is not a surprise later:** Workspace gives far less delivery
 visibility than a transactional provider. When a customer says "I never got the reset
@@ -104,62 +123,6 @@ stored preference on 2026-08-31 — before that the toggle forgot on close.
     built-in mailer, which is rate-limited to a handful of messages an hour and is not
     something to launch on.
 - **Until then:** someone locked out has to be reset by an admin.
-
-### 8. Google sign-in — set up 2026-08-31, one step left
-- **Where:** [lib/auth/google.ts](lib/auth/google.ts), [app/(auth)/index.tsx](app/(auth)/index.tsx),
-  [app/auth/callback.tsx](app/auth/callback.tsx)
-- **Done:** Google Cloud project, consent screen, OAuth client, and the provider enabled on
-  Supabase with the Client ID and secret in place. Sign-in works for listed test users.
-- **Left:** the consent screen is still in **Testing**, so only emails added under *Audience →
-  Test users* can sign in. See 8d for what unblocks **Publish**.
-
-#### 8a. What was actually involved (so it is not rediscovered)
-- **The org Google account could not create a project** — `resourcemanager.projects.create`
-  denied, and "Parent resource" was a required field. That is the tell for a Workspace-managed
-  account. A **personal Gmail** was used instead.
-- **Whichever Google account holds the OAuth client controls sign-in for the whole product.**
-  Losing that account means nobody can sign in and nobody can fix it.
-- The project is named **"My First Project"**, not "Yieldd". Worth knowing before hunting for it.
-- **Only one *Web application* client is needed** — no Android client, no iOS client, no SHA-1.
-  `signInWithOAuth` sends everyone through Supabase, so Google only ever talks to a website.
-- Redirect URI, exactly: `https://azpanagwuskruelbwtvb.supabase.co/auth/v1/callback`
-- **`supabase.co` cannot be an Authorised domain** — it is on the Public Suffix List, so Google
-  rejects it as "not a top private domain". It is not needed anyway.
-- **Never send a client secret through chat.** Paste it straight into Supabase → Authentication
-  → Providers → Google. (This file used to say the opposite. It was wrong.)
-- **Already done, so it does not need redoing:** the Supabase redirect allow list
-  (`https://yieldd.co/auth/callback`, `yieldd://…`, and the localhost variants for dev), the
-  PKCE flow, and the `/auth/callback` route.
-#### 8b. What happens the first time someone uses it
-- Google hands over a name and an email and **nothing else** — no phone number, no company.
-  Left alone, that person would land in an organisation literally named "My workspace" with no
-  number on their digital card.
-- So a Google sign-in goes to a short **"Almost there"** screen
-  ([app/(app)/onboarding/complete-profile.tsx](app/(app)/onboarding/complete-profile.tsx))
-  asking for company and contact number, before the app opens. Then on to the usual
-  team-or-solo question.
-- **Enforced in the `(app)` layout**, not just by routing — force-quitting on that screen is not
-  a way past it.
-- **You will not see it:** your own account already has a contact number.
-- Revisit this screen's wording and design when Google is actually switched on.
-
-#### 8c. Needs a dev build
-Google sign-in cannot work inside Expo Go — the `exp://<LAN IP>` redirect changes with the
-network and cannot be allow-listed. The button says so plainly rather than failing oddly. Same
-requirement invite deep links already have.
-
-#### 8d. Why "Publish app" is greyed out
-Google will not move an External app out of Testing without a **home page link** and a
-**privacy policy link** on the Branding page. Both pages were built on 2026-08-31
-([app/(web)/privacy.tsx](app/(web)/privacy.tsx), [app/(web)/terms.tsx](app/(web)/terms.tsx))
-but they are only live once master is deployed.
-
-**Once yieldd.co/privacy is live:** Google Cloud → Branding → home page `https://yieldd.co`,
-privacy `https://yieldd.co/privacy`, Authorised domain `yieldd.co` → Save → Audience →
-**Publish app** becomes clickable.
-
-"Publish app" has nothing to do with the Play Store. It only decides whether anyone can sign
-in, or only hand-listed emails.
 
 ### 9. Not built yet — flagged so nothing here reads as finished
 
@@ -230,7 +193,7 @@ rather than quietly inventing something:
 Audited against Google Play and Apple App Store rules. Two hard blockers remain; both would
 be an automatic rejection, so neither store can be submitted to until they are done.
 
-#### ~~Account deletion~~ — built 2026-08-31, NOT DEPLOYED
+#### ~~Account deletion~~ — built AND DEPLOYED 2026-08-31, but never actually run
 - Settings → Delete account. Shows what will go, then asks you to type DELETE.
 - **Your rule, with one refinement:** an admin deleting their account takes the whole
   organisation only when they are the **last** admin. With another admin still in place it is
@@ -322,6 +285,69 @@ Confirm current terms with Play directly; this policy has moved repeatedly in In
 ---
 
 ## Done
+
+### 8. Google sign-in — DONE 2026-08-31
+- Project, consent screen, OAuth client, Supabase provider, and **published** — so anyone can
+  sign in, not just hand-listed test users. Publishing was blocked until yieldd.co/privacy and
+  /terms went live, which they did in the same day’s deploy.
+- **Not yet used by anyone.** Worth signing in with a fresh Google account once, to see the
+  "Almost there" screen ([app/(app)/onboarding/complete-profile.tsx](app/(app)/onboarding/complete-profile.tsx))
+  that collects company and contact number — Google supplies neither. That screen has never
+  been seen by a real user and its wording was written blind.
+- **Where:** [lib/auth/google.ts](lib/auth/google.ts), [app/(auth)/index.tsx](app/(auth)/index.tsx),
+  [app/auth/callback.tsx](app/auth/callback.tsx)
+- **Done:** Google Cloud project, consent screen, OAuth client, and the provider enabled on
+  Supabase with the Client ID and secret in place. Sign-in works for listed test users.
+- **Left:** the consent screen is still in **Testing**, so only emails added under *Audience →
+  Test users* can sign in. See 8d for what unblocks **Publish**.
+
+#### 8a. What was actually involved (so it is not rediscovered)
+- **The org Google account could not create a project** — `resourcemanager.projects.create`
+  denied, and "Parent resource" was a required field. That is the tell for a Workspace-managed
+  account. A **personal Gmail** was used instead.
+- **Whichever Google account holds the OAuth client controls sign-in for the whole product.**
+  Losing that account means nobody can sign in and nobody can fix it.
+- The project is named **"My First Project"**, not "Yieldd". Worth knowing before hunting for it.
+- **Only one *Web application* client is needed** — no Android client, no iOS client, no SHA-1.
+  `signInWithOAuth` sends everyone through Supabase, so Google only ever talks to a website.
+- Redirect URI, exactly: `https://azpanagwuskruelbwtvb.supabase.co/auth/v1/callback`
+- **`supabase.co` cannot be an Authorised domain** — it is on the Public Suffix List, so Google
+  rejects it as "not a top private domain". It is not needed anyway.
+- **Never send a client secret through chat.** Paste it straight into Supabase → Authentication
+  → Providers → Google. (This file used to say the opposite. It was wrong.)
+- **Already done, so it does not need redoing:** the Supabase redirect allow list
+  (`https://yieldd.co/auth/callback`, `yieldd://…`, and the localhost variants for dev), the
+  PKCE flow, and the `/auth/callback` route.
+#### 8b. What happens the first time someone uses it
+- Google hands over a name and an email and **nothing else** — no phone number, no company.
+  Left alone, that person would land in an organisation literally named "My workspace" with no
+  number on their digital card.
+- So a Google sign-in goes to a short **"Almost there"** screen
+  ([app/(app)/onboarding/complete-profile.tsx](app/(app)/onboarding/complete-profile.tsx))
+  asking for company and contact number, before the app opens. Then on to the usual
+  team-or-solo question.
+- **Enforced in the `(app)` layout**, not just by routing — force-quitting on that screen is not
+  a way past it.
+- **You will not see it:** your own account already has a contact number.
+- Revisit this screen's wording and design when Google is actually switched on.
+
+#### 8c. Needs a dev build
+Google sign-in cannot work inside Expo Go — the `exp://<LAN IP>` redirect changes with the
+network and cannot be allow-listed. The button says so plainly rather than failing oddly. Same
+requirement invite deep links already have.
+
+#### 8d. Publish app — the pages are live, the form is yours to fill
+Google will not move an External app out of Testing without a **home page link** and a
+**privacy policy link** on the Branding page. Both pages were built on 2026-08-31
+([app/(web)/privacy.tsx](app/(web)/privacy.tsx), [app/(web)/terms.tsx](app/(web)/terms.tsx))
+but they are only live once master is deployed.
+
+**Once yieldd.co/privacy is live:** Google Cloud → Branding → home page `https://yieldd.co`,
+privacy `https://yieldd.co/privacy`, Authorised domain `yieldd.co` → Save → Audience →
+**Publish app** becomes clickable.
+
+"Publish app" has nothing to do with the Play Store. It only decides whether anyone can sign
+in, or only hand-listed emails.
 
 ### 10. A false duplicate warning on every capture
 - **Where:** [app/(app)/capture/confirm.tsx](app/(app)/capture/confirm.tsx),
