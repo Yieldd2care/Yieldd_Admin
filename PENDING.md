@@ -354,8 +354,19 @@ Confirm current terms with Play directly; this policy has moved repeatedly in In
   are not committed — see the steps below.
 
 **What you need to do before the first build:**
-1. `npm i -g eas-cli` (or use `npx eas-cli`), then `eas login`.
-2. `eas init` — links this project to your Expo account and writes the project id.
+
+> ⚠️ **Step 1 is a one-way-ish decision: whoever owns the Expo account owns every build and
+> store submission.** This machine is already logged in as **`mis.orangeotec@gmail.com`**
+> (accounts `misorangeotec` and `misorangeotecs-team`) — a different identity from the
+> `Yieldd2care` GitHub org and the `yieldd.co` Workspace. **You chose 2026-08-31 to create a
+> new, Yieldd-specific account** rather than reuse those, so the app is not tied to another
+> business's login. That is the mistake #8a records for the Google OAuth client, which now
+> sits under a personal Gmail and controls sign-in for the entire product.
+
+1. **Create the Expo account** at expo.dev using a `@yieldd.co` address, then in a terminal:
+   `npx eas-cli login` (interactive — it has to be you, not me). `npx eas-cli whoami` should
+   then show the new account. **Tell me when that is done and I will run step 2.**
+2. `eas init` — links this project to that account and writes the project id into app.json.
 3. Set the build-time env vars once, on EAS (dashboard → Environment Variables, or
    `eas env:create`). All three are **plaintext, not secret** — the anon key is designed to be
    public and already ships in the yieldd.co web bundle:
