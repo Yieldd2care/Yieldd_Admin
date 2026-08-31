@@ -8,8 +8,8 @@ import type { AccountIntent, User } from '../../types/session';
 
 /** The exact column list refreshProfile() selects. Keep the two in step. */
 export const PROFILE_SELECT =
-  'id, full_name, email, role, status, designation, phone, avatar_url, created_at, organization_id, ' +
-  'organizations!inner(name, plan_tier, onboarding_intent)';
+  'id, full_name, email, role, status, designation, phone, avatar_url, notifications_enabled, ' +
+  'created_at, organization_id, organizations!inner(name, plan_tier, onboarding_intent)';
 
 type OrganizationJoin = {
   name: string;
@@ -26,6 +26,7 @@ type ProfileRow = {
   designation: string | null;
   phone: string | null;
   avatar_url: string | null;
+  notifications_enabled: boolean | null;
   created_at: string;
   organization_id: string;
   // PostgREST returns an embedded one-to-one as an object, but supabase-js has
@@ -58,6 +59,7 @@ export function toSessionUser(row: ProfileRow): User {
     designation: row.designation,
     phone: row.phone,
     avatarUrl: row.avatar_url,
+    notificationsEnabled: row.notifications_enabled ?? true,
     createdAt: row.created_at,
   };
 }

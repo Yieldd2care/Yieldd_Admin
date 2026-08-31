@@ -1,26 +1,62 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { CheckIcon, PlusIcon } from '../../../components/ui/icons';
 import { PREDEFINED_CATEGORIES, useCompanyStore } from '../../../stores/useCompanyStore';
+import { useOrganization, useUpdateOrganization } from '../../../hooks/useOrganization';
+import { useSessionStore } from '../../../stores/useSessionStore';
 
+/**
+ * The category belongs to the ORGANISATION, not the device.
+ *
+ * It used to live only in a local zustand store, so the answer was invisible to
+ * the admin's second phone and to every rep on the team — while
+ * `organizations.category` sat in the database unused since 20260827130400.
+ *
+ * The list of custom names people have typed stays local. It is a convenience
+ * for re-picking, not a fact about the business, and there is no table for it.
+ */
 export default function ManageCategoryScreen() {
   const customCategories = useCompanyStore((s) => s.customCategories);
-  const selectedCategory = useCompanyStore((s) => s.selectedCategory);
   const addCategory = useCompanyStore((s) => s.addCategory);
-  const selectCategory = useCompanyStore((s) => s.selectCategory);
+
+  const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
+  const { data: organization } = useOrganization();
+  const updateOrganization = useUpdateOrganization();
+  const selectedCategory = organization?.category ?? null;
 
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
+  const [pending, setPending] = useState<string | null>(null);
 
   const categories = [...PREDEFINED_CATEGORIES, ...customCategories];
 
+  const selectCategory = async (name: string) => {
+    if (!isAdmin) {
+      // org_admin_update matches zero rows for a rep rather than erroring, so
+      // saying so here beats a tap that silently does nothing.
+      Alert.alert('Admins only', 'Only an admin can change the company category.');
+      return;
+    }
+    if (pending || name === selectedCategory) return;
+    setPending(name);
+    try {
+      await updateOrganization.mutateAsync({ category: name });
+    } catch (err) {
+      Alert.alert("Couldn't save that", err instanceof Error ? err.message : 'Try again.');
+    } finally {
+      setPending(null);
+    }
+  };
+
   const submitNew = () => {
-    if (!draft.trim()) return;
-    addCategory(draft);
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    addCategory(trimmed);
+    void selectCategory(trimmed);
     setDraft('');
     setAdding(false);
   };
@@ -39,7 +75,7 @@ export default function ManageCategoryScreen() {
             return (
               <Pressable
                 key={cat}
-                onPress={() => selectCategory(cat)}
+                onPress={() => void selectCategory(cat)}
                 className={`flex-row items-center justify-between py-[14px] ${
                   i < categories.length - 1 ? 'border-b border-section' : ''
                 }`}
@@ -47,13 +83,17 @@ export default function ManageCategoryScreen() {
                 <Typography className={`text-[13.5px] ${selected ? 'font-bold text-navy' : 'font-semibold text-ink-muted'}`}>
                   {cat}
                 </Typography>
-                <View
-                  className={`w-5 h-5 rounded-full items-center justify-center ${
-                    selected ? 'bg-gold' : 'border-[1.5px] border-hairline'
-                  }`}
-                >
-                  {selected ? <CheckIcon size={11} color="#0B132B" strokeWidth={3} /> : null}
-                </View>
+                {pending === cat ? (
+                  <ActivityIndicator size="small" color="#F4B000" />
+                ) : (
+                  <View
+                    className={`w-5 h-5 rounded-full items-center justify-center ${
+                      selected ? 'bg-gold' : 'border-[1.5px] border-hairline'
+                    }`}
+                  >
+                    {selected ? <CheckIcon size={11} color="#0B132B" strokeWidth={3} /> : null}
+                  </View>
+                )}
               </Pressable>
             );
           })}

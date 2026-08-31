@@ -7,9 +7,9 @@ import Constants from 'expo-constants';
 import { Typography } from '../../../components/ui/Typography';
 import { Toggle } from '../../../components/ui/Toggle';
 import { useSessionStore } from '../../../stores/useSessionStore';
-import { useTemplatesStore } from '../../../stores/useTemplatesStore';
-import { useCompanyStore } from '../../../stores/useCompanyStore';
 import { useTeam } from '../../../hooks/useTeam';
+import { useOrganization } from '../../../hooks/useOrganization';
+import { useTemplates } from '../../../hooks/useMessageTemplates';
 import {
   ChevronRightIcon,
   DownloadIcon,
@@ -50,23 +50,34 @@ function Row({
 export default function ProfileScreen() {
   const user = useSessionStore((s) => s.user);
   const signOut = useSessionStore((s) => s.signOut);
-  const [notifications, setNotifications] = useState(true);
+  const updateProfile = useSessionStore((s) => s.updateProfile);
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? 'Y';
 
-  const whatsappTemplateCount = useTemplatesStore((s) => s.whatsappTemplates.length);
-  const emailTemplateCount = useTemplatesStore((s) => s.emailTemplates.length);
-  const companyCategory = useCompanyStore((s) => s.selectedCategory);
+  const { data: organization } = useOrganization();
+  const isPro = (organization?.planTier ?? user?.planTier) === 'pro';
+  const seats = organization?.seats ?? 1;
+  const companyCategory = organization?.category;
+
+  const { data: whatsappTemplates } = useTemplates('whatsapp');
+  const { data: emailTemplates } = useTemplates('email');
   const { data: teamMembers } = useTeam();
   const activeMemberCount = teamMembers?.filter((m) => m.status === 'active').length ?? 0;
 
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const checkForUpdate = () => {
-    if (checkingUpdate) return;
-    setCheckingUpdate(true);
-    setTimeout(() => {
-      setCheckingUpdate(false);
-      Alert.alert("You're up to date", `Yieldd v${APP_VERSION} is the latest version.`);
-    }, 900);
+  /**
+   * The toggle shows what is actually stored, and writes it.
+   *
+   * It used to be `useState(true)` — it looked like a setting, turned off
+   * happily, and forgot the moment the screen closed. The column
+   * (`profiles.notifications_enabled`) had existed unused since 20260827130700.
+   */
+  const notifications = user?.notificationsEnabled ?? true;
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const toggleNotifications = async (next: boolean) => {
+    if (savingNotifications) return;
+    setSavingNotifications(true);
+    const { error } = await updateProfile({ notificationsEnabled: next });
+    setSavingNotifications(false);
+    if (error) Alert.alert("Couldn't save that", error);
   };
 
   return (
@@ -94,14 +105,40 @@ export default function ProfileScreen() {
           */}
         </View>
 
+        {/*
+          Reads the organisation's real plan. This block used to say "Pro plan ·
+          Renews 12 Mar 2027 · ACTIVE" to everyone, including every Free account
+          — a renewal date for a subscription nobody had bought.
+
+          No renewal date is shown at all yet: it belongs to a `subscriptions`
+          row, and nothing writes one until the payment webhook exists (Phase
+          4.2). Showing the seat count instead is true today.
+        */}
         <View className="flex-row items-center gap-3 rounded-2xl px-[18px] py-4 mt-[14px]" style={{ backgroundColor: '#0B132B' }}>
           <View className="flex-1">
-            <Typography className="text-[13.5px] font-bold text-white">Pro plan</Typography>
-            <Typography className="text-[11.5px] text-white/[0.55] mt-[2px]">Renews 12 Mar 2027</Typography>
+            <Typography className="text-[13.5px] font-bold text-white">
+              {isPro ? 'Pro plan' : 'Free plan'}
+            </Typography>
+            <Typography className="text-[11.5px] text-white/[0.55] mt-[2px]">
+              {isPro
+                ? `${seats} ${seats === 1 ? 'seat' : 'seats'} · annual`
+                : '1 event · 100 leads · 3 voice notes'}
+            </Typography>
           </View>
-          <View className="bg-gold rounded-full px-[10px] py-[4px]">
-            <Typography className="text-[10.5px] font-extrabold text-navy" style={{ letterSpacing: 0.4 }}>ACTIVE</Typography>
-          </View>
+          {isPro ? (
+            <View className="bg-gold rounded-full px-[10px] py-[4px]">
+              <Typography className="text-[10.5px] font-extrabold text-navy" style={{ letterSpacing: 0.4 }}>
+                ACTIVE
+              </Typography>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => router.push('/(app)/(modals)/upgrade')}
+              className="bg-gold rounded-full px-[13px] py-[6px]"
+            >
+              <Typography className="text-[11px] font-extrabold text-navy">Upgrade</Typography>
+            </Pressable>
+          )}
         </View>
 
         <SectionLabel>Account</SectionLabel>
@@ -123,7 +160,7 @@ export default function ProfileScreen() {
             label="WhatsApp template"
             right={
               <View className="flex-row items-center gap-[6px]">
-                <Typography className="text-[12px] font-semibold text-slate">{whatsappTemplateCount}</Typography>
+                <Typography className="text-[12px] font-semibold text-slate">{whatsappTemplates?.length ?? 0}</Typography>
                 <ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />
               </View>
             }
@@ -134,7 +171,7 @@ export default function ProfileScreen() {
             label="Email template"
             right={
               <View className="flex-row items-center gap-[6px]">
-                <Typography className="text-[12px] font-semibold text-slate">{emailTemplateCount}</Typography>
+                <Typography className="text-[12px] font-semibold text-slate">{emailTemplates?.length ?? 0}</Typography>
                 <ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />
               </View>
             }
@@ -161,7 +198,7 @@ export default function ProfileScreen() {
           <Row
             icon={<WhatsAppIcon size={15} color="#25D366" />}
             label="Notifications"
-            right={<Toggle value={notifications} onValueChange={setNotifications} />}
+            right={<Toggle value={notifications} onValueChange={(v) => void toggleNotifications(v)} />}
             isLast
           />
         </Card>
@@ -209,18 +246,18 @@ export default function ProfileScreen() {
             right={<ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />}
             onPress={() => Linking.openURL('https://yieldd.co/terms')}
           />
+          {/*
+            Version only, with no "Check now".
+            The old row waited 900ms and then said "You're up to date" no matter
+            what — it could not have known, because expo-updates is not installed
+            and there is no update channel to ask. A button that always returns
+            the same reassuring answer is worse than no button. Add it back with
+            expo-updates if OTA updates are ever set up.
+          */}
           <Row
             icon={<RefreshIcon size={15} />}
-            label="Check for updates"
-            right={
-              <View className="flex-row items-center gap-[8px]">
-                <Typography className="text-[12px] font-semibold text-slate">v{APP_VERSION}</Typography>
-                <Typography className="text-[11.5px] font-bold text-gold">
-                  {checkingUpdate ? 'Checking…' : 'Check now'}
-                </Typography>
-              </View>
-            }
-            onPress={checkForUpdate}
+            label="Version"
+            right={<Typography className="text-[12px] font-semibold text-slate">v{APP_VERSION}</Typography>}
             isLast
           />
         </Card>
@@ -239,6 +276,21 @@ export default function ProfileScreen() {
         <Pressable onPress={signOut} className="flex-row items-center gap-3 bg-white border border-hairline rounded-2xl px-4 py-[14px] mt-[22px]">
           <LogoutIcon />
           <Typography className="text-[13.5px] font-bold text-[#C23B3B]">Log out</Typography>
+        </Pressable>
+
+        {/*
+          Both stores require account deletion to be reachable inside the app,
+          not only by writing in. Deliberately plain and last — it belongs
+          nowhere near the rows people tap to change their name, and the screen
+          it opens explains the damage before anything happens.
+        */}
+        <Pressable
+          onPress={() => router.push('/(app)/settings/delete-account')}
+          className="items-center py-4 mt-2"
+        >
+          <Typography className="text-[13px] font-semibold text-slate underline">
+            Delete account
+          </Typography>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

@@ -31,6 +31,8 @@ export interface User {
   designation: string | null;
   phone: string | null;
   avatarUrl: string | null;
+  /** `profiles.notifications_enabled`. Defaults true, as the column does. */
+  notificationsEnabled: boolean;
   createdAt: string;
 }
 
@@ -97,6 +99,7 @@ export interface SessionState {
     designation?: string;
     phone?: string;
     company?: string;
+    notificationsEnabled?: boolean;
   }) => Promise<AuthResult>;
 
   /**

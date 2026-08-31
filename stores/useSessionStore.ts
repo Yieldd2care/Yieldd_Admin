@@ -340,14 +340,24 @@ export const useSessionStore = create<SessionState>()(
       },
 
       // ------------------------------------------------------ profile writes
-      updateProfile: async ({ name, designation, phone, company }) => {
+      updateProfile: async ({ name, designation, phone, company, notificationsEnabled }) => {
         if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
         const user = get().user;
         if (!user) return { error: 'Not signed in.' };
 
-        const columns: { full_name?: string; designation?: string; phone?: string } = {};
+        const columns: {
+          full_name?: string;
+          designation?: string;
+          phone?: string;
+          notifications_enabled?: boolean;
+        } = {};
         const next: Partial<User> = {};
+
+        if (notificationsEnabled !== undefined && notificationsEnabled !== user.notificationsEnabled) {
+          columns.notifications_enabled = notificationsEnabled;
+          next.notificationsEnabled = notificationsEnabled;
+        }
 
         const trimmedName = name?.trim();
         if (trimmedName && trimmedName !== user.name) {
