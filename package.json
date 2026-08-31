@@ -72,6 +72,7 @@
     "verify:voice": "node --env-file=.env scripts/verify-voice-note.mjs",
     "verify:messaging": "node scripts/verify-messaging.mjs",
     "verify:csv": "node scripts/verify-csv.mjs",
+    "verify:summary": "node --env-file=.env scripts/verify-summary.mjs",
     "verify:phone": "node scripts/verify-phone.mjs",
     "verify:duplicate": "node --env-file=.env scripts/verify-duplicate.mjs",
     "verify:contacts": "node scripts/verify-contacts.mjs",

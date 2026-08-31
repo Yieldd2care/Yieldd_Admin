@@ -23,26 +23,31 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done (move to Done se
     something to launch on.
 - **Until then:** someone locked out has to be reset by an admin.
 
-### 8. Google sign-in — switch it on (deferred by your call, 2026-08-28)
+### 8. Google sign-in — set up 2026-08-31, one step left
 - **Where:** [lib/auth/google.ts](lib/auth/google.ts), [app/(auth)/index.tsx](app/(auth)/index.tsx),
   [app/auth/callback.tsx](app/auth/callback.tsx)
-- **The code is finished and wired.** Only the provider is still off on Supabase, because
-  enabling it needs credentials that only you can create. Nothing in the app changes when it
-  is turned on — the button simply starts working.
+- **Done:** Google Cloud project, consent screen, OAuth client, and the provider enabled on
+  Supabase with the Client ID and secret in place. Sign-in works for listed test users.
+- **Left:** the consent screen is still in **Testing**, so only emails added under *Audience →
+  Test users* can sign in. See 8d for what unblocks **Publish**.
 
-#### 8a. Create the Google OAuth client (about 5 minutes, needs you)
-1. Google Cloud Console → APIs & Services → Credentials → **Create OAuth client ID** → *Web application*.
-2. Authorised redirect URI — exactly this, nothing else:
-   `https://azpanagwuskruelbwtvb.supabase.co/auth/v1/callback`
-3. Send over the **Client ID** and **Client secret**; enabling the provider from there is a
-   one-command change on my side.
+#### 8a. What was actually involved (so it is not rediscovered)
+- **The org Google account could not create a project** — `resourcemanager.projects.create`
+  denied, and "Parent resource" was a required field. That is the tell for a Workspace-managed
+  account. A **personal Gmail** was used instead.
+- **Whichever Google account holds the OAuth client controls sign-in for the whole product.**
+  Losing that account means nobody can sign in and nobody can fix it.
+- The project is named **"My First Project"**, not "Yieldd". Worth knowing before hunting for it.
+- **Only one *Web application* client is needed** — no Android client, no iOS client, no SHA-1.
+  `signInWithOAuth` sends everyone through Supabase, so Google only ever talks to a website.
+- Redirect URI, exactly: `https://azpanagwuskruelbwtvb.supabase.co/auth/v1/callback`
+- **`supabase.co` cannot be an Authorised domain** — it is on the Public Suffix List, so Google
+  rejects it as "not a top private domain". It is not needed anyway.
+- **Never send a client secret through chat.** Paste it straight into Supabase → Authentication
+  → Providers → Google. (This file used to say the opposite. It was wrong.)
 - **Already done, so it does not need redoing:** the Supabase redirect allow list
   (`https://yieldd.co/auth/callback`, `yieldd://…`, and the localhost variants for dev), the
   PKCE flow, and the `/auth/callback` route.
-- **Until then:** tapping the button says *"Google sign-in is not switched on for this app yet."*
-  It checks first rather than navigating — a disabled provider makes Supabase answer with a raw
-  JSON error page that strands the person with no way back.
-
 #### 8b. What happens the first time someone uses it
 - Google hands over a name and an email and **nothing else** — no phone number, no company.
   Left alone, that person would land in an organisation literally named "My workspace" with no
@@ -61,6 +66,19 @@ Google sign-in cannot work inside Expo Go — the `exp://<LAN IP>` redirect chan
 network and cannot be allow-listed. The button says so plainly rather than failing oddly. Same
 requirement invite deep links already have.
 
+#### 8d. Why "Publish app" is greyed out
+Google will not move an External app out of Testing without a **home page link** and a
+**privacy policy link** on the Branding page. Both pages were built on 2026-08-31
+([app/(web)/privacy.tsx](app/(web)/privacy.tsx), [app/(web)/terms.tsx](app/(web)/terms.tsx))
+but they are only live once master is deployed.
+
+**Once yieldd.co/privacy is live:** Google Cloud → Branding → home page `https://yieldd.co`,
+privacy `https://yieldd.co/privacy`, Authorised domain `yieldd.co` → Save → Audience →
+**Publish app** becomes clickable.
+
+"Publish app" has nothing to do with the Play Store. It only decides whether anyone can sign
+in, or only hand-listed emails.
+
 ### 9. Not built yet — flagged so nothing here reads as finished
 
 These screens still show placeholder or mock content. Each one says so on screen
@@ -74,18 +92,25 @@ rather than quietly inventing something:
   for speech), upload, transcript via Deepgram nova-3 with `language=multi` for
   Hinglish, and a short summary. The Free plan's three-note limit is checked
   BEFORE recording, so nobody loses a recording to an upsell.
-- ~~Company summary (AI)~~ — **built 2026-08-29, not yet deployed.** The
+- ~~Company summary (AI)~~ — **built 2026-08-29, DEPLOYED AND WORKING 2026-08-31.**
+  Both remaining steps are done: the migration was already applied, and the
+  function is now live (`summarise-company`, version 1, ACTIVE). Checked end to
+  end by `npm run verify:summary` — 19 checks, all passing: a real site returns a
+  real summary, the second read comes back cached (6.2s → 0.3s), and eight
+  hostile URLs are refused. **Note the cache key is the registrable domain**, so
+  `www.acme.com` and `acme.com` are one exhibitor read once. Original notes below.
+  The
   `summarise-company` Edge Function reads the company's OWN website — the URL
   the card scan already captures — and summarises only what is actually on the
   page. It never writes from the company name alone, which is what made the old
   version invent things. No website on the lead means it says so; a site it
   cannot read means it says that too. Summaries are cached per domain, so one
   exhibitor's site is read once for the whole team rather than once per rep.
-  **Two steps left, and both need you:** apply the migration
-  `20260829140000_company_summary_cache.sql`, and deploy the function
-  (`supabase functions deploy summarise-company`). The ANTHROPIC_API_KEY it
-  needs is already on the project from card scanning. Until both are done the
-  button reports that it could not reach the service.
+  ~~Two steps left~~ — both done. The migration
+  `20260829140000_company_summary_cache.sql` was already applied, and the
+  function was deployed 2026-08-31. The ANTHROPIC_API_KEY it needs was already on
+  the project from card scanning. The summary itself is written by
+  `claude-haiku-4-5`.
 - ~~Bulk WhatsApp send and the send queue~~ — **built 2026-08-29.** Deep links,
   not the WhatsApp Business API: a `wa.me` link opens the rep's own WhatsApp
   with the lead's chat and the event's template already typed, and they press
@@ -117,6 +142,41 @@ rather than quietly inventing something:
   accept that. CSV opens natively in Excel, Sheets and Tally; the screen says
   CSV rather than implying a format it does not produce.
 - **Payments** — the whole of Phase 4.
+
+### 11. App store readiness — audited 2026-08-31
+
+Audited against Google Play and Apple App Store rules. Two hard blockers remain; both would
+be an automatic rejection, so neither store can be submitted to until they are done.
+
+#### 11a. Account deletion — NOT BUILT (blocks both stores)
+- Apple **5.1.1(v)**: an app that offers account creation must offer account deletion in-app.
+- Google Play: needs in-app deletion **and** a public web URL for deletion requests.
+- Nothing exists in the codebase today. The privacy policy currently promises deletion by
+  email to care@yieldd.co within 30 days, which is honest but is **not** what the stores ask for.
+- **Needs a product decision first:** when an *admin* deletes their account, what happens to
+  the organisation’s events, leads and team members? Delete it all with them, block deletion
+  until ownership is transferred, or delete the person and keep the org’s data? Different
+  answers mean materially different work, so nothing was guessed.
+
+#### 11b. iOS privacy manifest — NOT BUILT (blocks Apple)
+- Apple has required `PrivacyInfo.xcprivacy` since May 2024.
+- `app.json` has no `ios.privacyManifests` and no `ios.infoPlist` block at all.
+- Must declare collected data types and any required-reason API use.
+
+#### 11c. Fixed on 2026-08-31
+- **Dead legal links, all live in the app until now:** Settings → Privacy policy and Terms of
+  service opened `yieldd.co/privacy` and `/terms`, which **404’d**; the signup screen showed
+  both underlined with no handler at all; the website footer labels were inert. Apple rejects
+  under 5.1.1 for exactly this. Pages built and every link wired.
+- **`expo-audio` had no microphone purpose string** — a bare plugin entry, so iOS got a
+  generic default while camera, photos and contacts all had proper ones. Voice notes record
+  audio. Fixed in `app.json`.
+
+#### 11d. Not code — done in the consoles at submission time
+- Play **Data Safety** form, and Apple **App Privacy** labels. Both must match what the privacy
+  policy says, so fill them from that page rather than from memory.
+- A registered business address may be wanted; the policy names Growth Saga and care@yieldd.co
+  only. Worth checking with whoever reviews it.
 
 ---
 

@@ -23,7 +23,9 @@ Everything needed to take the app from "database exists, auth screens look right
 
 **Still on mock or placeholder data:** notifications, and payment (the whole of Phase 4).
 
-The digital card screens and the hosted public card page went real in `6e8991e`; the AI company summary in `5e1560e` (built, **not yet deployed** — `supabase functions deploy summarise-company`; its migration is already applied). Duplicate detection and save-to-contacts went real on 2026-08-31, which closes MVP_PLAN's six-step build sequence: only Phases 4–6 remain.
+The digital card screens and the hosted public card page went real in `6e8991e`; the AI company summary in `5e1560e`, **deployed and verified working 2026-08-31** (`npm run verify:summary`). Duplicate detection and save-to-contacts went real on 2026-08-31, which closes MVP_PLAN's six-step build sequence: only Phases 4–6 remain.
+
+**All three Edge Functions are now deployed:** `extract-card`, `transcribe-voice-note`, `summarise-company`.
 
 ### What was built on 2026-08-28
 
@@ -42,6 +44,7 @@ npm run compare:card-models   # accuracy/latency/tokens per model, to justify th
 npm run verify:voice          # recording -> upload -> transcript -> summary, plus the free-plan cap
 npm run verify:messaging      # merge fields and wa.me/mailto links — the text customers actually read
 npm run verify:csv            # export escaping, incl. Excel formula injection
+npm run verify:summary        # 19 live checks on summarise-company, incl. 8 SSRF refusals
 npm run verify:phone          # 20 checks on phoneMatchKey — mirrors the duplicate-match SQL
 npm run verify:duplicate      # 31 live checks on duplicate detection, incl. the anon refusal
 npm run verify:contacts       # 36 checks on the contact/vCard shape a lead becomes
