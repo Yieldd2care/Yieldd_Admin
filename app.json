@@ -24,6 +24,10 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "co.yieldd.app",
+      "blockedPermissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -68,18 +72,18 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow Yieldd to access your photos so a saved dashboard image can be shown here.",
-          "savePhotosPermission": "Allow Yieldd to save the dashboard image to your photos."
+          "photosPermission": "Allow $(PRODUCT_NAME) to open your photos so you can choose a picture for your digital business card.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save QR codes and event dashboard images to your photos."
         }
       ],
-      [
-        "expo-contacts",
-        {
-          "contactsPermission": "Allow $(PRODUCT_NAME) to save a lead you captured into your phone's contacts."
-        }
-      ],
+      "expo-contacts",
       "expo-web-browser",
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use your microphone to record a voice note about a lead you just met."
+        }
+      ]
     ]
   }
 }

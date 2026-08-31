@@ -139,7 +139,11 @@ export default function ShareSheetScreen() {
         return;
       }
 
-      const permission = await MediaLibrary.requestPermissionsAsync();
+      // Write-only. The app saves an image and never reads the gallery, and
+      // the read half pulls READ_MEDIA_IMAGES into the manifest — which Play
+      // restricts, and for which "so we can save a picture" is not an accepted
+      // reason. Asking to add is enough.
+      const permission = await MediaLibrary.requestPermissionsAsync(true);
       if (!permission.granted) {
         setStatus({ kind: 'error', message: 'Yieldd needs permission to save to your photos.' });
         return;

@@ -129,7 +129,9 @@ export default function ROIDashboardScreen() {
     setSavingImage(true);
     try {
       const uri = await captureRef(captureAreaRef, { format: 'png', quality: 1 });
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      // Write-only — see the same call on the card share screen. The dashboard
+      // image is saved, never read back, so read access is not asked for.
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Allow photo access to save the dashboard image.');
         return;

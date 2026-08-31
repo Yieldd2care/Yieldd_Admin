@@ -70,16 +70,19 @@ export async function saveLeadToContacts(input: ContactInput): Promise<SaveConta
 
   try {
     const Contacts = await import('expo-contacts');
-    const { granted } = await Contacts.requestPermissionsAsync();
-    if (!granted) {
-      return {
-        ok: false,
-        reason: 'permission',
-        message:
-          "Contacts access is off. Turn it on for Yieldd in your phone's settings, or add the number by hand.",
-      };
-    }
 
+    // No permission request, deliberately.
+    //
+    // `presentFormAsync` hands the contact to the system's own new-contact
+    // screen — an ACTION_INSERT intent on Android, CNContactViewController on
+    // iOS. The person saves it themselves, so neither platform requires the
+    // app to hold contacts access, and asking for it put READ_CONTACTS in the
+    // manifest for nothing.
+    //
+    // That matters beyond tidiness: Play treats contacts as a sensitive
+    // permission and makes you justify it at review, and "we open the system
+    // form" is not a justification it accepts. The permission was requested,
+    // never used, and would have been an awkward question to answer.
     await Contacts.presentFormAsync(null, toExpoContact(input) as Contact);
     return { ok: true, via: 'contacts' };
   } catch (err) {

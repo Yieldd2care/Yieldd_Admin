@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.co.yieldd.app"],
+        "components": [
+          {
+            "/": "/invite",
+            "comment": "Rep invite links open the app. The token rides in the query string, which matches by default."
+          }
+        ]
+      }
+    ]
+  }
+}
