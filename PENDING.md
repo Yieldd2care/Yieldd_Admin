@@ -9,6 +9,27 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done (move to Done se
 
 ## Open
 
+### 11. Pricing — the app is publishing the sales-room price (DECISION NEEDED)
+- **Where:** [app/(app)/(modals)/upgrade.tsx:38-39](app/(app)/(modals)/upgrade.tsx),
+  [app/(app)/payment/success.tsx:21](app/(app)/payment/success.tsx)
+- **The problem:** both screens say **₹10,000 per event**. MVP_PLAN §4 says the published
+  price is **₹30,000/year + GST, annual, upfront**, and that ₹10,000 single-event is
+  *"not published on the pricing page; used in the room when a prospect says 'we only do two
+  shows a year.' Deliberately one-third of annual, so the customer does the arithmetic
+  themselves and concludes that three shows makes annual obvious."*
+- **Why it matters:** putting it in the app publishes it. That loses the ₹30,000 anchor
+  ("less than the printing budget for one show") *and* the lever a salesperson plays when
+  someone pushes back on price. MVP_PLAN's own upgrade copy is
+  *"You've hit 100 leads. Unlock unlimited — ₹30,000/year."*
+- **Also inconsistent:** the website shows no headline price at all — only
+  [components/web/FAQAccordion.tsx:19](components/web/FAQAccordion.tsx) mentioning
+  "₹6,000/year each" for extra seats, which does match MVP_PLAN.
+- **Status 2026-08-31:** raised with you; **you said the price still needs deciding.**
+  MVP_PLAN itself says *"Treat ₹30,000 as a hypothesis. Take it to five exhibitors and watch
+  their faces. If nobody flinches, it is priced too low."*
+- **Blocks:** every Phase 4 and Phase 5 screen shows this number. Nothing in the upgrade
+  funnel should be built until it is settled, or it gets built twice.
+
 ### 7. "Forgot password?" — password reset not built
 - **Where:** sign-in screen — [app/(auth)/index.tsx](app/(auth)/index.tsx)
 - **Was:** the link was on screen but only raised an "isn't connected yet" alert. Deferred on

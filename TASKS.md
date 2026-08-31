@@ -365,7 +365,9 @@ This exact work was implemented and verified working earlier this session, then 
 
 *Depends on: Phase 1 only — can be built in parallel with Phase 2/3.*
 
-> **Flag before starting:** your instructions here said "Monetization (Stripe)," but every earlier decision in this project (MVP_PLAN's "one tap to pay, UPI," the sales-room framing, `DATABASE_SCHEMA.md`'s `subscriptions.provider` default) pointed at **Razorpay** as the Indian UPI processor, and you've said no gateway is registered yet either way. Confirm which one before 4.2 — the schema doesn't care (it's a `text` column), but the Edge Function code does.
+> **DECIDED 2026-08-31: Razorpay.** The flag below is resolved — the original brief said Stripe, but MVP_PLAN's "one tap to pay, UPI", the sales-room framing and `subscriptions.provider not null default 'razorpay'` all pointed the other way, and the customer is an Indian exhibitor paying by UPI from a hall. **Account registration is in progress**, so no live keys yet.
+>
+> Original flag, kept for the record: your instructions here said "Monetization (Stripe)," but every earlier decision in this project pointed at Razorpay. The schema doesn't care (it's a `text` column), but the Edge Function code does.
 
 #### 4.1 — Register a payment gateway
 - **Status:** Not Started — **blocked on you**, not a code task. Nothing else in this phase can go live without it (the app itself doesn't need to wait, per Phase 4/5 notes on manual `plan_tier` flips).
