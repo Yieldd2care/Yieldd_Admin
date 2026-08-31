@@ -27,11 +27,28 @@ rate-limited to a handful of messages an hour and is explicitly not something to
 user per day** against Resend's free-tier 100/day. And it needs **no DNS changes at all** —
 the Google records are already on the domain.
 
-> ⚠️ **Send from a dedicated user, not `care@yieldd.co`.**
-> Exceeding the daily limit suspends *that account's* sending for up to 24 hours. If the
-> digest sent as `care@`, one runaway loop would knock out the support inbox for a day.
-> Create **`noreply@yieldd.co`** and send everything from there; then a limit hit costs a
-> delayed digest, not the ability to receive customer mail.
+**Sends as `care@yieldd.co`** — your call, 2026-08-31, to avoid paying for a second seat.
+
+I had argued for a dedicated `noreply@` user because exceeding the daily cap suspends *that
+account's* sending for 24 hours, which on `care@` would mean the support inbox. On reflection
+the concern was overstated and the decision is right: the cap is **2,000/day**, and the
+digest is one message per customer per week, so tripping it needs ~2,000 customers in a day —
+roughly ₹6 crore of annual revenue, by which point this setup gets revisited anyway.
+
+**The real risk was never volume, it is a bug** — a loop that sends repeatedly. That is
+handled in code, not by buying a seat. The digest function must therefore have:
+- **a hard per-run cap**, refusing to send beyond it no matter what the loop says;
+- **once-per-org-per-week enforced in the database** (a `last_digest_sent_at` column), so a
+  re-run or a retry cannot double-send — the same "a replay collides rather than duplicates"
+  rule the device-generated lead ids already follow;
+- **throttled sends**, not one burst — 200 identical messages in a second looks like spam to
+  a receiving server regardless of the cap.
+
+**Two upsides of `care@` worth noting:** replies land in the inbox that is already watched
+(no reply-to workaround needed), and customers recognise the address.
+
+**One thing to expect:** sent digests accumulate in `care@`'s Sent folder. Harmless, but it
+will look busy.
 
 > **Three different Google consoles are in play in this project. They are easy to confuse:**
 >
@@ -43,23 +60,20 @@ the Google records are already on the domain.
 >
 > Nothing in this item touches Google Cloud.
 
-> 💰 **A new Workspace user is a paid seat.** An *alias* would be free but cannot
-> authenticate, so it cannot send — it has to be a real user. Either accept the extra seat
-> (recommended: the support inbox can then never be taken down by a sending cap), or send
-> from an existing account and accept that a cap hit stops that account's mail for 24 hours.
+**Steps (all yours — I cannot do these). No new user needed:**
+1. **admin.google.com** → Security → Authentication → **2-Step Verification**: confirm users
+   are allowed to turn it on. If it is already on for `care@`, skip to step 3.
+2. Sign in to **myaccount.google.com as `care@yieldd.co`** and turn on **2-Step
+   Verification**. Google will not issue an App Password without it.
+3. Same place → **Security → App passwords → generate one.** Done *as that user* — an admin
+   cannot create an App Password on someone else's behalf, and a normal account password is
+   rejected by SMTP.
+4. Send that App Password over. I put it on Supabase → Project Settings → Auth → SMTP
+   (`smtp.gmail.com`, port 587, user `care@yieldd.co`). Never committed.
 
-**Steps (all yours — I cannot do these):**
-1. **admin.google.com** → Directory → **Users → Add new user** → `noreply@yieldd.co`.
-2. Still in admin.google.com → **Security → Authentication → 2-Step Verification**, make sure
-   users are allowed to turn it on. Without this the next step is impossible.
-3. Sign in to **myaccount.google.com as `noreply@yieldd.co`** and turn on **2-Step
-   Verification** for that account. Google will not issue an App Password without it.
-4. Same place → **Security → App passwords → generate one.** Note this is done *as that
-   user*; an admin cannot create an App Password on someone else's behalf. A normal account
-   password is rejected by SMTP.
-5. Send that App Password over. I put it on Supabase → Project Settings → Auth → SMTP
-   (`smtp.gmail.com`, port 587, user `noreply@yieldd.co`). Never committed.
-6. Set **reply-to `care@yieldd.co`**, so anyone who replies reaches the inbox that works.
+⚠️ **Turning on 2-Step Verification for `care@` affects whoever already signs into that
+mailbox** — they will be prompted for a second factor next time. Worth a heads-up to them
+before doing it, rather than during a show.
 
 **The trade-off, stated so it is not a surprise later:** Workspace gives far less delivery
 visibility than a transactional provider. When a customer says "I never got the reset
