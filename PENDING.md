@@ -292,10 +292,33 @@ be an automatic rejection, so neither store can be submitted to until they are d
   (v2), and the `UntypedRpc` cast is already gone from `lib/api/deleteAccount.ts` — all three
   deploy steps above are done.
 - **Nothing left on this item.**
-#### iOS privacy manifest — NOT BUILT (blocks Apple)
-- Apple has required `PrivacyInfo.xcprivacy` since May 2024.
-- `app.json` has no `ios.privacyManifests` and no `ios.infoPlist` block at all.
-- Must declare collected data types and any required-reason API use.
+#### ~~iOS privacy manifest~~ — BUILT 2026-08-31. One part is yours at submission.
+- `app.json` now has `ios.privacyManifests`: `NSPrivacyTracking: false`, no tracking domains,
+  and the four required-reason API categories the installed packages actually use —
+  `FileTimestamp` (C617.1, 0A2A.1, 3B52.1), `UserDefaults` (CA92.1), `DiskSpace` (E174.1,
+  85F4.1) and `SystemBootTime` (35F9.1).
+- **The reason codes were read off the packages, not recalled.** A web lookup of Apple's page
+  returned invented constants (`NSPrivacyAccessedAPITypeReasonFileTimestampAPIs` and the
+  like); the real codes are short strings like `C617.1`, which is what the
+  `PrivacyInfo.xcprivacy` files inside `node_modules` actually contain.
+- **`npm run verify:privacy` computes the union from those files and fails if app.json is
+  missing any of it** — Expo does not merge them, and its own guide warns Apple mis-parses
+  manifests from static CocoaPods dependencies. It also fails on *over*-declaration, since
+  claiming an API you do not use is its own false statement.
+  - It immediately earned itself: I had assumed nothing needed `SystemBootTime`. React
+    Native's bundled **boost** does. That would have been an ITMS-91053 rejection email after
+    an upload that looked fine.
+- ⚠️ **`NSPrivacyCollectedDataTypes` is deliberately absent, not forgotten.** An empty array
+  is a positive claim that the app collects nothing, which is false — it collects names,
+  emails, phone numbers, addresses, card photos and voice recordings. Omitting the key makes
+  no claim; the binding declaration for a first-party app is the **App Store Connect → App
+  Privacy** questionnaire, which you fill in at submission. I could not verify Apple's exact
+  data-type string constants (their docs page is JavaScript-rendered and unreadable to me),
+  and guessing nine of them where one typo means rejection is not worth it.
+- **What to tick in App Store Connect**, all *linked to the user*, all **not** used for
+  tracking, purpose **App Functionality**: Name · Email Address · Phone Number · Physical
+  Address · Photos or Videos · Audio Data · Other User Content (notes and transcripts) ·
+  User ID. Nothing is collected for advertising or analytics.
 
 #### Google Play billing — DECIDE BEFORE BUILDING PHASE 4
 Play requires **Google Play Billing** for anything digital bought and used inside the app. A
