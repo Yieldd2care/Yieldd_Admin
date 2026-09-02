@@ -25,6 +25,8 @@ export type MergeContext = {
   company?: string | null;
   /** The event they were met at. `{{event}}` */
   event?: string | null;
+  /** The stall they were met at, from the event. `{{stall}}` */
+  stall?: string | null;
   /** The rep sending it. `{{sender}}` */
   sender?: string | null;
   /** The rep's own company. `{{sender_company}}` */
@@ -36,6 +38,7 @@ export const MERGE_FIELDS = [
   { token: '{{name}}', label: 'Their name' },
   { token: '{{company}}', label: 'Their company' },
   { token: '{{event}}', label: 'The event' },
+  { token: '{{stall}}', label: 'Your stall number' },
   { token: '{{sender}}', label: 'Your name' },
   { token: '{{sender_company}}', label: 'Your company' },
 ] as const;
@@ -53,6 +56,7 @@ export function renderTemplate(template: string, context: MergeContext): string 
     '{{name}}': firstName(context.name) ?? '',
     '{{company}}': context.company?.trim() ?? '',
     '{{event}}': context.event?.trim() ?? '',
+    '{{stall}}': context.stall?.trim() ?? '',
     '{{sender}}': context.sender?.trim() ?? '',
     '{{sender_company}}': context.senderCompany?.trim() ?? '',
   };

@@ -61,10 +61,32 @@ eq(
 );
 eq(
   'every field resolves',
-  m.renderTemplate('{{name}} / {{company}} / {{event}} / {{sender}} / {{sender_company}}', {
-    name: 'Anita', company: 'Kamal Tooling', event: 'Plastindia', sender: 'Priya', senderCompany: 'Acme',
+  m.renderTemplate('{{name}} / {{company}} / {{event}} / {{stall}} / {{sender}} / {{sender_company}}', {
+    name: 'Anita', company: 'Kamal Tooling', event: 'Plastindia', stall: 'H-14',
+    sender: 'Priya', senderCompany: 'Acme',
   }),
-  'Anita / Kamal Tooling / Plastindia / Priya / Acme'
+  'Anita / Kamal Tooling / Plastindia / H-14 / Priya / Acme'
+);
+
+// Every token in MERGE_FIELDS must actually be substituted. The help block on
+// the template editor is rendered from that list, so a token documented there
+// and unhandled in renderTemplate would be advertised and then printed raw.
+eq(
+  'no MERGE_FIELDS token survives rendering',
+  m.renderTemplate(m.MERGE_FIELDS.map((f) => f.token).join(' '), {}).includes('{{'),
+  false
+);
+
+eq(
+  'a stall number renders where the card says it will',
+  m.renderTemplate('Come see us at stall {{stall}}.', { stall: 'H-14' }),
+  'Come see us at stall H-14.'
+);
+
+eq(
+  'no stall number leaves no dangling "stall"',
+  m.renderTemplate('Come see us at stall {{stall}}.', {}).includes('{{'),
+  false
 );
 
 // --- the cases that would embarrass someone ---

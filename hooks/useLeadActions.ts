@@ -49,6 +49,7 @@ export function useLeadActions(lead: StoredLead | undefined) {
     name: lead?.name,
     company: lead?.company,
     event: event?.name,
+    stall: event?.stallNumber,
     sender: user?.name,
     senderCompany: user?.company,
   };

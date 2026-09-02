@@ -87,6 +87,7 @@ export default function BulkSendScreen() {
     name: previewLead?.name,
     company: previewLead?.company,
     event: event?.name,
+    stall: event?.stallNumber,
     sender: user?.name,
     senderCompany: user?.company,
   };

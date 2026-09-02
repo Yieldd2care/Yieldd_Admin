@@ -58,6 +58,7 @@ export default function EditEventScreen() {
 
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
+  const [stallNumber, setStallNumber] = useState('');
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +72,7 @@ export default function EditEventScreen() {
     if (!event) return;
     setName(event.name);
     setCity(event.city ?? '');
+    setStallNumber(event.stallNumber ?? '');
     setStartDate(event.startDate ? new Date(event.startDate) : null);
     setEndDate(event.endDate ? new Date(event.endDate) : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,6 +89,10 @@ export default function EditEventScreen() {
         id: eventId,
         name,
         city,
+        // Empty means "not known", which is a null column rather than an
+        // empty string — `{{stall}}` then disappears from a message instead
+        // of rendering as nothing between two spaces.
+        stallNumber: stallNumber.trim() || null,
         startDate: startDate as Date,
         endDate: endDate as Date,
       });
@@ -110,6 +116,18 @@ export default function EditEventScreen() {
 
               <View className="mt-[18px]">
                 <TextInput label="City" placeholder="e.g. Bengaluru" value={city} onChangeText={setCity} />
+              </View>
+
+              <View className="mt-[18px]">
+                {/* Optional, and read by four screens that until now always fell
+                    back because nothing ever set it — plus the {{stall}} variable
+                    in follow-up messages. */}
+                <TextInput
+                  label="Stall number (optional)"
+                  placeholder="e.g. H-14"
+                  value={stallNumber}
+                  onChangeText={setStallNumber}
+                />
               </View>
 
               <View className="flex-row gap-3 mt-[18px]">

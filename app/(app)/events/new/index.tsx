@@ -23,6 +23,9 @@ export default function CreateEventScreen() {
   // last screen's "Edit event details" — shows what was typed, not a blank form.
   const [name, setName] = useState(draft.name);
   const [city, setCity] = useState(draft.city);
+  // Not part of the draft: it is a single optional string, and the draft
+  // exists to survive a wizard being interrupted, not to hold every field.
+  const [stallNumber, setStallNumber] = useState('');
   const [startDate, setStartDate] = useState<Date | null>(
     draft.startDate ? new Date(draft.startDate) : null
   );
@@ -48,7 +51,15 @@ export default function CreateEventScreen() {
     if (!canContinue || isSaving) return;
     setError(null);
 
-    const details = { name, city, startDate: startDate as Date, endDate: endDate as Date };
+    const details = {
+      name,
+      city,
+      startDate: startDate as Date,
+      endDate: endDate as Date,
+      // Null rather than empty: `{{stall}}` disappears from a follow-up when
+      // there is no stall, instead of leaving a gap between two words.
+      stallNumber: stallNumber.trim() || null,
+    };
 
     try {
       if (draft.eventId) {
@@ -81,6 +92,15 @@ export default function CreateEventScreen() {
           </View>
 
           <TextInput label="City" placeholder="e.g. Bengaluru" value={city} onChangeText={setCity} />
+
+        <View className="mt-[18px]">
+          <TextInput
+            label="Stall number (optional)"
+            placeholder="e.g. H-14"
+            value={stallNumber}
+            onChangeText={setStallNumber}
+          />
+        </View>
 
           <View className="flex-row gap-3 mt-[18px]">
             <View className="flex-1">
