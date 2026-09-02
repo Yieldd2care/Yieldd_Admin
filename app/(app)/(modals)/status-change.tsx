@@ -13,10 +13,21 @@ import type { LeadStatus } from '../../../data/leads';
 const STATUSES: { key: LeadStatus; color: string; hint?: string }[] = [
   { key: 'New', color: '#8A98B0' },
   { key: 'Contacted', color: '#1D3F8A' },
-  { key: 'Qualified', color: '#F4B000' },
+  { key: 'Qualified', color: '#F4B000', hint: 'Asks for deal value' },
   { key: 'Won', color: '#4ED17F', hint: 'Asks for deal value' },
   { key: 'Lost', color: '#C23B3B' },
 ];
+
+/**
+ * Both of these collect a value before the status is written, and that ordering
+ * is the whole point.
+ *
+ * `leads_qualified_requires_value` and `leads_won_requires_value` are database
+ * constraints, so writing the status first and asking afterwards would queue a
+ * row the server refuses — and the outbox would surface it as a sync error some
+ * time later, long after the rep walked away from the conversation.
+ */
+const NEEDS_DEAL_VALUE: LeadStatus[] = ['Qualified', 'Won'];
 
 export default function StatusChangeModal() {
   const { leadId } = useLocalSearchParams<{ leadId?: string }>();
@@ -28,13 +39,20 @@ export default function StatusChangeModal() {
   const [status, setStatus] = useState<LeadStatus>(lead?.status ?? 'New');
 
   const confirm = () => {
+    // Qualified and Won are handed to the deal-value screen, which writes the
+    // status and the value together. Writing the status here first would either
+    // be refused by the constraint, or — worse, if the person then cancelled —
+    // leave a Qualified lead with no value behind.
+    if (NEEDS_DEAL_VALUE.includes(status)) {
+      router.replace(
+        `/(app)/(modals)/deal-value?leadId=${leadId ?? ''}&status=${status}`
+      );
+      return;
+    }
+
     if (leadId && status !== lead?.status) {
       useLeadsStore.getState().editLead(leadId, { status });
       void useLeadsStore.getState().syncDrafts();
-    }
-    if (status === 'Won') {
-      router.replace(`/(app)/(modals)/deal-value?leadId=${leadId ?? ''}`);
-      return;
     }
     router.back();
   };

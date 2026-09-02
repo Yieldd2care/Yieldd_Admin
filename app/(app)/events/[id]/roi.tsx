@@ -302,6 +302,24 @@ export default function ROIDashboardScreen() {
             </Pressable>
           ) : null}
 
+          {/* The pipeline this event produced, open and closed. Sits under the
+              cost because that is the comparison an exhibitor is making: this
+              is what we spent, this is what is on the table because of it.
+              Not tappable — unlike the cost, it is not something you set. */}
+          {stats.canSeeMoney ? (
+            <View className="bg-white border border-hairline rounded-md px-4 py-[14px] mt-[10px]">
+              <View className="flex-row items-center justify-between">
+                <Typography className="text-[12.5px] text-slate">Expected deal value</Typography>
+                <Typography className="text-[15px] font-bold text-navy">
+                  {formatPaise(stats.expectedValuePaise, { fallback: '—' })}
+                </Typography>
+              </View>
+              <Typography className="text-[11px] text-slate mt-[5px] leading-[1.45]">
+                Qualified and won leads together. Lost deals are left out.
+              </Typography>
+            </View>
+          ) : null}
+
           <Typography className="text-[10px] font-bold tracking-[0.12em] text-slate mt-[22px] mb-3" style={{ textTransform: 'uppercase' }}>
             Pipeline by status
           </Typography>

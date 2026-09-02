@@ -104,10 +104,15 @@ try {
   // 10 leads: 4 new, 2 contacted, 1 qualified, 2 won, 1 lost.
   // Won values ₹1,00,000 + ₹2,00,000 = ₹3,00,000.
   // The Lost lead carries ₹50,000 that must NOT be counted.
+  //
+  // The qualified lead carries ₹4,00,000. It is required to —
+  // `leads_qualified_requires_value` refuses a qualified lead with no value —
+  // and it makes expected value ₹7,00,000: ₹4,00,000 open + ₹3,00,000 won, with
+  // the Lost ₹50,000 left out of both.
   const spec = [
     ...Array.from({ length: 4 }, () => ({ status: 'new', deal: null, hour: 0 })),
     ...Array.from({ length: 2 }, () => ({ status: 'contacted', deal: null, hour: 0 })),
-    { status: 'qualified', deal: null, hour: 1 },
+    { status: 'qualified', deal: 40000000, hour: 1 },
     { status: 'won', deal: 10000000, hour: 1 },
     { status: 'won', deal: 20000000, hour: 1 },
     { status: 'lost', deal: 5000000, hour: 1 },
@@ -148,6 +153,9 @@ try {
       .reduce((s, n) => s + Number(n), 0),
     10);
   eq('won value EXCLUDES the ₹50,000 on the Lost lead', Number(st.won_value_paisa), 30000000);
+  eq('expected value is qualified + won', Number(st.expected_value_paisa), 70000000);
+  eq('expected value EXCLUDES the Lost lead',
+    Number(st.expected_value_paisa) < 75000000, true);
   eq('spend is the generated event total', Number(st.spend_paisa), 15000000);
   eq('leads needing a note', Number(st.needs_note), 7);
   eq('consent given', Number(st.consent_given), 5);
@@ -172,6 +180,36 @@ try {
   eq('leaderboard has the one member', board.length, 1);
   eq('their lead count', Number(board[0].lead_count), 10);
   eq('their won count', Number(board[0].deals_won), 2);
+  eq('their expected value is qualified + won', Number(board[0].expected_value_paisa), 70000000);
+
+  // The rule the whole expected-value figure rests on. Asserted rather than
+  // assumed: if this constraint were ever dropped, every screen above would
+  // keep working and quietly under-report, which is the failure nobody notices.
+  const { error: noValueError } = await admin.from('leads').insert({
+    id: randomUUID(),
+    organization_id: orgId,
+    event_id: event.id,
+    captured_by: adminId,
+    full_name: 'Qualified with no value',
+    status: 'qualified',
+    deal_value_paisa: null,
+  });
+  eq('a qualified lead with no deal value is refused',
+    (noValueError?.message ?? '').includes('leads_qualified_requires_value'), true);
+
+  // And the same lead is accepted the moment it carries one.
+  const okId = randomUUID();
+  const { error: withValueError } = await admin.from('leads').insert({
+    id: okId,
+    organization_id: orgId,
+    event_id: event.id,
+    captured_by: adminId,
+    full_name: 'Qualified with a value',
+    status: 'qualified',
+    deal_value_paisa: 100,
+  });
+  eq('the same lead is accepted once it has one', withValueError, null);
+  await admin.from('leads').delete().eq('id', okId);
 
   // ---- as a rep who can only see their own leads (none) ----
   const { data: invite, error: inviteError } = await admin
@@ -208,6 +246,7 @@ try {
     [4, 2, 1, 2, 1]);
   eq('money is withheld from the rep: won value', rs.won_value_paisa, null);
   eq('money is withheld from the rep: event spend', rs.spend_paisa, null);
+  eq('money is withheld from the rep: expected value', rs.expected_value_paisa, null);
 
   const { data: repBoard, error: repBoardError } = await rep.rpc('event_leaderboard', { p_event_id: event.id });
   // Two members now: the admin who built the event and the rep who just joined.
@@ -215,6 +254,10 @@ try {
     [Boolean(repBoardError), repBoard?.length], [false, 2]);
   eq('the rep appears on it with zero captures so far',
     Number(repBoard?.find((r) => r.profile_id === repId)?.lead_count), 0);
+  // Sharing the leaderboard shares who captured how many. It does not share
+  // what those deals are worth — that stays admin-only, decided in SQL.
+  eq('the shared leaderboard still withholds money from the rep',
+    repBoard?.every((r) => r.expected_value_paisa === null), true);
   eq('the admin still shows all 10',
     Number(repBoard?.find((r) => r.profile_id === adminId)?.lead_count), 10);
 

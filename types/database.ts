@@ -1112,6 +1112,7 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: {
           deals_won: number
+          expected_value_paisa: number
           full_name: string
           lead_count: number
           profile_id: string
@@ -1132,6 +1133,7 @@ export type Database = {
           count_qualified: number
           count_won: number
           deals_won: number
+          expected_value_paisa: number
           leads_today: number
           needs_note: number
           spend_paisa: number

@@ -11,6 +11,7 @@ import { useEvent, useUpdateEvent } from '../../../../hooks/useEvents';
 import { useEventStats, useHourlyCapture, useLeaderboard } from '../../../../hooks/useEventStats';
 import { useSessionStore } from '../../../../stores/useSessionStore';
 import { relativeLabel } from '../../../../lib/api/team';
+import { formatPaise } from '../../../../lib/db';
 
 /** `9am`, `12pm`, `5pm` — hour labels people read without converting. */
 function hourLabel(hour: number): string {
@@ -187,7 +188,17 @@ export default function EventDashboardScreen() {
                     </Typography>
                   ) : null}
                 </View>
-                <Typography className="text-[13px] font-bold text-navy">{rep.leadCount}</Typography>
+                <View className="items-end">
+                  <Typography className="text-[13px] font-bold text-navy">{rep.leadCount}</Typography>
+                  {/* Null for a rep even when the leaderboard is shared with
+                      them — the database withholds it, so this renders nothing
+                      rather than deciding who may see money. */}
+                  {rep.expectedValuePaise != null ? (
+                    <Typography className="text-[11px] font-semibold text-slate mt-[1px]">
+                      {formatPaise(rep.expectedValuePaise, { fallback: '—' })}
+                    </Typography>
+                  ) : null}
+                </View>
               </View>
             ))
           )}

@@ -31,6 +31,8 @@ export type EventStats = {
   /** Whether this viewer is allowed the money figures at all. */
   canSeeMoney: boolean;
   wonValuePaise: number | null;
+  /** Qualified plus won: the pipeline this event produced, open and closed. */
+  expectedValuePaise: number | null;
   spendPaise: number | null;
   roiPercent: number | null;
   costPerLeadPaise: number | null;
@@ -52,6 +54,7 @@ type StatsRow = {
   needs_note: number;
   consent_given: number;
   won_value_paisa: number | null;
+  expected_value_paisa: number | null;
   spend_paisa: number | null;
 };
 
@@ -83,6 +86,7 @@ export async function fetchEventStats(eventId: string): Promise<EventStats> {
 
     canSeeMoney,
     wonValuePaise: won,
+    expectedValuePaise: row.expected_value_paisa,
     spendPaise: spend,
     // Every one of these is null when an input is missing rather than 0 —
     // "we spent nothing" and "nobody recorded what we spent" are different
@@ -114,6 +118,13 @@ export type LeaderboardRow = {
   name: string;
   leadCount: number;
   dealsWon: number;
+  /**
+   * Qualified plus won, in paise. Null for a rep even when the leaderboard is
+   * shared with them: "the team may see who captured how many" is the switch an
+   * admin turns on, and what the deals are worth is not part of it. The
+   * database decides that, not this file.
+   */
+  expectedValuePaise: number | null;
 };
 
 /**
@@ -127,12 +138,20 @@ export async function fetchLeaderboard(eventId: string): Promise<LeaderboardRow[
   const { data, error } = await supabase.rpc('event_leaderboard', { p_event_id: eventId });
   if (error) throw error;
 
-  return (data as { profile_id: string; full_name: string; lead_count: number; deals_won: number }[]).map(
-    (row) => ({
-      profileId: row.profile_id,
-      name: row.full_name,
-      leadCount: Number(row.lead_count),
-      dealsWon: Number(row.deals_won),
-    })
-  );
+  return (
+    data as {
+      profile_id: string;
+      full_name: string;
+      lead_count: number;
+      deals_won: number;
+      expected_value_paisa: number | null;
+    }[]
+  ).map((row) => ({
+    profileId: row.profile_id,
+    name: row.full_name,
+    leadCount: Number(row.lead_count),
+    dealsWon: Number(row.deals_won),
+    expectedValuePaise:
+      row.expected_value_paisa == null ? null : Number(row.expected_value_paisa),
+  }));
 }
