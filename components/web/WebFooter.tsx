@@ -1,9 +1,11 @@
-import { Pressable, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 
 import { Typography } from '../ui/Typography';
 import { BrandLockup } from '../ui/BrandLockup';
+import { FacebookIcon, InstagramIcon, LinkedInIcon } from '../ui/icons';
+import { SOCIAL_ACCOUNTS } from '../../lib/social';
 
 const PRODUCT_LINKS = ['How it works', 'Features', 'Event ROI', 'Industries', 'FAQ', 'Sign in'];
 const COMPANY_LINKS = ['About Yieldd', 'Book a demo', 'Privacy policy', 'Terms of use'];
@@ -65,6 +67,42 @@ function PlayBadge() {
   );
 }
 
+/**
+ * The social accounts, as icon buttons.
+ *
+ * `Linking.openURL` rather than an anchor, because this footer renders through
+ * react-native-web and the same component is used on the legal pages. A real
+ * new tab is what people expect from a footer icon, and `_blank` is what
+ * openURL gives on web.
+ */
+function SocialRow() {
+  return (
+    <View className="flex-row items-center gap-3 mt-5">
+      {SOCIAL_ACCOUNTS.map((account) => {
+        const Icon =
+          account.key === 'instagram'
+            ? InstagramIcon
+            : account.key === 'facebook'
+              ? FacebookIcon
+              : LinkedInIcon;
+
+        return (
+          <Pressable
+            key={account.key}
+            onPress={() => void Linking.openURL(account.url)}
+            // `aria-label` because the button has no text — a screen reader
+            // otherwise announces three unlabelled buttons in a row.
+            aria-label={`Yieldd on ${account.label}`}
+            className="w-10 h-10 rounded-full border border-white/[0.28] bg-white/[0.04] items-center justify-center hover:border-gold hover:bg-gold/[0.10] transition-all duration-200"
+          >
+            <Icon size={17} color="#FFFFFF" />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 interface Props {
   onLogoPress?: () => void;
 }
@@ -84,6 +122,7 @@ export function WebFooter({ onLogoPress }: Props) {
           <Typography className="text-[11.5px] font-semibold tracking-[0.14em] text-white/[0.70] mt-4">
             IOS · ANDROID · WEB
           </Typography>
+          <SocialRow />
         </View>
 
         <FooterColumn title="Product" links={PRODUCT_LINKS} />

@@ -23,7 +23,11 @@ import {
   TagIcon,
   UsersIcon,
   WhatsAppIcon,
+  InstagramIcon,
+  FacebookIcon,
+  LinkedInIcon,
 } from '../../../components/ui/icons';
+import { SOCIAL_ACCOUNTS } from '../../../lib/social';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -297,6 +301,42 @@ export default function ProfileScreen() {
             }}
             isLast
           />
+        </Card>
+
+        <SectionLabel>Follow Yieldd</SectionLabel>
+        <Card>
+          {SOCIAL_ACCOUNTS.map((account, i) => (
+            <Row
+              key={account.key}
+              icon={
+                account.key === 'instagram' ? (
+                  <InstagramIcon size={17} color="#0B132B" />
+                ) : account.key === 'facebook' ? (
+                  <FacebookIcon size={17} color="#0B132B" />
+                ) : (
+                  <LinkedInIcon size={17} color="#0B132B" />
+                )
+              }
+              label={account.label}
+              right={
+                <View className="flex-row items-center gap-[6px]">
+                  <Typography className="text-[12px] font-semibold text-slate">
+                    {account.handle}
+                  </Typography>
+                  <ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />
+                </View>
+              }
+              // These open the browser or the installed app, whichever the OS
+              // prefers. A failure here is worth saying out loud rather than
+              // leaving as a tap that appears to do nothing.
+              onPress={() => {
+                Linking.openURL(account.url).catch(() =>
+                  Alert.alert('Could not open', account.url)
+                );
+              }}
+              isLast={i === SOCIAL_ACCOUNTS.length - 1}
+            />
+          ))}
         </Card>
 
         <Pressable onPress={signOut} className="flex-row items-center gap-3 bg-white border border-hairline rounded-2xl px-4 py-[14px] mt-[22px]">
