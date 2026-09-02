@@ -1,12 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  TextInput as RNTextInput,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -14,6 +7,8 @@ import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
+import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
+import { MergeFieldText, UnknownTokenWarning } from '../../../../components/app/MergeFieldText';
 import { MailIcon, WhatsAppIcon } from '../../../../components/ui/icons';
 import { useEventDraftStore } from '../../../../stores/useEventDraftStore';
 import { useSessionStore } from '../../../../stores/useSessionStore';
@@ -27,22 +22,6 @@ const DEFAULT_EMAIL_SUBJECT = 'Great meeting you at {{event}}';
 const DEFAULT_EMAIL_BODY =
   "Hi {{name}}, thank you for stopping by our stall. I've attached our brochure and would love to understand your requirement better.";
 
-function MergeFieldText({ text, className = '' }: { text: string; className?: string }) {
-  const parts = text.split(/(\{\{[^}]+\}\})/g);
-  return (
-    <Typography className={className}>
-      {parts.map((part, i) =>
-        part.startsWith('{{') ? (
-          <Typography key={i} className="font-bold text-navy bg-gold/[0.16] px-[5px] rounded">
-            {part}
-          </Typography>
-        ) : (
-          part
-        )
-      )}
-    </Typography>
-  );
-}
 
 export default function MessageTemplatesScreen() {
   /**
@@ -175,10 +154,7 @@ export default function MessageTemplatesScreen() {
           screen. `keyboardShouldPersistTaps` matters as much as the avoiding
           view: without it the first tap on Done or Continue is spent dismissing
           the keyboard and never reaches the button. */}
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardSafe>
         <ScrollView
           contentContainerClassName="px-5 pt-5 pb-5"
           keyboardShouldPersistTaps="handled"
@@ -235,7 +211,7 @@ export default function MessageTemplatesScreen() {
           </Typography>
         ) : null}
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardSafe>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
         <Button
           label={isSaving ? 'Saving…' : editingOne ? 'Save follow-up' : 'Use these defaults'}

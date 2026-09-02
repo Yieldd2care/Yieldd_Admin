@@ -89,6 +89,41 @@ eq(
   false
 );
 
+// --- tokens nobody defined ---
+//
+// Taken from a real template written in the app on 2026-09-02. Two of its
+// placeholders were invented at the keyboard, and renderTemplate leaves what
+// it does not know exactly as typed - so they reached WhatsApp and were read
+// by a customer as literal {{Interest/Requirement}}.
+const REAL_TEMPLATE =
+  'Thank you for visiting the {{company}} stall at {{event}}! It was great ' +
+  'learning more about {{Interest/Requirement}}. We can help with ' +
+  '{{Solution/Service}}. Stall: {{stall}}. Contact: {{sender}}. Team {{sender_company}}';
+
+eq(
+  'invented tokens are reported, real ones are not',
+  m.unknownMergeTokens(REAL_TEMPLATE),
+  ['{{Interest/Requirement}}', '{{Solution/Service}}']
+);
+
+eq(
+  'a template using only real variables reports nothing',
+  m.unknownMergeTokens('Hi {{name}} from {{company}} at {{event}} - {{sender}}'),
+  []
+);
+
+eq(
+  'an unknown token survives rendering, so it must be caught in the editor',
+  m.renderTemplate('Ask about {{Interest/Requirement}}.', {}),
+  'Ask about {{Interest/Requirement}}.'
+);
+
+eq(
+  'the same token twice is reported once',
+  m.unknownMergeTokens('{{Foo}} and {{Foo}}'),
+  ['{{Foo}}']
+);
+
 // --- the cases that would embarrass someone ---
 eq(
   'a missing name never leaves a literal {{name}} in the message',

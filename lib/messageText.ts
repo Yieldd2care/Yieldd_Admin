@@ -43,6 +43,29 @@ export const MERGE_FIELDS = [
   { token: '{{sender_company}}', label: 'Your company' },
 ] as const;
 
+/** Every `{{…}}` in a piece of text, in the order it appears, without repeats. */
+export function mergeTokensIn(text: string): string[] {
+  const found = text.match(/\{\{[^}]*\}\}/g) ?? [];
+  return [...new Set(found)];
+}
+
+/**
+ * The `{{…}}` in a template that this app has never heard of.
+ *
+ * Anyone can type `{{Interest/Requirement}}` into the message box, and nothing
+ * stopped them: `renderTemplate` replaces the tokens it knows and leaves the
+ * rest exactly as typed, so an invented one travels all the way into WhatsApp
+ * and is read by a customer as literal `{{Interest/Requirement}}`.
+ *
+ * Deleting them instead would be worse — that is silently throwing away
+ * something a person deliberately wrote. They are surfaced in the editor
+ * instead, while there is still someone there to fix them.
+ */
+export function unknownMergeTokens(text: string): string[] {
+  const known = new Set<string>(MERGE_FIELDS.map((f) => f.token));
+  return mergeTokensIn(text).filter((token) => !known.has(token));
+}
+
 /**
  * Fills a template in.
  *

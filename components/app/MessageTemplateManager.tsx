@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, TextInput as RNTextInput, View } from 'react-native';
 
 import { Typography } from '../ui/Typography';
+import { MergeFieldText, UnknownTokenWarning } from './MergeFieldText';
 import { FileIcon, MailIcon, PlusIcon, WhatsAppIcon } from '../ui/icons';
 import { describeTemplateError, type MessageChannel, type MessageTemplate } from '../../lib/api/messageTemplates';
 import { MERGE_FIELDS } from '../../lib/messaging';
@@ -98,22 +99,6 @@ function VariableHelp({ channel }: { channel: MessageChannel }) {
   );
 }
 
-function MergeFieldText({ text, className = '' }: { text: string; className?: string }) {
-  const parts = text.split(/(\{\{[^}]+\}\})/g);
-  return (
-    <Typography className={className}>
-      {parts.map((part, i) =>
-        part.startsWith('{{') ? (
-          <Typography key={i} className="font-bold text-navy bg-gold/[0.16] px-[5px] rounded">
-            {part}
-          </Typography>
-        ) : (
-          part
-        )
-      )}
-    </Typography>
-  );
-}
 
 function TemplateCard({
   channel,
@@ -222,6 +207,13 @@ function TemplateCard({
           <MergeFieldText text={template.body} className="text-[13px] leading-[1.55] text-ink-muted" />
         </View>
       )}
+
+      {/* Shown while editing AND while merely looking at the card. A template
+          written before this warning existed is already out there being sent;
+          it has to be visible without going into edit mode to find it. */}
+      <UnknownTokenWarning
+        text={editing ? `${subject} ${body}` : `${template.subject ?? ''} ${template.body}`}
+      />
 
       {/* Read-only: an attachment already on the row is shown, but there is no
           way to send one, so there is no way to add one. See the note above. */}

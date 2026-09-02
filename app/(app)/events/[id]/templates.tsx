@@ -6,42 +6,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { ScreenHeader } from '../../../../components/app/ScreenHeader';
+import { MergeFieldText } from '../../../../components/app/MergeFieldText';
 import { CheckIcon, MailIcon, PlusIcon, WhatsAppIcon } from '../../../../components/ui/icons';
 import { useEvent, useUpdateEvent } from '../../../../hooks/useEvents';
 import { useTemplates } from '../../../../hooks/useMessageTemplates';
 import type { MessageChannel, MessageTemplate } from '../../../../lib/api/messageTemplates';
 
-/**
- * Which follow-up message this event sends.
- *
- * A picker, not an editor. The wizard's step 5 writes a new template while an
- * event is being created, which is right once — but reaching that same screen
- * later to *change* an event's message meant editing text and creating another
- * template row, so an organisation running four shows a year accumulated four
- * near-identical "Default follow-up" templates and no way to say "use the one I
- * already wrote".
- *
- * Templates belong to the organisation and are written in Settings. This screen
- * only decides which of them an event points at — `whatsapp_template_id` and
- * `email_template_id` on the event row.
- */
-
-function MergeFieldText({ text, className = '' }: { text: string; className?: string }) {
-  const parts = text.split(/(\{\{[^}]+\}\})/g);
-  return (
-    <Typography className={className}>
-      {parts.map((part, i) =>
-        part.startsWith('{{') ? (
-          <Typography key={i} className="font-bold text-navy bg-gold/[0.16] px-[5px] rounded">
-            {part}
-          </Typography>
-        ) : (
-          part
-        )
-      )}
-    </Typography>
-  );
-}
 
 function TemplateChoice({
   template,
