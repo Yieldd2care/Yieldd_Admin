@@ -7,7 +7,251 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done (move to Done se
 
 ---
 
+## Status board — updated 2026-09-02
+
+Working order agreed 2026-09-02. Solving one at a time, top down.
+Full diagnosis for each is in its numbered section below.
+
+**Corrections queue**
+
+| Order | # | Correction | Status |
+|---|---|---|---|
+| 1 | 17a | Repoint the 5 links that open wizard steps for the wrong event | `[~]` in progress |
+| 2 | 17b | Edit-event screen — name, city, dates, costs | `[ ]` |
+| 3 | 16 | Four dead lead buttons (Call / WhatsApp / Email / Save contact) | `[ ]` |
+| 4 | 19 | Event lead count stale until pull-to-refresh | `[ ]` |
+| 5 | 14 | Template editor behind the keyboard (3 screens) | `[ ]` |
+| 6 | 15 | Variable instructions — **and** the subject-line context bug | `[ ]` |
+| 7 | 13 | Scanning your own card fills nothing | `[ ]` |
+| 8 | 18 | Back-of-card scan + branch address field | `[ ]` |
+
+**Blocked on you, not on code**
+
+| # | Item | Waiting on |
+|---|---|---|
+| 11 | Pricing — app publishes the ₹10,000 sales-room price | Your decision on the number |
+| 7 | Password reset | A merge to master; until then the emailed link 404s |
+| — | App Links | Android SHA-256 fingerprint + Apple Team ID |
+| — | EAS build | A Yieldd-owned Expo account (blocks Google sign-in testing) |
+| — | Play billing | Sell-on-web vs Play Billing, before Phase 4 starts |
+
+**Decisions taken 2026-09-02:** edit-event covers everything asked at creation · back of card is
+an optional second shot, not compulsory · branch address becomes a new field.
+**Still to decide, before #18 is built:** whether the back *photo* is stored (a schema change —
+see #18) or read and discarded.
+
+---
+
 ## Open
+
+### 19. Event lead count is stale until you pull to refresh — reported 2026-09-02
+
+- **Where:** [lib/queryClient.ts](lib/queryClient.ts), [hooks/useEvents.ts](hooks/useEvents.ts),
+  [hooks/useEventStats.ts](hooks/useEventStats.ts),
+  [stores/useLeadsStore.ts](stores/useLeadsStore.ts). Seen on the "N leads" figure at
+  [app/(app)/(tabs)/events.tsx:108](app/(app)/(tabs)/events.tsx).
+- **Reported:** two cards scanned into an event, the event kept showing one lead, and only
+  pulling down to refresh corrected it. It should update without being asked.
+- **Cause — two halves.** First, the cache is long-lived **on purpose**:
+  [lib/queryClient.ts:16-19](lib/queryClient.ts) sets a global `staleTime: 30_000` with
+  `refetchOnWindowFocus: false`, because "this app is used on exhibition-hall mobile data". There
+  is no `useFocusEffect` anywhere in the app, so returning to an already-mounted tab refetches
+  nothing. Second, **nothing invalidates on capture**: the only `invalidateQueries` calls in the
+  app are [hooks/useEvents.ts:129,143](hooks/useEvents.ts) (event create/update) plus templates,
+  organization and team. `useLeadsStore` never touches react-query. So `eventKeys.list()` and the
+  `statsKeys` queries hold their last value until a manual refresh.
+- **Fix:** invalidate `eventKeys.all` and the stats keys when a lead saves and when the outbox
+  drains. The store is plain zustand with no query client in scope, so pass the invalidation in —
+  a `subscribe` in a provider, or a callback fired at the transition to `synced`
+  ([useLeadsStore.ts:338](stores/useLeadsStore.ts)). **Leave the 30s default alone**; it exists
+  for a reason. Invalidating on a real event is the right lever, not shortening the cache.
+- **Second half, or the number is still briefly wrong:** a lead still `draft` genuinely is not on
+  the server, so a server count of 1 is *correct* at that moment. The home screen counts drafts
+  locally and the events tab does not, which is why the two disagree. Either count pending local
+  leads into the figure or show the sync marker beside it.
+
+### 18. Only the front of a card is scanned, and no branch address — reported 2026-09-02
+
+- **Where:** [app/(app)/capture/camera.tsx:24](app/(app)/capture/camera.tsx),
+  [lib/api/cardScan.ts:57](lib/api/cardScan.ts),
+  [supabase/functions/extract-card/index.ts:151](supabase/functions/extract-card/index.ts).
+- **Reported:** only one side of the card can be scanned — there should be an option to flip it
+  and scan the back. **And** when a card carries a *branch* address as well as the head-office
+  one, that needs capturing too, which means a new field.
+- **Decided 2026-09-02:** the back is an **optional second shot**, not compulsory. Most cards
+  have nothing useful on the back and forcing it slows every capture.
+- **Cause:** a single photo end to end — one `takePictureAsync`, one `image_base64` in the body,
+  one image in the model's content array. And `leads` has `company_address` but **no branch
+  column** (`20260827080000_capture_fields_and_custom_field_types.sql` is the whole address story).
+- **Fix A — the back.** After the front, offer "Scan the back" with a Skip. Send both images in
+  one call and merge, front winning on conflict.
+- ⚠️ **Trap: storing the back photo is a schema change, not a file write.** All four
+  `card-images` policies match on `l.card_image_path = storage.objects.name` **exactly**
+  ([20260827130700_storage_buckets_and_policies.sql:73-115](supabase/migrations/20260827130700_storage_buckets_and_policies.sql)),
+  and [cardImagePath()](lib/api/storage.ts) returns one key per lead, `{org}/{lead}.jpg`. A
+  `-back.jpg` upload is **refused**, because no row holds that value. Either add
+  `card_image_back_path` and amend all four policies, or decide the back is read and discarded.
+  **Decide before building** — reading and discarding is defensible and much cheaper.
+- **Fix B — branch address.** Crosses the database, so it is the widest change here: additive
+  migration `alter table leads add column branch_address text`; `npm run db:types`; the system
+  prompt plus the `Extracted` / `EMPTY` / `normalise` triple in `extract-card`; `ScannedCard` and
+  the `FunctionFields` mapping in [lib/api/cardScan.ts](lib/api/cardScan.ts); insert and patch in
+  [lib/api/leads.ts:156,219](lib/api/leads.ts); the leads store; the confirm screen; and the CSV
+  export — `ExportColumns` ([lib/api/exportLeads.ts:22-38](lib/api/exportLeads.ts)) groups by
+  `identity` / `contact` / …, so branch address joins the `contact` group rather than becoming a
+  new toggle.
+- **Two rules this repo already learned, both apply:** rehearse the migration in a transaction
+  first (`npm run db:rehearse` — there is no rollback net), and **re-run
+  `npm run compare:card-models`** because the prompt is changing. Sonnet was chosen on a
+  168-field measurement; a new field and a second image change what that measured.
+- Deploy with `npx supabase functions deploy extract-card --use-api` (no Docker).
+
+### 17. The create-event wizard is the app's only editor — reported 2026-09-02
+
+- **Where:** [app/(app)/events/new/](app/(app)/events/new/) steps 2-5, and the three screens that
+  link into them from outside the wizard.
+- **Reported:** the details asked while creating an event are not added to the event, and cannot
+  be edited afterwards, "because the event is not available".
+- **Decided 2026-09-02:** the fix covers **everything asked at creation** — name, city, dates and
+  costs — not just the cost path.
+- **Cause.** Step 1 writes the real `events` row and keeps its id in the draft store
+  ([events/new/index.tsx:47-62](app/(app)/events/new/index.tsx)). Finishing calls `reset()`
+  ([complete.tsx:80](app/(app)/events/new/complete.tsx)), clearing it. **Every step after step 1
+  gates its database write on that draft id:**
+  - [cost.tsx:70](app/(app)/events/new/cost.tsx) — `if (eventId)` → costs written to nothing
+  - [templates.tsx:69](app/(app)/events/new/templates.tsx) — `if (draft.eventId && user)`
+  - [fields.tsx:126](app/(app)/events/new/fields.tsx) — `if (eventId)`
+  - [invite.tsx:43,82](app/(app)/events/new/invite.tsx) — `if (!eventId) return`
+- **And three screens outside the wizard link straight into those steps:**
+  [roi.tsx:229,287](app/(app)/events/[id]/roi.tsx) → `events/new/cost`;
+  [bulk-send.tsx:140,152](app/(app)/leads/bulk-send.tsx) → `events/new/templates`;
+  [settings/team.tsx:38](app/(app)/settings/team.tsx) → `events/new/invite`.
+  So "Edit cost" on ROI, "Add a template" from bulk send and "Invite a rep" from Settings → Team
+  all open a wizard step addressing an event nobody chose.
+- **Two failure modes, depending on state.** An empty draft silently drops the write and drops
+  you into the rest of the wizard. A draft left over from an abandoned wizard is worse: the
+  templates or invites are written **to that event instead of the one you were looking at**.
+- **Fix 17a — do this first, on its own.** Repoint those five links away from the wizard, passing
+  the event id explicitly. Small, and it stops writes landing on the wrong event.
+- **Fix 17b — the edit screen.** New `app/(app)/events/[id]/edit.tsx` keyed by the **route** id,
+  following the shape [events/[id]/fields.tsx](app/(app)/events/[id]/fields.tsx) already uses:
+  name, city, dates and the seven cost lines, linking out to the existing fields / templates /
+  invite routes. No new API — `useUpdateEvent` already accepts both `{ id, ...details }` and
+  `{ id, costs }`. Add the entry on the dashboard beside Fields / Export / ROI.
+
+### 16. Four lead actions are dead buttons — reported 2026-09-02
+
+- **Where:** [components/app/LeadRow.tsx:9](components/app/LeadRow.tsx) — `leadActionStub()`,
+  called by all four buttons (lines 43, 53, 64, 74). The row renders on the home screen
+  ([index.tsx:266](app/(app)/(tabs)/index.tsx)) and the Leads tab
+  ([leads.tsx:175](app/(app)/(tabs)/leads.tsx)).
+- **Reported:** on the home screen, tapping the WhatsApp icon says it isn't wired up. All four —
+  Call, WhatsApp, Email, Save contact — do the same.
+- **Cause: not missing features.** All four are already built, correct and in use on the lead
+  detail screen ([leads/[id].tsx:280-310](app/(app)/leads/[id].tsx)) — `openDialer`,
+  `sendWhatsApp`, `sendEmail`, `saveToContacts`, on top of `lib/messaging.ts` (which re-exports
+  [lib/messageText.ts](lib/messageText.ts)) and [lib/contacts.ts](lib/contacts.ts). `StoredLead`
+  extends `Lead`, so the row already holds phone, email, landline, website and address — no extra
+  fetch is needed. `LeadRow` was simply never connected.
+- **Two things naive wiring would lose**, both already handled on the detail screen:
+  `recordSend` ([lib/api/messageSends.ts](lib/api/messageSends.ts)) runs after every WhatsApp and
+  email send — without it the send history and follow-up counts disagree with reality — and
+  `markSavedToContacts` sets the per-lead state the detail screen shows as "Saved".
+- **Fix:** extract the four handlers out of `leads/[id].tsx` into one shared
+  `useLeadActions(lead)` hook and consume it from both places. Empty-field handling already
+  exists — `openDialer` returns *"This lead has no phone number."* — so surface that rather than
+  opening a broken `tel:` or `mailto:`. `LeadRow` should also reflect the saved-to-contacts state.
+- **Same screen, decide separately:** Search is still a stub —
+  [index.tsx:190](app/(app)/(tabs)/index.tsx).
+
+### 15. No instructions for template variables — reported 2026-09-02
+
+- **Where:** [components/app/MessageTemplateManager.tsx](components/app/MessageTemplateManager.tsx)
+  and the `intro` prop on both settings screens; also
+  [app/(app)/events/new/templates.tsx](app/(app)/events/new/templates.tsx).
+- **Reported:** we need to tell people how to create a variable, and how to write a WhatsApp
+  message.
+- **Cause:** the only guidance is one sentence naming `{{name}}` and `{{event}}` — **two of the
+  five that exist**. The real list is already exported and should be the source:
+  `MERGE_FIELDS` at [lib/messageText.ts:35](lib/messageText.ts) — `{{name}}`, `{{company}}`,
+  `{{event}}`, `{{sender}}`, `{{sender_company}}`, each with a label.
+- ⚠️ **Fix the underlying defect first, or the help text documents something untrue.** Message
+  *bodies* get the full context everywhere, but *subject* lines do not:
+  [leads/[id].tsx:170-180](app/(app)/leads/[id].tsx) passes all five;
+  [send-queue.tsx:84](app/(app)/leads/send-queue.tsx) passes `name`, `company`, `event`;
+  [bulk-send.tsx:132](app/(app)/leads/bulk-send.tsx) passes only `name`, `event`. Since
+  `renderTemplate` *deletes* a placeholder with no value
+  ([messageText.ts:51](lib/messageText.ts)), a subject reading `Great meeting you — {{sender}}`
+  silently loses the name in bulk send while working from the detail screen. Pass the same
+  context in all three.
+- **Then the help itself:** a block in `MessageTemplateManager` rendered from `MERGE_FIELDS`
+  (not a hand-typed list), with tap-to-insert into the focused field, one worked example, and a
+  line saying an empty variable disappears rather than printing `{{name}}`. Same block on the
+  wizard step.
+
+### 14. Template editor sits behind the keyboard — reported 2026-09-02
+
+- **Where:** [components/app/MessageTemplateManager.tsx](components/app/MessageTemplateManager.tsx),
+  hosted by [settings/whatsapp-template.tsx](app/(app)/settings/whatsapp-template.tsx),
+  [settings/email-template.tsx](app/(app)/settings/email-template.tsx) and
+  [events/new/templates.tsx](app/(app)/events/new/templates.tsx).
+- **Reported:** creating a new template should scroll properly — the Save button and everything
+  else end up behind the keyboard.
+- **Cause — three faults, compounding:**
+  1. **No `KeyboardAvoidingView`.** The app has exactly three, none of them here:
+     [AuthFormNative.tsx:47](components/auth/AuthFormNative.tsx),
+     [AuthFormWeb.tsx:46](components/auth/AuthFormWeb.tsx),
+     [complete-profile.tsx:76](app/(app)/onboarding/complete-profile.tsx).
+  2. **No `keyboardShouldPersistTaps`.** React Native's default is `never`, so with the keyboard
+     open the first tap on Save or Delete is consumed dismissing the keyboard and never reaches
+     the button. This is most of what "not the save button" describes.
+  3. The Save/Delete row is the **last** thing in the card, under a `multiline` input that grows
+     without limit ([MessageTemplateManager.tsx:135](components/app/MessageTemplateManager.tsx)),
+     and a new template is appended **below every existing one** with nothing scrolling it into
+     view.
+- **Affects three screens, not two** — the wizard's template step has the same three faults
+  (ScrollView at line 110, `multiline` at 124 and 148, no `KeyboardAvoidingView`).
+- **Fix:** copy the pattern already working at
+  [complete-profile.tsx:76-83](app/(app)/onboarding/complete-profile.tsx) —
+  `KeyboardAvoidingView` with the platform behaviour, plus `keyboardShouldPersistTaps="handled"`.
+  Cap the body input's height and scroll the new card into view when it enters edit mode.
+
+### 13. Scanning your own card fills in nothing — reported 2026-09-02
+
+- **Where:** [app/(app)/card/scan-confirm.tsx](app/(app)/card/scan-confirm.tsx),
+  reached from [app/(app)/capture/camera.tsx:27](app/(app)/capture/camera.tsx)
+  in `mode=profile`. Entered from
+  [app/(app)/card/first-scan.tsx:31](app/(app)/card/first-scan.tsx) ("Scan a card")
+  and [app/(app)/card/edit.tsx:398](app/(app)/card/edit.tsx)
+  ("Scan my own card instead").
+- **Reported:** building your own digital card, tapped the card, tried to scan it,
+  the fields never get filled in.
+- **Cause — the extraction is never called on this path.** `scanCard()` from
+  [lib/api/cardScan.ts](lib/api/cardScan.ts) has exactly one call site,
+  [app/(app)/capture/confirm.tsx:83](app/(app)/capture/confirm.tsx) — the *lead*
+  path. `scan-confirm.tsx` imports neither `scanCard` nor `useCaptureDraftStore`.
+  The camera stores the photo (`setImageUri`) and pushes to `scan-confirm`, and
+  that screen seeds its seven fields from `useSessionStore().user` and
+  `useMyCard()` only. So the photo is taken, discarded, and the form shows
+  whatever the profile already held — blank for a first-time user, which is
+  exactly the person `first-scan.tsx` sends here.
+- **Not a server fault.** `extract-card` is ACTIVE and works — the lead capture
+  flow uses it. This is a missing client call, not a broken function.
+- **Fix:** give `scan-confirm.tsx` the same effect `capture/confirm.tsx` has —
+  read `imageUri`, call `scanCard`, fill only fields still empty, abandon on
+  unmount, and show reading / failed / nothing-read states. The mapping differs
+  from the lead screen: `fullName → name`, `designation`, `company`, `phone →
+  mobile`, `companyWebsite → website`, `companyAddress → officeAddress`. Leave
+  `email` alone — it is read-only here by design (the profile guard trigger
+  blocks changing it). `ScannedCard` carries no LinkedIn field, so LinkedIn
+  stays typed by hand unless `extract-card` is extended.
+- **While in there, two smaller things on the same screen:**
+  - The photo is never cleared or used afterwards — `useCaptureDraftStore.reset()`
+    only runs after a *lead* saves. Harmless today (the camera overwrites
+    `imageUri` before `capture/confirm` ever reads it) but it is one route away
+    from your own card photo being attached to a stranger's lead.
+  - Nothing on the screen tells you a read is happening, so a slow scan is
+    indistinguishable from this bug.
 
 ### 12. ~~Email sending~~ — DONE 2026-08-31. Kept for the reasoning and the traps.
 
