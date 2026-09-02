@@ -1,13 +1,16 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { TextInput } from '../../../components/ui/TextInput';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
+import { AlertCircleIcon } from '../../../components/ui/icons';
 import { useSessionStore } from '../../../stores/useSessionStore';
+import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { useMyCard } from '../../../hooks/useBusinessCard';
+import { scanCard } from '../../../lib/api/cardScan';
 
 /**
  * What was read off the rep's own business card, before it is kept.
@@ -17,11 +20,18 @@ import { useMyCard } from '../../../hooks/useBusinessCard';
  * card, and that row is deliberately NOT created from this screen — it would
  * publish a public page nobody had looked at yet. They travel to the card
  * builder as parameters instead, and are written when the person saves there.
+ *
+ * The card is actually read here. It was not before: the camera stored the
+ * photo and pushed to this screen, which seeded itself from the profile the
+ * person already had and never called `scanCard` at all. For the first-time
+ * user this screen exists to serve, that meant taking a photo and arriving at
+ * an empty form — the scan looked broken because nothing was ever scanned.
  */
 export default function ScanOwnCardConfirmScreen() {
   const user = useSessionStore((s) => s.user);
   const updateProfile = useSessionStore((s) => s.updateProfile);
   const { data: card } = useMyCard();
+  const imageUri = useCaptureDraftStore((s) => s.imageUri);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +48,63 @@ export default function ScanOwnCardConfirmScreen() {
   const [linkedin, setLinkedin] = useState(card?.linkedinUrl ?? '');
   const [officeAddress, setOfficeAddress] = useState(card?.officeAddress ?? '');
 
+  const [scanState, setScanState] = useState<'idle' | 'reading' | 'done' | 'failed' | 'empty'>(
+    imageUri ? 'reading' : 'idle'
+  );
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
+
+  /**
+   * Reads the photo the camera just took.
+   *
+   * Same two rules as the lead capture screen, for the same reasons: a field is
+   * filled only if it is still empty, so a correction typed while the read is
+   * in flight is never overwritten, and the whole thing is abandoned if the
+   * screen goes away.
+   *
+   * A failure costs nothing here — every field is typeable, which is exactly
+   * what someone arriving from "Enter manually instead" already does.
+   */
+  useEffect(() => {
+    if (!imageUri) return;
+    let cancelled = false;
+
+    void (async () => {
+      const result = await scanCard(imageUri);
+      if (cancelled) return;
+
+      if (!result.ok) {
+        setScanState('failed');
+        setScanMessage(result.message);
+        return;
+      }
+      if (!result.read) {
+        setScanState('empty');
+        setScanMessage(null);
+        return;
+      }
+
+      const f = result.fields;
+      setName((current) => (f.fullName && !current.trim() ? f.fullName : current));
+      setCompany((current) => (f.company && !current.trim() ? f.company : current));
+      setDesignation((current) => (f.designation && !current.trim() ? f.designation : current));
+      setMobile((current) => (f.phone && !current.trim() ? f.phone : current));
+      setWebsite((current) => (f.companyWebsite && !current.trim() ? f.companyWebsite : current));
+      setOfficeAddress((current) =>
+        f.companyAddress && !current.trim() ? f.companyAddress : current
+      );
+      // Email is deliberately not filled — it is read-only on this screen,
+      // because the profile guard refuses a change to the address you signed in
+      // with. `ScannedCard` carries no LinkedIn field, so that stays hand-typed.
+
+      setScanState('done');
+      setScanMessage(null);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUri]);
+
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader
@@ -52,6 +119,42 @@ export default function ScanOwnCardConfirmScreen() {
         <Typography className="text-[13px] text-slate mb-5">
           Check what we read off your card, then save it to your Yieldd profile.
         </Typography>
+
+        {scanState === 'reading' ? (
+          <View className="flex-row items-center gap-[10px] bg-navy/[0.04] border border-hairline rounded-md px-4 py-3 mb-4">
+            <ActivityIndicator size="small" color="#F4B000" />
+            <Typography className="text-[12.5px] font-semibold text-navy flex-1">
+              Reading your card&#8230; you can start typing, nothing will be overwritten.
+            </Typography>
+          </View>
+        ) : null}
+
+        {scanState === 'done' ? (
+          <View className="flex-row items-start gap-2 bg-gold/[0.08] border border-gold/[0.30] rounded-md px-[14px] py-3 mb-4">
+            <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
+            <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
+              Filled in from your card. Check the spelling and the number &mdash; this is what the
+              people you meet will see.
+            </Typography>
+          </View>
+        ) : null}
+
+        {scanState === 'empty' ? (
+          <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
+            <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
+              Nothing readable on that photo. Type your details in, or retake it.
+            </Typography>
+          </View>
+        ) : null}
+
+        {scanState === 'failed' && scanMessage ? (
+          <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
+            <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
+              {scanMessage}
+            </Typography>
+          </View>
+        ) : null}
+
         <View className="gap-4">
           <TextInput label="Full name" value={name} onChangeText={setName} />
           <TextInput label="Company" value={company} onChangeText={setCompany} />
@@ -93,6 +196,12 @@ export default function ScanOwnCardConfirmScreen() {
               setError(result.error);
               return;
             }
+
+            // The photo has been read and is not wanted again. Left in the
+            // draft it would still be there when the next lead capture opened,
+            // which is one route away from your own card being filed under a
+            // stranger's name.
+            useCaptureDraftStore.getState().setImageUri(null);
 
             // The rest goes to the card builder as a starting point rather
             // than straight to the database: creating the row here would put a

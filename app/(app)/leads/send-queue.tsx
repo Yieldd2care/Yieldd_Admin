@@ -69,20 +69,21 @@ export default function SendQueueScreen() {
     if (done && total > 0) void completeBatch(batchId.current);
   }, [done, total]);
 
-  const message = lead && template
-    ? renderTemplate(template.body, {
-        name: lead.name,
-        company: lead.company,
-        event: event?.name,
-        sender: user?.name,
-        senderCompany: user?.company,
-      })
-    : '';
+  // One context for both. The subject used to be rendered with three of the
+  // five fields, so a subject line using {{sender}} lost the name here while
+  // keeping it when sent from the lead detail screen.
+  const mergeContext = {
+    name: lead?.name,
+    company: lead?.company,
+    event: event?.name,
+    sender: user?.name,
+    senderCompany: user?.company,
+  };
+
+  const message = lead && template ? renderTemplate(template.body, mergeContext) : '';
 
   const subject =
-    lead && template?.subject
-      ? renderTemplate(template.subject, { name: lead.name, company: lead.company, event: event?.name })
-      : '';
+    lead && template?.subject ? renderTemplate(template.subject, mergeContext) : '';
 
   const advance = () => setIndex((i) => i + 1);
 

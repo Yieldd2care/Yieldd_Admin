@@ -20,10 +20,10 @@ Full diagnosis for each is in its numbered section below.
 | 2 | 16 | Four dead lead buttons (Call / WhatsApp / Email / Save contact) | `[x]` done 2026-09-02 |
 | 3 | 17b | Edit-event screen — name, city, dates, costs | `[x]` done 2026-09-02 |
 | 4 | 19 | Event lead count stale until pull-to-refresh | `[x]` done 2026-09-02 |
-| 5 | 14 | Template editor behind the keyboard (3 screens) | `[ ]` |
-| 6 | 15 | Variable instructions — **and** the subject-line context bug | `[ ]` |
-| 7 | 13 | Scanning your own card fills nothing | `[ ]` |
-| 8 | 18 | Back-of-card scan + branch address field | `[ ]` |
+| 5 | 14 | Template editor behind the keyboard (3 screens) | `[x]` done 2026-09-02 |
+| 6 | 15 | Variable instructions — **and** the subject-line context bug | `[x]` done 2026-09-02 |
+| 7 | 13 | Scanning your own card fills nothing | `[x]` done 2026-09-02 |
+| 8 | 18 | Back-of-card scan + branch address field | `[~]` in progress |
 
 **Blocked on you, not on code**
 
@@ -248,10 +248,22 @@ see #18) or read and discarded.
   ([messageText.ts:51](lib/messageText.ts)), a subject reading `Great meeting you — {{sender}}`
   silently loses the name in bulk send while working from the detail screen. Pass the same
   context in all three.
-- **Then the help itself:** a block in `MessageTemplateManager` rendered from `MERGE_FIELDS`
-  (not a hand-typed list), with tap-to-insert into the focused field, one worked example, and a
-  line saying an empty variable disappears rather than printing `{{name}}`. Same block on the
-  wizard step.
+- ~~**Fix**~~ — **DONE 2026-09-02.**
+  - **The subject bug is fixed first**, because the help would otherwise have documented
+    something untrue. `bulk-send.tsx` and `send-queue.tsx` now build one `mergeContext` and use it
+    for the body *and* the subject, so all five variables behave the same everywhere.
+  - **A collapsible "How to personalise a message" block** sits at the top of the template
+    editor, rendered **from `MERGE_FIELDS`** rather than a hand-typed list — the old copy named
+    two of the five in a sentence of intro text, and a list written out by hand goes stale the
+    first time a field is added. It carries all five with their labels, a worked example per
+    channel, and the line that actually surprises people: an empty variable is *removed*, so a
+    lead with no company gives "great meeting you" rather than a visible `{{company}}`.
+  - It appears on all three screens automatically, since all three render
+    `MessageTemplateManager`. The intro copy no longer half-names the variables.
+- **Not built: tap-to-insert.** The block lists and explains the variables; inserting one at the
+  cursor needs selection tracking on the message box and is worth doing only if people ask.
+- **Checked:** `npx tsc --noEmit` exit 0; `npm run verify:messaging` (18 checks, including that
+  an empty context leaves no placeholders behind).
 
 ### 14. Template editor sits behind the keyboard — reported 2026-09-02
 
@@ -275,10 +287,15 @@ see #18) or read and discarded.
      view.
 - **Affects three screens, not two** — the wizard's template step has the same three faults
   (ScrollView at line 110, `multiline` at 124 and 148, no `KeyboardAvoidingView`).
-- **Fix:** copy the pattern already working at
-  [complete-profile.tsx:76-83](app/(app)/onboarding/complete-profile.tsx) —
-  `KeyboardAvoidingView` with the platform behaviour, plus `keyboardShouldPersistTaps="handled"`.
-  Cap the body input's height and scroll the new card into view when it enters edit mode.
+- ~~**Fix**~~ — **DONE 2026-09-02**, all three faults, on all three screens.
+  - `KeyboardAvoidingView` with the platform behaviour plus `keyboardShouldPersistTaps="handled"`,
+    copying [complete-profile.tsx:76-83](app/(app)/onboarding/complete-profile.tsx). The second
+    one is what makes **Save work on the first tap** instead of the second.
+  - The message box is capped at `maxHeight: 220` (min 96). Unbounded, a long message pushed Save
+    and Delete off the card and grew under the keyboard as you typed.
+  - A newly added template **autofocuses its name field**, which makes the ScrollView bring it
+    into view on its own — it is appended below every existing one, so with a few already there
+    it opened off-screen. The cursor lands where the person needs it anyway.
 
 ### 13. Scanning your own card fills in nothing — reported 2026-09-02
 
@@ -301,14 +318,21 @@ see #18) or read and discarded.
   exactly the person `first-scan.tsx` sends here.
 - **Not a server fault.** `extract-card` is ACTIVE and works — the lead capture
   flow uses it. This is a missing client call, not a broken function.
-- **Fix:** give `scan-confirm.tsx` the same effect `capture/confirm.tsx` has —
-  read `imageUri`, call `scanCard`, fill only fields still empty, abandon on
-  unmount, and show reading / failed / nothing-read states. The mapping differs
-  from the lead screen: `fullName → name`, `designation`, `company`, `phone →
-  mobile`, `companyWebsite → website`, `companyAddress → officeAddress`. Leave
-  `email` alone — it is read-only here by design (the profile guard trigger
-  blocks changing it). `ScannedCard` carries no LinkedIn field, so LinkedIn
-  stays typed by hand unless `extract-card` is extended.
+- ~~**Fix**~~ — **DONE 2026-09-02.** `scan-confirm.tsx` now reads `imageUri` from the capture
+  draft and runs `scanCard`, with the same two rules the lead screen uses: a field is filled only
+  if it is still empty, so a correction typed while the read is in flight survives, and the whole
+  thing is abandoned on unmount. Reading / filled / nothing-readable / failed all show, so a slow
+  scan is no longer indistinguishable from this bug.
+  - Mapping: `fullName → name`, `company`, `designation`, `phone → mobile`,
+    `companyWebsite → website`, `companyAddress → officeAddress`.
+  - **`email` is deliberately not filled** — it is read-only here because the profile guard
+    trigger refuses a change to the address you signed in with.
+  - **LinkedIn stays hand-typed.** `ScannedCard` has no such field; filling it would need
+    `extract-card` extended, which is #18's territory.
+  - The photo is cleared from the draft on save, so it cannot still be sitting there when the
+    next lead capture opens.
+- **Checked:** `npx tsc --noEmit` exit 0; `npm run verify:card` (live database — including that
+  a card image upload is refused before its lead row exists).
 - **While in there, two smaller things on the same screen:**
   - The photo is never cleared or used afterwards — `useCaptureDraftStore.reset()`
     only runs after a *lead* saves. Harmless today (the camera overwrites

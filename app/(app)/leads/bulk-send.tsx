@@ -82,15 +82,15 @@ export default function BulkSendScreen() {
     );
 
   const previewLead = reachable.find((l) => isSelected(l.id)) ?? reachable[0];
-  const preview = template
-    ? renderTemplate(template.body, {
-        name: previewLead?.name,
-        company: previewLead?.company,
-        event: event?.name,
-        sender: user?.name,
-        senderCompany: user?.company,
-      })
-    : '';
+  // One context for the body and the subject alike — see the subject below.
+  const mergeContext = {
+    name: previewLead?.name,
+    company: previewLead?.company,
+    event: event?.name,
+    sender: user?.name,
+    senderCompany: user?.company,
+  };
+  const preview = template ? renderTemplate(template.body, mergeContext) : '';
 
   const start = () => {
     if (!selectedIds.length) return;
@@ -143,7 +143,10 @@ export default function BulkSendScreen() {
             <>
               {channel === 'email' && template.subject ? (
                 <Typography className="text-[12px] font-bold text-navy mb-[6px]">
-                  {renderTemplate(template.subject, { name: previewLead?.name, event: event?.name })}
+                  {/* The same context the body gets. A subject rendered with
+                      fewer fields silently drops {{sender}} or {{company}} from
+                      the preview and from what actually goes out. */}
+                  {renderTemplate(template.subject, mergeContext)}
                 </Typography>
               ) : null}
               <View className="bg-section rounded-[10px] px-[13px] py-[11px]">

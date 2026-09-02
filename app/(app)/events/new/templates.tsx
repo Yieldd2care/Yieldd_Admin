@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput as RNTextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -164,7 +171,19 @@ export default function MessageTemplatesScreen() {
       ) : (
         <WizardHeader title="Set your follow-up message" step={5} />
       )}
-      <ScrollView contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
+      {/* Both message boxes are multiline, so the keyboard covers most of this
+          screen. `keyboardShouldPersistTaps` matters as much as the avoiding
+          view: without it the first tap on Done or Continue is spent dismissing
+          the keyboard and never reaches the button. */}
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerClassName="px-5 pt-5 pb-5"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View className="bg-white border border-hairline rounded-lg p-4 mb-4">
           <View className="flex-row items-center gap-[10px] mb-3">
             <WhatsAppIcon size={17} color="#25D366" strokeWidth={2} />
@@ -215,7 +234,8 @@ export default function MessageTemplatesScreen() {
             {error}
           </Typography>
         ) : null}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
         <Button
           label={isSaving ? 'Saving…' : editingOne ? 'Save follow-up' : 'Use these defaults'}

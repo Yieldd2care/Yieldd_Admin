@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Pressable, TextInput as RNTextInput, View } f
 import { Typography } from '../ui/Typography';
 import { FileIcon, MailIcon, PlusIcon, WhatsAppIcon } from '../ui/icons';
 import { describeTemplateError, type MessageChannel, type MessageTemplate } from '../../lib/api/messageTemplates';
+import { MERGE_FIELDS } from '../../lib/messaging';
 import { useTemplateMutations, useTemplates } from '../../hooks/useMessageTemplates';
 import { useSessionStore } from '../../stores/useSessionStore';
 
@@ -29,6 +30,72 @@ function formatFileSize(bytes?: number | null) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * How to write a template, for someone who has never seen a merge field.
+ *
+ * Built from `MERGE_FIELDS` rather than a hand-typed list, because the screens
+ * used to name two of the five in a sentence of intro copy and there was no way
+ * to discover the rest. A list that is written out by hand goes stale the first
+ * time a field is added.
+ *
+ * The last line is not decoration: `renderTemplate` deletes a placeholder that
+ * has no value, so a lead captured without a company gives "great meeting you"
+ * rather than "great meeting you at {{company}}". People reasonably assume the
+ * opposite and write defensively around it.
+ */
+function VariableHelp({ channel }: { channel: MessageChannel }) {
+  const [open, setOpen] = useState(false);
+
+  const example =
+    channel === 'whatsapp'
+      ? 'Hi {{name}}, great meeting you at {{event}}. — {{sender}}, {{sender_company}}'
+      : 'Hi {{name}}, thank you for visiting our stall at {{event}}.';
+
+  return (
+    <View className="bg-white border border-hairline rounded-lg px-4 py-[14px] mb-4">
+      <Pressable onPress={() => setOpen((v) => !v)} className="flex-row items-center">
+        <Typography className="flex-1 text-[13px] font-bold text-navy">
+          How to personalise a message
+        </Typography>
+        <Typography className="text-[12px] font-bold text-gold">{open ? 'Hide' : 'Show'}</Typography>
+      </Pressable>
+
+      {open ? (
+        <View className="mt-3">
+          <Typography className="text-[12.5px] text-slate leading-[1.55]">
+            Type a variable anywhere in your message and it is replaced with that
+            person&rsquo;s details when the message is sent.
+          </Typography>
+
+          <View className="mt-3 gap-[6px]">
+            {MERGE_FIELDS.map((field) => (
+              <View key={field.token} className="flex-row items-center gap-[10px]">
+                <Typography className="text-[12px] font-bold text-navy bg-gold/[0.16] px-[6px] py-[2px] rounded">
+                  {field.token}
+                </Typography>
+                <Typography className="text-[12px] text-slate flex-1">{field.label}</Typography>
+              </View>
+            ))}
+          </View>
+
+          <Typography className="text-[11px] font-bold tracking-[0.10em] text-slate mt-4 mb-[6px]" style={{ textTransform: 'uppercase' }}>
+            Example
+          </Typography>
+          <View className="bg-section rounded-[10px] px-[13px] py-[11px]">
+            <MergeFieldText text={example} className="text-[12.5px] text-navy leading-[1.5]" />
+          </View>
+
+          <Typography className="text-[12px] text-slate leading-[1.55] mt-3">
+            A variable with nothing behind it is removed rather than left showing.
+            If a lead was captured with no company, {'{{company}}'} simply
+            disappears and the sentence still reads properly.
+          </Typography>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 function MergeFieldText({ text, className = '' }: { text: string; className?: string }) {
@@ -102,6 +169,11 @@ function TemplateCard({
             placeholderTextColor="#97A3B8"
             value={name}
             onChangeText={setName}
+            // A new template is appended below every existing one, so with a
+            // few already there it opens off-screen. Focusing it makes the
+            // ScrollView bring it into view itself, and the cursor is where the
+            // person needs it anyway.
+            autoFocus={startInEdit}
           />
         ) : (
           <Typography className="flex-1 text-[13.5px] font-bold text-navy" numberOfLines={1}>
@@ -139,6 +211,9 @@ function TemplateCard({
           value={body}
           onChangeText={setBody}
           multiline
+          // Capped, or a long message pushes Save and Delete off the bottom of
+          // the card and the box grows under the keyboard as you type.
+          style={{ minHeight: 96, maxHeight: 220 }}
           placeholder="Message — use {{name}} and {{event}} to personalise"
           placeholderTextColor="#97A3B8"
         />
@@ -244,6 +319,8 @@ export function MessageTemplateManager({ channel, intro, addLabel }: Props) {
   return (
     <View>
       <Typography className="text-[13px] leading-[1.55] text-slate mt-[14px] mb-4">{intro}</Typography>
+
+      <VariableHelp channel={channel} />
 
       {templates?.length === 0 ? (
         <View className="bg-surface rounded-lg px-4 py-[14px] mb-[10px]">
