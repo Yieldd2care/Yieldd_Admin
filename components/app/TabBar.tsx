@@ -24,6 +24,16 @@ const TAB_ICONS: Record<string, (active: boolean) => ReactNode> = {
 
 const TAB_ORDER = ['index', 'events', 'qr', 'profile'];
 
+/**
+ * The bar's own height, before the device's bottom inset.
+ *
+ * Exported because the bar is absolutely positioned: it floats over whatever is
+ * behind it, so every scrolling tab screen has to end this far above the bottom
+ * or its last row sits underneath and cannot be reached. Settings had 40px of
+ * padding against a 68px bar, which is how "Delete account" ended up hidden.
+ */
+export const TAB_BAR_HEIGHT = 68;
+
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const visibleTabs = TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(
     (r): r is (typeof state.routes)[number] => Boolean(r)
@@ -53,7 +63,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   return (
     <View
       className="absolute left-0 right-0 bottom-0 bg-navy rounded-t-[22px] flex-row items-center shadow-[0_-8px_24px_rgba(11,19,43,0.18)]"
-      style={{ height: 68 + insets.bottom, paddingBottom: insets.bottom }}
+      style={{ height: TAB_BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom }}
     >
       {leftTabs.map(renderTab)}
       <Pressable

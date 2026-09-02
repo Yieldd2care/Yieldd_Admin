@@ -24,6 +24,7 @@ Full diagnosis for each is in its numbered section below.
 | 6 | 15 | Variable instructions — **and** the subject-line context bug | `[x]` done 2026-09-02 |
 | 7 | 13 | Scanning your own card fills nothing | `[x]` done 2026-09-02 |
 | 8 | 18 | Back-of-card scan + branch address field | `[x]` done 2026-09-02 |
+| — | 20 | Export Leads hides an event that already has leads | `[ ]` reported 2026-09-02 |
 
 **Blocked on you, not on code**
 
@@ -43,6 +44,37 @@ would have meant a second column plus four storage-policy amendments for a pictu
 ---
 
 ## Open
+
+### 20. Export Leads hides an event that already has leads — reported 2026-09-02
+
+- **Where:** [app/(app)/settings/export.tsx:14](app/(app)/settings/export.tsx), and the same rule on
+  the event dashboard at [events/[id]/dashboard.tsx:228](app/(app)/events/[id]/dashboard.tsx).
+- **Reported:** created an event today, captured into it, and it does not appear under
+  Settings → Export leads.
+- **The rule that was set, in full.** Not "after the event starts" exactly — it is keyed on the
+  event's **status**, and the comment states the assumption out loud:
+
+  ```ts
+  // Upcoming events are left out on purpose: there is nothing to export yet.
+  const exportable = events?.filter((e) => e.status !== 'upcoming') ?? [];
+  ```
+
+  Only `live` and `closed` events are listed. The dashboard hides its own **Export leads** button
+  the same way, with `{!isUpcoming ? …}`.
+
+- **Why it is wrong.** The assumption is false: `status` is derived from the dates
+  (`deriveStatus` in the event mapper), so **Kisan** — starting 2026-09-04, two days out — is
+  `upcoming`, while it already holds **3 captured leads**. Leads get taken before a show opens
+  (pre-registrations, a soft day, a rep testing) and the export refuses to show them. "There is
+  nothing to export yet" is a guess about the dates, not a fact about the data.
+- **Fix, when picked up:** gate on whether the event **has leads**, not on its status —
+  `event.leads` is already returned by `fetchEvents` and is exactly the right signal. An event
+  with zero leads can still be listed and simply say so, or stay hidden; either is honest. The
+  same change belongs on the dashboard button.
+- **Worth deciding at the same time:** whether an upcoming event should show in the *grouped*
+  list at all, since the screen currently only renders the `live` and `closed` groups — a third
+  group, or dropping the grouping, is part of the fix.
+- **Not fixed** — logged on 2026-09-02 for review.
 
 ### 19. Event lead count is stale until you pull to refresh — reported 2026-09-02
 

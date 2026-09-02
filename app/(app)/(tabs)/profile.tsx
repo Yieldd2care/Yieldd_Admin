@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Alert, Linking, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
 
@@ -11,6 +11,7 @@ import { useTeam } from '../../../hooks/useTeam';
 import { useOrganization } from '../../../hooks/useOrganization';
 import { useTemplates } from '../../../hooks/useMessageTemplates';
 import { SyncStatusRow } from '../../../components/shared/SyncIndicator';
+import { TAB_BAR_HEIGHT } from '../../../components/app/TabBar';
 import { openEmail } from '../../../lib/messaging';
 import {
   ChevronRightIcon,
@@ -62,6 +63,10 @@ export default function ProfileScreen() {
   const updateProfile = useSessionStore((s) => s.updateProfile);
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? 'Y';
 
+  // The tab bar floats over this screen, so the list has to end above it.
+  // 'Delete account' is the last row and was sitting underneath, unreachable.
+  const insets = useSafeAreaInsets();
+
   const { data: organization } = useOrganization();
   const isPro = (organization?.planTier ?? user?.planTier) === 'pro';
   const seats = organization?.seats ?? 1;
@@ -95,7 +100,11 @@ export default function ProfileScreen() {
         <Typography className="text-[26px] font-extrabold text-navy tracking-[-0.01em]">Settings</Typography>
       </View>
 
-      <ScrollView contentContainerClassName="px-5 pt-[18px] pb-10" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerClassName="px-5 pt-[18px]"
+        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View className="flex-row items-center gap-[14px] bg-white border border-hairline rounded-2xl p-4">
           <View className="w-[52px] h-[52px] rounded-2xl bg-gold items-center justify-center">
             <Typography className="text-[19px] font-extrabold text-navy">{initial}</Typography>
@@ -304,40 +313,40 @@ export default function ProfileScreen() {
         </Card>
 
         <SectionLabel>Follow Yieldd</SectionLabel>
-        <Card>
-          {SOCIAL_ACCOUNTS.map((account, i) => (
-            <Row
-              key={account.key}
-              icon={
-                account.key === 'instagram' ? (
-                  <InstagramIcon size={17} color="#0B132B" />
-                ) : account.key === 'facebook' ? (
-                  <FacebookIcon size={17} color="#0B132B" />
-                ) : (
-                  <LinkedInIcon size={17} color="#0B132B" />
-                )
-              }
-              label={account.label}
-              right={
-                <View className="flex-row items-center gap-[6px]">
-                  <Typography className="text-[12px] font-semibold text-slate">
-                    {account.handle}
-                  </Typography>
-                  <ChevronRightIcon size={16} color="#97A3B8" strokeWidth={2} />
-                </View>
-              }
-              // These open the browser or the installed app, whichever the OS
-              // prefers. A failure here is worth saying out loud rather than
-              // leaving as a tap that appears to do nothing.
-              onPress={() => {
-                Linking.openURL(account.url).catch(() =>
-                  Alert.alert('Could not open', account.url)
-                );
-              }}
-              isLast={i === SOCIAL_ACCOUNTS.length - 1}
-            />
-          ))}
-        </Card>
+        {/*
+          Icons alone, no labels — the marks carry the name. `accessibilityLabel`
+          is doing the work a visible word would otherwise do, so a screen reader
+          does not read out three unnamed buttons.
+        */}
+        <View className="flex-row items-center gap-[10px]">
+          {SOCIAL_ACCOUNTS.map((account) => {
+            const Icon =
+              account.key === 'instagram'
+                ? InstagramIcon
+                : account.key === 'facebook'
+                  ? FacebookIcon
+                  : LinkedInIcon;
+
+            return (
+              <Pressable
+                key={account.key}
+                accessibilityRole="link"
+                accessibilityLabel={`Yieldd on ${account.label}`}
+                // Opens the browser or the installed app, whichever the OS
+                // prefers. A failure is worth saying out loud rather than
+                // leaving as a tap that appears to do nothing.
+                onPress={() => {
+                  Linking.openURL(account.url).catch(() =>
+                    Alert.alert('Could not open', account.url)
+                  );
+                }}
+                className="w-12 h-12 rounded-2xl bg-white border border-hairline items-center justify-center active:opacity-70"
+              >
+                <Icon size={19} color="#0B132B" />
+              </Pressable>
+            );
+          })}
+        </View>
 
         <Pressable onPress={signOut} className="flex-row items-center gap-3 bg-white border border-hairline rounded-2xl px-4 py-[14px] mt-[22px]">
           <LogoutIcon />
