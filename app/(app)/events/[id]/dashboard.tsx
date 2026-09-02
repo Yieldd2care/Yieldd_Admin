@@ -194,6 +194,17 @@ export default function EventDashboardScreen() {
         </View>
 
         <View className="mt-6 gap-3">
+          {/* Admin only, because `events_admin_update` is: a rep who filled this
+              form in would meet a 42501 at the end of it. */}
+          {isAdmin && !isClosed ? (
+            <Pressable
+              onPress={() => router.push({ pathname: '/(app)/events/[id]/edit', params: { id: eventId } })}
+              className="h-[52px] rounded-md border border-hairline bg-white items-center justify-center"
+            >
+              <Typography className="text-[14.5px] font-bold text-navy">Edit event details</Typography>
+            </Pressable>
+          ) : null}
+
           {!isClosed ? (
             <Pressable
               onPress={() => router.push({ pathname: '/(app)/events/[id]/fields', params: { id: eventId } })}

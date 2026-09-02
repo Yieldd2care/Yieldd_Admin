@@ -18,7 +18,7 @@ Full diagnosis for each is in its numbered section below.
 |---|---|---|---|
 | 1 | 17a | Repoint the 5 links that open wizard steps for the wrong event | `[x]` done 2026-09-02 |
 | 2 | 16 | Four dead lead buttons (Call / WhatsApp / Email / Save contact) | `[x]` done 2026-09-02 |
-| 3 | 17b | Edit-event screen — name, city, dates, costs | `[ ]` |
+| 3 | 17b | Edit-event screen — name, city, dates, costs | `[x]` done 2026-09-02 |
 | 4 | 19 | Event lead count stale until pull-to-refresh | `[ ]` |
 | 5 | 14 | Template editor behind the keyboard (3 screens) | `[ ]` |
 | 6 | 15 | Variable instructions — **and** the subject-line context bug | `[ ]` |
@@ -150,11 +150,27 @@ see #18) or read and discarded.
     of continuing into the invite step, does **not** write to the draft, and says so plainly if
     the id ever arrives empty rather than reporting a save that did not happen.
   - `npx tsc --noEmit` — exit 0.
-- **Fix 17b — the edit screen.** New `app/(app)/events/[id]/edit.tsx` keyed by the **route** id,
-  following the shape [events/[id]/fields.tsx](app/(app)/events/[id]/fields.tsx) already uses:
-  name, city, dates and the seven cost lines, linking out to the existing fields / templates /
-  invite routes. No new API — `useUpdateEvent` already accepts both `{ id, ...details }` and
-  `{ id, costs }`. Add the entry on the dashboard beside Fields / Export / ROI.
+- ~~**Fix 17b**~~ — **DONE 2026-09-02.** New
+  [app/(app)/events/[id]/edit.tsx](app/(app)/events/[id]/edit.tsx), reached from **Edit event
+  details** on the event dashboard. An event's details can be changed after it is created for
+  the first time.
+  - **It owns only name, city and dates** — the three answers that had no other home. Cost,
+    custom fields, the follow-up message and rep invites are rows that open the screen which
+    already owns each one, told which event it is working on. A second copy of the seven cost
+    fields would have been a second thing to keep in step, which is the mistake #16 had just
+    finished undoing.
+  - **The two remaining wizard steps learned the same `eventId` parameter the cost step got in
+    17a.** `templates` now seeds from the message that event actually sends — without that it
+    would have offered the default text and overwritten a real follow-up on save — and
+    `invite` accepts a named event as well as `scope=team`. Both return instead of walking on
+    into the wizard, and neither writes to the create-event draft when editing one event.
+  - **The button is admin-only.** `events_admin_update` (initial schema) restricts the write, so
+    a rep who filled the form in would have met a 42501 at the end of it.
+  - Seeding is keyed on `event.id`, not the event object: the query returns a fresh object on
+    every refetch, and re-seeding on that would wipe what someone was halfway through typing.
+  - `npx tsc --noEmit` — exit 0.
+- **Not included:** `stall_number` exists on the event and is editable through the API, but the
+  wizard never asks for it, so it is outside "everything asked at creation".
 
 ### 16. Four lead actions are dead buttons — reported 2026-09-02
 

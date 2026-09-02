@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
 import { ScreenHeader } from '../../../../components/app/ScreenHeader';
+import { useEvent } from '../../../../hooks/useEvents';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { CheckIcon, CloseIcon, PlusIcon, UsersIcon, WhatsAppIcon } from '../../../../components/ui/icons';
 import { useEventDraftStore, type DraftRep as Rep } from '../../../../stores/useEventDraftStore';
@@ -36,16 +37,24 @@ export default function InviteRepsScreen() {
    * draft cleared, silently to no event at all. `scope=team` says out loud that
    * this invite belongs to the organisation and not to any event.
    */
-  const { scope } = useLocalSearchParams<{ scope?: string }>();
-  const standalone = scope === 'team';
+  const { scope, eventId: eventIdParam } = useLocalSearchParams<{
+    scope?: string;
+    eventId?: string;
+  }>();
+  const editingOne = Boolean(eventIdParam);
+  // Both cases mean "not the wizard": invited from Settings for the
+  // organisation, or invited onto one named event from that event's own screen.
+  const standalone = scope === 'team' || editingOne;
 
   const savedReps = useEventDraftStore((s) => s.invitedReps);
   const draftEventName = useEventDraftStore((s) => s.name);
-  // Same reasoning as the id: naming a stale event in the WhatsApp invite is
-  // worse than the generic wording `inviteMessage` falls back to.
-  const eventName = standalone ? undefined : draftEventName;
   const draftEventId = useEventDraftStore((s) => s.eventId);
-  const eventId = standalone ? null : draftEventId;
+  const { data: namedEvent } = useEvent(editingOne ? eventIdParam : undefined);
+
+  const eventId = editingOne ? (eventIdParam as string) : scope === 'team' ? null : draftEventId;
+  // Naming a stale event in the WhatsApp invite is worse than the generic
+  // wording `inviteMessage` falls back to, so the name follows the same rule.
+  const eventName = editingOne ? namedEvent?.name : scope === 'team' ? undefined : draftEventName;
   const user = useSessionStore((s) => s.user);
 
   const [reps, setReps] = useState<Rep[]>(
@@ -140,7 +149,11 @@ export default function InviteRepsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       {standalone ? (
-        <ScreenHeader title="Invite a rep" />
+        <ScreenHeader
+          title={
+            editingOne ? (namedEvent?.name ? `${namedEvent.name} — reps` : 'Invite reps') : 'Invite a rep'
+          }
+        />
       ) : (
         <WizardHeader title="Bring your team in" step={3} />
       )}

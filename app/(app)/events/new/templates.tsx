@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
+import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { MailIcon, WhatsAppIcon } from '../../../../components/ui/icons';
 import { useEventDraftStore } from '../../../../stores/useEventDraftStore';
 import { useSessionStore } from '../../../../stores/useSessionStore';
-import { useUpdateEvent } from '../../../../hooks/useEvents';
+import { useEvent, useUpdateEvent } from '../../../../hooks/useEvents';
+import { useEventTemplate } from '../../../../hooks/useMessageTemplates';
 import { ensureTemplate } from '../../../../lib/api/messageTemplates';
 
 const DEFAULT_WHATSAPP =
@@ -36,12 +38,50 @@ function MergeFieldText({ text, className = '' }: { text: string; className?: st
 }
 
 export default function MessageTemplatesScreen() {
+  /**
+   * Step 5 of the wizard, and the follow-up editor reached from an existing
+   * event. Same reasoning as the cost step: given an `eventId` it edits that
+   * event, and without one it belongs to the wizard's draft. Reading the id
+   * from the draft alone is what made this screen unusable after a wizard had
+   * finished, and dangerous while one was half-done.
+   */
+  const { eventId: eventIdParam } = useLocalSearchParams<{ eventId?: string }>();
+  const editingOne = Boolean(eventIdParam);
+
   const draft = useEventDraftStore();
   const user = useSessionStore((s) => s.user);
   const updateEvent = useUpdateEvent();
 
+  const eventId = eventIdParam ?? draft.eventId;
+  const { data: event } = useEvent(editingOne ? eventIdParam : undefined);
+  const { template: currentWhatsapp } = useEventTemplate(
+    editingOne ? eventIdParam : undefined,
+    'whatsapp'
+  );
+  const { template: currentEmail } = useEventTemplate(
+    editingOne ? eventIdParam : undefined,
+    'email'
+  );
+
   const [whatsappText, setWhatsappText] = useState(draft.whatsappTemplate || DEFAULT_WHATSAPP);
   const [emailBody, setEmailBody] = useState(draft.emailBody || DEFAULT_EMAIL_BODY);
+
+  /**
+   * Editing an existing event shows the message that event actually sends, not
+   * the wizard's leftovers. Without this the screen would offer the default
+   * text and saving it would overwrite a message someone had already written.
+   */
+  useEffect(() => {
+    if (!editingOne) return;
+    if (currentWhatsapp?.body) setWhatsappText(currentWhatsapp.body);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingOne, currentWhatsapp?.id]);
+
+  useEffect(() => {
+    if (!editingOne) return;
+    if (currentEmail?.body) setEmailBody(currentEmail.body);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingOne, currentEmail?.id]);
   const [editingWhatsapp, setEditingWhatsapp] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,16 +100,21 @@ export default function MessageTemplatesScreen() {
     if (isSaving) return;
     setError(null);
 
-    useEventDraftStore.getState().setTemplates({
-      whatsappTemplate: whatsappText,
-      emailSubject: DEFAULT_EMAIL_SUBJECT,
-      emailBody,
-    });
+    // The draft belongs to the event being created. Editing an existing event
+    // must not write into it, or the next event someone starts inherits these.
+    if (!editingOne) {
+      useEventDraftStore.getState().setTemplates({
+        whatsappTemplate: whatsappText,
+        emailSubject: DEFAULT_EMAIL_SUBJECT,
+        emailBody,
+      });
+    }
 
-    if (draft.eventId && user) {
+    if (eventId && user) {
       setIsSaving(true);
+      const eventLabel = editingOne ? event?.name : draft.name;
       const label = (isEdited: boolean) =>
-        isEdited && draft.name ? `${draft.name} follow-up` : 'Default follow-up';
+        isEdited && eventLabel ? `${eventLabel} follow-up` : 'Default follow-up';
       try {
         const [whatsapp, email] = await Promise.all([
           ensureTemplate({
@@ -89,7 +134,7 @@ export default function MessageTemplatesScreen() {
           }),
         ]);
         await updateEvent.mutateAsync({
-          id: draft.eventId,
+          id: eventId,
           whatsappTemplateId: whatsapp.id,
           emailTemplateId: email.id,
         });
@@ -99,6 +144,14 @@ export default function MessageTemplatesScreen() {
         return;
       }
       setIsSaving(false);
+    } else if (editingOne) {
+      setError('That event could not be identified, so nothing was saved.');
+      return;
+    }
+
+    if (editingOne) {
+      router.back();
+      return;
     }
 
     router.push('/(app)/events/new/complete');
@@ -106,7 +159,11 @@ export default function MessageTemplatesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
-      <WizardHeader title="Set your follow-up message" step={5} />
+      {editingOne ? (
+        <ScreenHeader title={event?.name ? `${event.name} — follow-up` : 'Follow-up message'} />
+      ) : (
+        <WizardHeader title="Set your follow-up message" step={5} />
+      )}
       <ScrollView contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
         <View className="bg-white border border-hairline rounded-lg p-4 mb-4">
           <View className="flex-row items-center gap-[10px] mb-3">
@@ -161,14 +218,16 @@ export default function MessageTemplatesScreen() {
       </ScrollView>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
         <Button
-          label={isSaving ? 'Saving…' : 'Use these defaults'}
+          label={isSaving ? 'Saving…' : editingOne ? 'Save follow-up' : 'Use these defaults'}
           disabled={isSaving}
           onPress={finish}
           className="w-full"
         />
-        <Pressable onPress={finish} disabled={isSaving}>
-          <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
-        </Pressable>
+        {editingOne ? null : (
+          <Pressable onPress={finish} disabled={isSaving}>
+            <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
