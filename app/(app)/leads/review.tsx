@@ -11,6 +11,7 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCurrentEvent } from '../../../hooks/useEvents';
 import { toDateOnly } from '../../../lib/dates';
 import type { LeadTemperature } from '../../../data/leads';
+import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 
 /**
  * The end-of-day pass over everyone captured today.
@@ -185,6 +186,7 @@ export default function EveningReviewScreen() {
         <Stat num={`${total - index} of ${total}`} label="remaining" />
       </View>
 
+      <KeyboardSafe>
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-5 pt-[22px] pb-6"
@@ -287,6 +289,7 @@ export default function EveningReviewScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

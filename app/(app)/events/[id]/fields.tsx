@@ -9,6 +9,7 @@ import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { CustomFieldsEditor } from '../../../../components/app/CustomFieldsEditor';
 import { useEventFieldsStore } from '../../../../stores/useEventFieldsStore';
 import { fetchEventFields, saveEventFields } from '../../../../lib/api/eventFields';
+import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
 
 export default function EventCustomFieldsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -58,33 +59,35 @@ export default function EventCustomFieldsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader title="Custom fields" />
-      <ScrollView contentContainerClassName="px-5 pt-5 pb-8" showsVerticalScrollIndicator={false}>
-        <Typography className="text-[13px] leading-[1.55] text-slate mb-5">
-          Add or change what reps capture for this event, any time — even mid-show. Mark a field
-          required and every rep has to fill it in before a lead saves.
-        </Typography>
-
-        {isLoading ? (
-          <ActivityIndicator color="#F4B000" />
-        ) : (
-          <View>
-            <CustomFieldsEditor />
-          </View>
-        )}
-
-        {error ? (
-          <Typography className="mt-4 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
-            {error}
+      <KeyboardSafe>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-5 pb-8" showsVerticalScrollIndicator={false}>
+          <Typography className="text-[13px] leading-[1.55] text-slate mb-5">
+            Add or change what reps capture for this event, any time — even mid-show. Mark a field
+            required and every rep has to fill it in before a lead saves.
           </Typography>
-        ) : null}
-      </ScrollView>
-      <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
-        <Button
-          label={isSaving ? 'Saving…' : 'Save fields'}
-          disabled={isLoading || isSaving}
-          onPress={save}
-        />
-      </View>
+
+          {isLoading ? (
+            <ActivityIndicator color="#F4B000" />
+          ) : (
+            <View>
+              <CustomFieldsEditor />
+            </View>
+          )}
+
+          {error ? (
+            <Typography className="mt-4 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
+              {error}
+            </Typography>
+          ) : null}
+        </ScrollView>
+        <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
+          <Button
+            label={isSaving ? 'Saving…' : 'Save fields'}
+            disabled={isLoading || isSaving}
+            onPress={save}
+          />
+        </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

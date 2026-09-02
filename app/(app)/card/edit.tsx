@@ -15,6 +15,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { Typography } from '../../../components/ui/Typography';
 import { Button } from '../../../components/ui/Button';
 import { TextInput } from '../../../components/ui/TextInput';
+import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 import { Toggle } from '../../../components/ui/Toggle';
 import {
   ChevronLeftIcon,
@@ -361,7 +362,12 @@ export default function CardEditScreen() {
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <CardHeader title={card ? 'Your card' : 'Build your card'} onBack={() => router.back()} />
-      <ScrollView contentContainerClassName="px-5 pt-[22px] pb-5" showsVerticalScrollIndicator={false}>
+      <KeyboardSafe>
+      <ScrollView
+        contentContainerClassName="px-5 pt-[22px] pb-5"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View className="bg-navy rounded-2xl p-5 overflow-hidden">
           {photoPreview ? (
             <Image source={{ uri: photoPreview }} className="w-14 h-14 rounded-xl" resizeMode="cover" />
@@ -494,6 +500,7 @@ export default function CardEditScreen() {
           disabled={save.isPending || photoBusy}
         />
       </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

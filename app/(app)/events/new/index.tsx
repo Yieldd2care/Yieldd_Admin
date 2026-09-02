@@ -10,6 +10,7 @@ import { DateField } from '../../../../components/app/DateField';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { useEventDraftStore } from '../../../../stores/useEventDraftStore';
 import { useCreateEvent, useUpdateEvent } from '../../../../hooks/useEvents';
+import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
 
 const SUGGESTIONS = ['IMTEX', 'Plastindia', 'Vibrant Gujarat', 'Auto Expo', 'IITF'];
 
@@ -68,54 +69,56 @@ export default function CreateEventScreen() {
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <WizardHeader title="Create your event" step={1} />
-      <ScrollView contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
-        <TextInput label="Event name" placeholder="e.g. IMTEX 2026" value={name} onChangeText={setName} />
-        <View className="flex-row flex-wrap gap-2 mt-[10px] mb-[18px]">
-          {SUGGESTIONS.map((s) => (
-            <Pressable key={s} onPress={() => setName(s)} className="bg-surface rounded-full px-[14px] py-2">
-              <Typography className="text-[12.5px] font-semibold text-navy">{s}</Typography>
-            </Pressable>
-          ))}
-        </View>
-
-        <TextInput label="City" placeholder="e.g. Bengaluru" value={city} onChangeText={setCity} />
-
-        <View className="flex-row gap-3 mt-[18px]">
-          <View className="flex-1">
-            <DateField
-              label="Start date"
-              value={startDate}
-              placeholder="18 Feb 2026"
-              onChange={(date) => {
-                setStartDate(date);
-                if (endDate && date.getTime() > endDate.getTime()) setEndDate(null);
-              }}
-            />
+      <KeyboardSafe>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
+          <TextInput label="Event name" placeholder="e.g. IMTEX 2026" value={name} onChangeText={setName} />
+          <View className="flex-row flex-wrap gap-2 mt-[10px] mb-[18px]">
+            {SUGGESTIONS.map((s) => (
+              <Pressable key={s} onPress={() => setName(s)} className="bg-surface rounded-full px-[14px] py-2">
+                <Typography className="text-[12.5px] font-semibold text-navy">{s}</Typography>
+              </Pressable>
+            ))}
           </View>
-          <View className="flex-1">
-            <DateField
-              label="End date"
-              value={endDate}
-              placeholder="22 Feb 2026"
-              minDate={startDate}
-              onChange={setEndDate}
-            />
-          </View>
-        </View>
 
-        {error ? (
-          <Typography className="mt-5 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
-            {error}
-          </Typography>
-        ) : null}
-      </ScrollView>
-      <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
-        <Button
-          label={isSaving ? 'Saving…' : 'Continue'}
-          disabled={!canContinue || isSaving}
-          onPress={handleContinue}
-        />
-      </View>
+          <TextInput label="City" placeholder="e.g. Bengaluru" value={city} onChangeText={setCity} />
+
+          <View className="flex-row gap-3 mt-[18px]">
+            <View className="flex-1">
+              <DateField
+                label="Start date"
+                value={startDate}
+                placeholder="18 Feb 2026"
+                onChange={(date) => {
+                  setStartDate(date);
+                  if (endDate && date.getTime() > endDate.getTime()) setEndDate(null);
+                }}
+              />
+            </View>
+            <View className="flex-1">
+              <DateField
+                label="End date"
+                value={endDate}
+                placeholder="22 Feb 2026"
+                minDate={startDate}
+                onChange={setEndDate}
+              />
+            </View>
+          </View>
+
+          {error ? (
+            <Typography className="mt-5 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
+              {error}
+            </Typography>
+          ) : null}
+        </ScrollView>
+        <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
+          <Button
+            label={isSaving ? 'Saving…' : 'Continue'}
+            disabled={!canContinue || isSaving}
+            onPress={handleContinue}
+          />
+        </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

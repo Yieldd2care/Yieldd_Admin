@@ -11,6 +11,7 @@ import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { CheckIcon, CloseIcon, PlusIcon, UsersIcon, WhatsAppIcon } from '../../../../components/ui/icons';
 import { useEventDraftStore, type DraftRep as Rep } from '../../../../stores/useEventDraftStore';
 import { useSessionStore } from '../../../../stores/useSessionStore';
+import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
 import {
   createInvites,
   fetchEventInvites,
@@ -157,120 +158,122 @@ export default function InviteRepsScreen() {
       ) : (
         <WizardHeader title="Bring your team in" step={3} />
       )}
-      <ScrollView contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
-        {invites.length ? (
-          <View className="mb-5">
-            <Typography variant="caption" className="text-slate mb-[10px]">
-              Invited &mdash; each link is personal, so send them one by one
-            </Typography>
-            {invites.map((invite) => (
-              <View
-                key={invite.id}
-                className="flex-row items-center gap-3 bg-white border border-hairline rounded-md px-4 py-3 mb-[10px]"
-              >
-                <View className="flex-1">
-                  <Typography className="text-[14px] font-bold text-navy">
-                    {invite.fullName ?? 'Invited rep'}
-                  </Typography>
-                  <Typography className="text-[12px] text-slate mt-[1px]">{invite.phone}</Typography>
-                </View>
-                <Pressable
-                  onPress={() => sendOne(invite)}
-                  className={`flex-row items-center gap-[6px] rounded-full px-[13px] py-[7px] ${
-                    sent[invite.id] ? 'bg-surface' : 'bg-[#25D366]'
-                  }`}
+      <KeyboardSafe>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
+          {invites.length ? (
+            <View className="mb-5">
+              <Typography variant="caption" className="text-slate mb-[10px]">
+                Invited &mdash; each link is personal, so send them one by one
+              </Typography>
+              {invites.map((invite) => (
+                <View
+                  key={invite.id}
+                  className="flex-row items-center gap-3 bg-white border border-hairline rounded-md px-4 py-3 mb-[10px]"
                 >
-                  {sent[invite.id] ? (
-                    <CheckIcon size={12} color="#0B132B" />
-                  ) : (
-                    <WhatsAppIcon size={13} color="#fff" />
-                  )}
-                  <Typography
-                    className={`text-[12px] font-bold ${sent[invite.id] ? 'text-navy' : 'text-white'}`}
+                  <View className="flex-1">
+                    <Typography className="text-[14px] font-bold text-navy">
+                      {invite.fullName ?? 'Invited rep'}
+                    </Typography>
+                    <Typography className="text-[12px] text-slate mt-[1px]">{invite.phone}</Typography>
+                  </View>
+                  <Pressable
+                    onPress={() => sendOne(invite)}
+                    className={`flex-row items-center gap-[6px] rounded-full px-[13px] py-[7px] ${
+                      sent[invite.id] ? 'bg-surface' : 'bg-[#25D366]'
+                    }`}
                   >
-                    {sent[invite.id] ? 'Sent' : 'Send'}
-                  </Typography>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        ) : null}
+                    {sent[invite.id] ? (
+                      <CheckIcon size={12} color="#0B132B" />
+                    ) : (
+                      <WhatsAppIcon size={13} color="#fff" />
+                    )}
+                    <Typography
+                      className={`text-[12px] font-bold ${sent[invite.id] ? 'text-navy' : 'text-white'}`}
+                    >
+                      {sent[invite.id] ? 'Sent' : 'Send'}
+                    </Typography>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
-        {reps.map((rep) => (
-          <View key={rep.id} className="flex-row gap-[10px] mb-3">
-            <RNTextInput
-              className="flex-[1.3] border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
-              placeholder="Full name"
-              placeholderTextColor="#97A3B8"
-              value={rep.name}
-              onChangeText={(v) => updateRep(rep.id, { name: v })}
-              autoCapitalize="words"
-            />
-            <RNTextInput
-              className="flex-1 border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
-              placeholder="Phone number"
-              placeholderTextColor="#97A3B8"
-              value={rep.phone}
-              onChangeText={(v) => updateRep(rep.id, { phone: v })}
-              keyboardType="phone-pad"
-            />
+          {reps.map((rep) => (
+            <View key={rep.id} className="flex-row gap-[10px] mb-3">
+              <RNTextInput
+                className="flex-[1.3] border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
+                placeholder="Full name"
+                placeholderTextColor="#97A3B8"
+                value={rep.name}
+                onChangeText={(v) => updateRep(rep.id, { name: v })}
+                autoCapitalize="words"
+              />
+              <RNTextInput
+                className="flex-1 border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
+                placeholder="Phone number"
+                placeholderTextColor="#97A3B8"
+                value={rep.phone}
+                onChangeText={(v) => updateRep(rep.id, { phone: v })}
+                keyboardType="phone-pad"
+              />
+              <Pressable
+                onPress={() => removeRep(rep.id)}
+                className="w-[50px] h-[50px] rounded-md bg-white border border-hairline items-center justify-center"
+              >
+                <CloseIcon />
+              </Pressable>
+            </View>
+          ))}
+
+          <Pressable onPress={addRep} className="flex-row items-center gap-2 py-3">
+            <PlusIcon />
+            <Typography className="text-[13.5px] font-bold text-gold">Add another</Typography>
+          </Pressable>
+
+          <View className="flex-row items-center gap-[6px] bg-surface rounded-full px-[14px] py-2 self-start mt-2">
+            <UsersIcon size={13} />
+            <Typography className="text-[12.5px] font-bold text-navy">
+              {readyCount} invite{readyCount === 1 ? '' : 's'} ready to send
+            </Typography>
+          </View>
+
+          {error ? (
+            <Typography className="mt-4 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
+              {error}
+            </Typography>
+          ) : null}
+        </ScrollView>
+
+        <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
+          {readyCount > 0 ? (
             <Pressable
-              onPress={() => removeRep(rep.id)}
-              className="w-[50px] h-[50px] rounded-md bg-white border border-hairline items-center justify-center"
+              onPress={createAndSend}
+              disabled={isSaving}
+              className={`w-full h-14 rounded-md items-center justify-center flex-row gap-[9px] bg-[#25D366] active:opacity-90 ${
+                isSaving ? 'opacity-60' : ''
+              }`}
             >
-              <CloseIcon />
+              <WhatsAppIcon size={16} color="#fff" />
+              <Typography className="text-white font-bold text-base">
+                {isSaving ? 'Creating invites…' : 'Send invites via WhatsApp'}
+              </Typography>
             </Pressable>
-          </View>
-        ))}
-
-        <Pressable onPress={addRep} className="flex-row items-center gap-2 py-3">
-          <PlusIcon />
-          <Typography className="text-[13.5px] font-bold text-gold">Add another</Typography>
-        </Pressable>
-
-        <View className="flex-row items-center gap-[6px] bg-surface rounded-full px-[14px] py-2 self-start mt-2">
-          <UsersIcon size={13} />
-          <Typography className="text-[12.5px] font-bold text-navy">
-            {readyCount} invite{readyCount === 1 ? '' : 's'} ready to send
-          </Typography>
-        </View>
-
-        {error ? (
-          <Typography className="mt-4 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
-            {error}
-          </Typography>
-        ) : null}
-      </ScrollView>
-
-      <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
-        {readyCount > 0 ? (
-          <Pressable
-            onPress={createAndSend}
-            disabled={isSaving}
-            className={`w-full h-14 rounded-md items-center justify-center flex-row gap-[9px] bg-[#25D366] active:opacity-90 ${
-              isSaving ? 'opacity-60' : ''
-            }`}
-          >
-            <WhatsAppIcon size={16} color="#fff" />
-            <Typography className="text-white font-bold text-base">
-              {isSaving ? 'Creating invites…' : 'Send invites via WhatsApp'}
+          ) : (
+            <Button label={standalone ? 'Done' : 'Continue'} onPress={goNext} className="w-full" />
+          )}
+          <Pressable onPress={goNext}>
+            <Typography className="text-[13px] font-semibold text-slate">
+              {standalone
+                ? 'Done'
+                : readyCount > 0
+                  ? 'Skip for now'
+                  : pendingToSend > 0
+                    ? `Continue — ${pendingToSend} still to send`
+                    : 'Skip for now'}
             </Typography>
           </Pressable>
-        ) : (
-          <Button label={standalone ? 'Done' : 'Continue'} onPress={goNext} className="w-full" />
-        )}
-        <Pressable onPress={goNext}>
-          <Typography className="text-[13px] font-semibold text-slate">
-            {standalone
-              ? 'Done'
-              : readyCount > 0
-                ? 'Skip for now'
-                : pendingToSend > 0
-                  ? `Continue — ${pendingToSend} still to send`
-                  : 'Skip for now'}
-          </Typography>
-        </Pressable>
-      </View>
+        </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

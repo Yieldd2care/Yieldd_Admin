@@ -17,6 +17,7 @@ import {
   type CustomFieldType,
 } from '../../../../stores/useEventFieldsStore';
 import { fetchEventFields, saveEventFields } from '../../../../lib/api/eventFields';
+import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
 
 function ListIcon() {
   return (
@@ -144,56 +145,58 @@ export default function CustomFieldsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <WizardHeader title="What do you need to ask?" step={4} />
-      <ScrollView contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
-        <Typography className="text-[13px] leading-[1.55] text-slate mb-5">
-          Turn these on to capture what your industry actually needs at the booth.
-        </Typography>
-
-        <Typography variant="caption" className="text-slate mb-[10px]">
-          Ready-made fields
-        </Typography>
-        {READY_MADE.map((t) => {
-          const on = isOn(t);
-          return (
-            <Pressable
-              key={t.key}
-              onPress={() => toggleTemplate(t)}
-              className={`flex-row items-center gap-[14px] bg-white border rounded-lg p-4 mb-[10px] ${
-                on ? 'border-gold/[0.45]' : 'border-hairline'
-              }`}
-              style={on ? { backgroundColor: 'rgba(244,176,0,0.05)' } : undefined}
-            >
-              <View className="w-9 h-9 rounded-md bg-surface items-center justify-center">{t.icon}</View>
-              <View className="flex-1">
-                <Typography className="text-[14px] font-bold text-navy">{t.title}</Typography>
-                <Typography className="text-[12px] text-slate mt-[2px]">{t.sub}</Typography>
-              </View>
-              <Toggle value={on} onValueChange={() => toggleTemplate(t)} />
-            </Pressable>
-          );
-        })}
-
-        <View className="mt-5">
-          <CustomFieldsEditor />
-        </View>
-
-        {error ? (
-          <Typography className="mt-4 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
-            {error}
+      <KeyboardSafe>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
+          <Typography className="text-[13px] leading-[1.55] text-slate mb-5">
+            Turn these on to capture what your industry actually needs at the booth.
           </Typography>
-        ) : null}
-      </ScrollView>
-      <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
-        <Button
-          label={isSaving ? 'Saving…' : 'Continue'}
-          disabled={isSaving}
-          onPress={continueToTemplates}
-          className="w-full"
-        />
-        <Pressable onPress={() => router.push('/(app)/events/new/templates')} disabled={isSaving}>
-          <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
-        </Pressable>
-      </View>
+
+          <Typography variant="caption" className="text-slate mb-[10px]">
+            Ready-made fields
+          </Typography>
+          {READY_MADE.map((t) => {
+            const on = isOn(t);
+            return (
+              <Pressable
+                key={t.key}
+                onPress={() => toggleTemplate(t)}
+                className={`flex-row items-center gap-[14px] bg-white border rounded-lg p-4 mb-[10px] ${
+                  on ? 'border-gold/[0.45]' : 'border-hairline'
+                }`}
+                style={on ? { backgroundColor: 'rgba(244,176,0,0.05)' } : undefined}
+              >
+                <View className="w-9 h-9 rounded-md bg-surface items-center justify-center">{t.icon}</View>
+                <View className="flex-1">
+                  <Typography className="text-[14px] font-bold text-navy">{t.title}</Typography>
+                  <Typography className="text-[12px] text-slate mt-[2px]">{t.sub}</Typography>
+                </View>
+                <Toggle value={on} onValueChange={() => toggleTemplate(t)} />
+              </Pressable>
+            );
+          })}
+
+          <View className="mt-5">
+            <CustomFieldsEditor />
+          </View>
+
+          {error ? (
+            <Typography className="mt-4 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
+              {error}
+            </Typography>
+          ) : null}
+        </ScrollView>
+        <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
+          <Button
+            label={isSaving ? 'Saving…' : 'Continue'}
+            disabled={isSaving}
+            onPress={continueToTemplates}
+            className="w-full"
+          />
+          <Pressable onPress={() => router.push('/(app)/events/new/templates')} disabled={isSaving}>
+            <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
+          </Pressable>
+        </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

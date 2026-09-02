@@ -11,6 +11,7 @@ import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { ChevronRightIcon } from '../../../../components/ui/icons';
 import { useEvent, useUpdateEvent } from '../../../../hooks/useEvents';
 import { formatPaise } from '../../../../lib/db';
+import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
 
 /**
  * Changing an event after it has been created.
@@ -99,84 +100,92 @@ export default function EditEventScreen() {
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader title="Edit event" />
-      <ScrollView contentContainerClassName="px-5 pt-5 pb-8" showsVerticalScrollIndicator={false}>
-        {isLoading && !event ? (
-          <ActivityIndicator color="#F4B000" />
-        ) : (
-          <>
-            <TextInput label="Event name" placeholder="e.g. IMTEX 2026" value={name} onChangeText={setName} />
+      <KeyboardSafe>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-5 pb-8" showsVerticalScrollIndicator={false}>
+          {isLoading && !event ? (
+            <ActivityIndicator color="#F4B000" />
+          ) : (
+            <>
+              <TextInput label="Event name" placeholder="e.g. IMTEX 2026" value={name} onChangeText={setName} />
 
-            <View className="mt-[18px]">
-              <TextInput label="City" placeholder="e.g. Bengaluru" value={city} onChangeText={setCity} />
-            </View>
-
-            <View className="flex-row gap-3 mt-[18px]">
-              <View className="flex-1">
-                <DateField
-                  label="Start date"
-                  value={startDate}
-                  placeholder="18 Feb 2026"
-                  onChange={(date) => {
-                    setStartDate(date);
-                    // Same guard the create screen uses: an end date that now
-                    // falls before the start is cleared rather than saved.
-                    if (endDate && date.getTime() > endDate.getTime()) setEndDate(null);
-                  }}
-                />
+              <View className="mt-[18px]">
+                <TextInput label="City" placeholder="e.g. Bengaluru" value={city} onChangeText={setCity} />
               </View>
-              <View className="flex-1">
-                <DateField
-                  label="End date"
-                  value={endDate}
-                  placeholder="22 Feb 2026"
-                  minDate={startDate}
-                  onChange={setEndDate}
-                />
+
+              <View className="flex-row gap-3 mt-[18px]">
+                <View className="flex-1">
+                  <DateField
+                    label="Start date"
+                    value={startDate}
+                    placeholder="18 Feb 2026"
+                    onChange={(date) => {
+                      setStartDate(date);
+                      // Same guard the create screen uses: an end date that now
+                      // falls before the start is cleared rather than saved.
+                      if (endDate && date.getTime() > endDate.getTime()) setEndDate(null);
+                    }}
+                  />
+                </View>
+                <View className="flex-1">
+                  <DateField
+                    label="End date"
+                    value={endDate}
+                    placeholder="22 Feb 2026"
+                    minDate={startDate}
+                    onChange={setEndDate}
+                  />
+                </View>
               </View>
-            </View>
 
-            <Typography
-              className="text-[10px] font-bold tracking-[0.12em] text-slate mt-7 mb-3"
-              style={{ textTransform: 'uppercase' }}
-            >
-              Everything else asked at setup
-            </Typography>
-
-            {/* Each of these is the screen that already owns that answer, told
-                which event it is editing. Nothing here keeps its own copy. */}
-            <LinkRow
-              label="Event cost"
-              value={event ? formatPaise(event.totalCost * 100, { fallback: 'Not added' }) : undefined}
-              onPress={() => router.push({ pathname: '/(app)/events/new/cost', params: { eventId } })}
-            />
-            <LinkRow
-              label="Custom fields"
-              onPress={() => router.push({ pathname: '/(app)/events/[id]/fields', params: { id: eventId } })}
-            />
-            <LinkRow
-              label="Follow-up message"
-              onPress={() => router.push({ pathname: '/(app)/events/new/templates', params: { eventId } })}
-            />
-            <LinkRow
-              label="Invite reps"
-              onPress={() => router.push({ pathname: '/(app)/events/new/invite', params: { eventId } })}
-            />
-
-            {error ? (
-              <Typography className="mt-5 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
-                {error}
+              <Typography
+                className="text-[10px] font-bold tracking-[0.12em] text-slate mt-7 mb-3"
+                style={{ textTransform: 'uppercase' }}
+              >
+                Everything else asked at setup
               </Typography>
-            ) : null}
-          </>
-        )}
-      </ScrollView>
-      <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
-        <Button
-          label={updateEvent.isPending ? 'Saving…' : 'Save changes'}
-          disabled={!canSave || updateEvent.isPending}
-          onPress={save}
-        />
-      </View>
+
+              {/* Each of these is the screen that already owns that answer, told
+                  which event it is editing. Nothing here keeps its own copy. */}
+              <LinkRow
+                label="Event cost"
+                value={event ? formatPaise(event.totalCost * 100, { fallback: 'Not added' }) : undefined}
+                onPress={() => router.push({ pathname: '/(app)/events/new/cost', params: { eventId } })}
+              />
+              <LinkRow
+                label="Custom fields"
+                onPress={() => router.push({ pathname: '/(app)/events/[id]/fields', params: { id: eventId } })}
+              />
+              {/* A picker, not the wizard's editor. Reaching step 5 to change
+                  an event's message wrote another template row every time, so
+                  four shows a year left four near-identical "Default follow-up"
+                  templates and no way to reuse one already written. */}
+              <LinkRow
+                label="Follow-up message"
+                onPress={() =>
+                  router.push({ pathname: '/(app)/events/[id]/templates', params: { id: eventId } })
+                }
+              />
+              <LinkRow
+                label="Invite reps"
+                onPress={() => router.push({ pathname: '/(app)/events/new/invite', params: { eventId } })}
+              />
+
+              {error ? (
+                <Typography className="mt-5 text-[13px] font-semibold text-[#C23B3B] leading-[1.45]">
+                  {error}
+                </Typography>
+              ) : null}
+            </>
+          )}
+        </ScrollView>
+        <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
+          <Button
+            label={updateEvent.isPending ? 'Saving…' : 'Save changes'}
+            disabled={!canSave || updateEvent.isPending}
+            onPress={save}
+          />
+        </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

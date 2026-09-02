@@ -23,6 +23,7 @@ import { fetchEventFields } from '../../../lib/api/eventFields';
 import { scanCard } from '../../../lib/api/cardScan';
 import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldValue } from '../../../data/leads';
+import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 
 export default function ConfirmLeadScreen() {
   // Blank, not pre-filled. The card scan fills these in below once it has
@@ -204,236 +205,238 @@ export default function ConfirmLeadScreen() {
         }
       />
 
-      <ScrollView contentContainerClassName="px-5 pt-5 pb-6" showsVerticalScrollIndicator={false}>
-        {!event ? <NoEventNotice /> : <EventContextBar className="mb-4" />}
-        <SyncIndicator className="mb-4" />
+      <KeyboardSafe>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-5 pb-6" showsVerticalScrollIndicator={false}>
+          {!event ? <NoEventNotice /> : <EventContextBar className="mb-4" />}
+          <SyncIndicator className="mb-4" />
 
-        {scanState === 'reading' ? (
-          <View className="flex-row items-center gap-[10px] bg-navy/[0.04] border border-hairline rounded-md px-4 py-3 mb-4">
-            <ActivityIndicator size="small" color="#F4B000" />
-            <Typography className="text-[12.5px] font-semibold text-navy flex-1">
-              Reading the card&#8230; you can start typing, nothing will be overwritten.
-            </Typography>
-          </View>
-        ) : null}
+          {scanState === 'reading' ? (
+            <View className="flex-row items-center gap-[10px] bg-navy/[0.04] border border-hairline rounded-md px-4 py-3 mb-4">
+              <ActivityIndicator size="small" color="#F4B000" />
+              <Typography className="text-[12.5px] font-semibold text-navy flex-1">
+                Reading the card&#8230; you can start typing, nothing will be overwritten.
+              </Typography>
+            </View>
+          ) : null}
 
-        {scanState === 'done' ? (
-          <View className="flex-row items-start gap-2 bg-gold/[0.08] border border-gold/[0.30] rounded-md px-[14px] py-3 mb-4">
-            <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
-            <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
-              Filled in from the card. Check the number and spelling before saving &mdash; a misread
-              digit is a lead nobody can call back.
-            </Typography>
-          </View>
-        ) : null}
+          {scanState === 'done' ? (
+            <View className="flex-row items-start gap-2 bg-gold/[0.08] border border-gold/[0.30] rounded-md px-[14px] py-3 mb-4">
+              <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
+              <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
+                Filled in from the card. Check the number and spelling before saving &mdash; a misread
+                digit is a lead nobody can call back.
+              </Typography>
+            </View>
+          ) : null}
 
-        {scanState === 'empty' ? (
-          <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
-            <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
-              Nothing readable on that photo. Type the details in.
-            </Typography>
-          </View>
-        ) : null}
+          {scanState === 'empty' ? (
+            <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
+              <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
+                Nothing readable on that photo. Type the details in.
+              </Typography>
+            </View>
+          ) : null}
 
-        {scanState === 'failed' && scanMessage ? (
-          <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
-            <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
-              {scanMessage}
-            </Typography>
-            {/* The rep is already on the form, so the recovery is to type — say
-                so. The photo stays attached either way and still uploads with
-                the lead, so nothing about the failed read is lost. */}
-            <Typography className="text-[12px] text-slate mt-[6px] leading-[1.45]">
-              Type the details in below. The photo stays attached to the lead.
-            </Typography>
+          {scanState === 'failed' && scanMessage ? (
+            <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
+              <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
+                {scanMessage}
+              </Typography>
+              {/* The rep is already on the form, so the recovery is to type — say
+                  so. The photo stays attached either way and still uploads with
+                  the lead, so nothing about the failed read is lost. */}
+              <Typography className="text-[12px] text-slate mt-[6px] leading-[1.45]">
+                Type the details in below. The photo stays attached to the lead.
+              </Typography>
+            </View>
+          ) : null}
+          <View className="flex-row items-center gap-3 mb-[18px]">
+            <View className="w-16 h-11 rounded-lg bg-navy overflow-hidden relative">
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} className="w-full h-full" resizeMode="cover" />
+              ) : (
+                <View className="absolute" style={{ top: 6, left: 6, right: 6, bottom: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 4 }} />
+              )}
+            </View>
+            <View className="flex-1">
+              <Typography className="text-[13.5px] font-semibold text-navy">
+                {imageUri ? 'Card captured' : 'No photo'}
+              </Typography>
+              {/* The event name lives in EventContextBar above, read from the real
+                  current event. This line used to print "IMTEX 2026 · B-42". */}
+              <Typography className="text-[11.5px] text-slate mt-[1px]">
+                {imageUri ? 'Check the details below' : 'Type the details in'}
+              </Typography>
+            </View>
+            <Pressable onPress={() => router.replace('/(app)/capture/camera')}>
+              <Typography className="text-[12px] font-bold text-blue">Retake</Typography>
+            </Pressable>
           </View>
-        ) : null}
-        <View className="flex-row items-center gap-3 mb-[18px]">
-          <View className="w-16 h-11 rounded-lg bg-navy overflow-hidden relative">
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} className="w-full h-full" resizeMode="cover" />
+
+          <DuplicateFlag {...duplicate} />
+
+          <View className="gap-4">
+            <TextInput label="Full name" value={name} onChangeText={setName} />
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <TextInput label="Designation" value={designation} onChangeText={setDesignation} />
+              </View>
+              <View className="flex-1">
+                <TextInput label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+              </View>
+            </View>
+            <TextInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+            <TextInput
+              label="Notes"
+              value={note}
+              onChangeText={setNote}
+              placeholder="Anything OCR missed — e.g. their name, spelled out"
+              multiline
+              style={{ height: 76, textAlignVertical: 'top', paddingTop: 12 }}
+            />
+          </View>
+
+          <Pressable
+            onPress={() => router.push('/(app)/capture/voice')}
+            className={`flex-row items-center justify-center gap-2 h-12 rounded-md border mt-4 ${
+              hasVoice ? 'border-success bg-success/[0.08]' : 'border-dashed border-hairline bg-white'
+            }`}
+          >
+            <MicIcon size={15} color={hasVoice ? '#2E9C61' : '#0B132B'} />
+            <Typography className={`text-[13.5px] font-semibold ${hasVoice ? 'text-[#2E9C61]' : 'text-navy'}`}>
+              {hasVoice ? 'Voice note attached' : 'Add a voice note'}
+            </Typography>
+          </Pressable>
+
+          <Typography className="text-[10px] font-bold tracking-[0.12em] text-slate mt-6 mb-3" style={{ textTransform: 'uppercase' }}>
+            Company
+          </Typography>
+          <View className="gap-4">
+            <TextInput label="Company name" value={company} onChangeText={setCompany} />
+            <TextInput label="Landline (optional)" value={companyLandline} onChangeText={setCompanyLandline} keyboardType="phone-pad" />
+            <TextInput
+              label="Website (optional)"
+              value={companyWebsite}
+              onChangeText={setCompanyWebsite}
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+            <TextInput label="Address (optional)" value={companyAddress} onChangeText={setCompanyAddress} />
+            <TextInput label="Branch address (optional)" value={branchAddress} onChangeText={setBranchAddress} />
+          </View>
+
+          <View className="mt-4">
+            <View className="flex-row items-center justify-between mb-[9px]">
+              <Typography variant="body-sm" className="text-ink-muted">
+                Company summary
+              </Typography>
+              <View className="flex-row items-center gap-1 bg-blue/[0.10] rounded-full px-2 py-[3px]">
+                <SparkleIcon size={10} color="#1D3F8A" />
+                <Typography className="text-[9.5px] font-bold text-blue">AI</Typography>
+              </View>
+            </View>
+            {companySummary ? (
+              <View className="bg-white border border-hairline rounded-md px-4 py-[14px] gap-2">
+                <Typography className="text-[13px] leading-[1.5] text-navy">{companySummary}</Typography>
+                <Pressable onPress={generateCompanySummary} disabled={summaryLoading}>
+                  <Typography className="text-[12px] font-bold text-gold">Regenerate</Typography>
+                </Pressable>
+              </View>
             ) : (
-              <View className="absolute" style={{ top: 6, left: 6, right: 6, bottom: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 4 }} />
+              <Pressable
+                onPress={generateCompanySummary}
+                disabled={summaryLoading}
+                className="h-12 rounded-md border border-dashed border-hairline bg-white items-center justify-center flex-row gap-2"
+              >
+                {summaryLoading ? (
+                  <Typography className="text-[13.5px] font-semibold text-slate">Fetching company info…</Typography>
+                ) : (
+                  <>
+                    <SparkleIcon size={14} color="#0B132B" />
+                    <Typography className="text-[13.5px] font-semibold text-navy">Get AI company summary</Typography>
+                  </>
+                )}
+              </Pressable>
             )}
           </View>
-          <View className="flex-1">
-            <Typography className="text-[13.5px] font-semibold text-navy">
-              {imageUri ? 'Card captured' : 'No photo'}
-            </Typography>
-            {/* The event name lives in EventContextBar above, read from the real
-                current event. This line used to print "IMTEX 2026 · B-42". */}
-            <Typography className="text-[11.5px] text-slate mt-[1px]">
-              {imageUri ? 'Check the details below' : 'Type the details in'}
-            </Typography>
-          </View>
-          <Pressable onPress={() => router.replace('/(app)/capture/camera')}>
-            <Typography className="text-[12px] font-bold text-blue">Retake</Typography>
+
+          <Typography className="text-[10px] font-bold tracking-[0.12em] text-slate mt-6 mb-3" style={{ textTransform: 'uppercase' }}>
+            Event fields
+          </Typography>
+          {customFields.length === 0 ? (
+            <Typography className="text-[12.5px] text-slate">No custom fields set for this event.</Typography>
+          ) : (
+            <View className="gap-4">
+              {customFields.map((field) => (
+                <CustomFieldInput
+                  key={field.id}
+                  field={field}
+                  value={customValues[field.id]}
+                  onChange={(value) => setCustomValues((prev) => ({ ...prev, [field.id]: value }))}
+                />
+              ))}
+            </View>
+          )}
+
+          <Pressable
+            onPress={() => setConsent((c) => !c)}
+            className="flex-row items-center justify-between bg-white border border-hairline rounded-md px-4 py-[14px] mt-5"
+          >
+            <View className="flex-1 pr-3">
+              <Typography className="text-[13px] font-semibold text-navy">Consent to follow up</Typography>
+              <Typography className="text-[11.5px] text-slate mt-[2px]">Confirmed verbally at the stall</Typography>
+            </View>
+            <Toggle value={consent} onValueChange={setConsent} />
+          </Pressable>
+        </ScrollView>
+
+        <View className="bg-white border-t border-hairline flex-row gap-[10px] px-5 pt-[14px] pb-6">
+          <Pressable onPress={() => router.replace('/(app)/(tabs)')} className="w-[54px] h-[54px] rounded-md bg-white border border-hairline items-center justify-center">
+            <TrashIcon />
+          </Pressable>
+          <Pressable
+            disabled={!canSave}
+            onPress={async () => {
+              if (!event || !user) return;
+              setIsSaving(true);
+              const lead = await useLeadsStore.getState().addLead({
+                organizationId: user.organizationId,
+                eventId: event.id,
+                capturedBy: user.id,
+                source: 'card_scan',
+                consentGiven: consent,
+                name,
+                company,
+                phone,
+                email,
+                designation,
+                note,
+                companyLandline,
+                companyWebsite,
+                companyAddress,
+                branchAddress,
+                companySummary,
+                hasVoice,
+                voiceUri: voiceUri ?? undefined,
+                voiceDurationSeconds,
+                voiceExtension,
+                customFieldValues: customValues,
+                imageUri: imageUri ?? undefined,
+              });
+              useCaptureDraftStore.getState().reset();
+              router.replace({
+                pathname: '/(app)/capture/saved',
+                params: { name, isDraft: lead.syncStatus === 'draft' ? '1' : '0' },
+              });
+            }}
+            className={`flex-1 h-[54px] rounded-md items-center justify-center ${
+              canSave ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface shadow-[0_10px_24px_rgba(244,176,0,0)]'
+            }`}
+          >
+            <Typography className={`text-[16px] font-bold ${canSave ? 'text-navy' : 'text-slate'}`}>Save lead</Typography>
           </Pressable>
         </View>
-
-        <DuplicateFlag {...duplicate} />
-
-        <View className="gap-4">
-          <TextInput label="Full name" value={name} onChangeText={setName} />
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <TextInput label="Designation" value={designation} onChangeText={setDesignation} />
-            </View>
-            <View className="flex-1">
-              <TextInput label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-            </View>
-          </View>
-          <TextInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <TextInput
-            label="Notes"
-            value={note}
-            onChangeText={setNote}
-            placeholder="Anything OCR missed — e.g. their name, spelled out"
-            multiline
-            style={{ height: 76, textAlignVertical: 'top', paddingTop: 12 }}
-          />
-        </View>
-
-        <Pressable
-          onPress={() => router.push('/(app)/capture/voice')}
-          className={`flex-row items-center justify-center gap-2 h-12 rounded-md border mt-4 ${
-            hasVoice ? 'border-success bg-success/[0.08]' : 'border-dashed border-hairline bg-white'
-          }`}
-        >
-          <MicIcon size={15} color={hasVoice ? '#2E9C61' : '#0B132B'} />
-          <Typography className={`text-[13.5px] font-semibold ${hasVoice ? 'text-[#2E9C61]' : 'text-navy'}`}>
-            {hasVoice ? 'Voice note attached' : 'Add a voice note'}
-          </Typography>
-        </Pressable>
-
-        <Typography className="text-[10px] font-bold tracking-[0.12em] text-slate mt-6 mb-3" style={{ textTransform: 'uppercase' }}>
-          Company
-        </Typography>
-        <View className="gap-4">
-          <TextInput label="Company name" value={company} onChangeText={setCompany} />
-          <TextInput label="Landline (optional)" value={companyLandline} onChangeText={setCompanyLandline} keyboardType="phone-pad" />
-          <TextInput
-            label="Website (optional)"
-            value={companyWebsite}
-            onChangeText={setCompanyWebsite}
-            autoCapitalize="none"
-            keyboardType="url"
-          />
-          <TextInput label="Address (optional)" value={companyAddress} onChangeText={setCompanyAddress} />
-          <TextInput label="Branch address (optional)" value={branchAddress} onChangeText={setBranchAddress} />
-        </View>
-
-        <View className="mt-4">
-          <View className="flex-row items-center justify-between mb-[9px]">
-            <Typography variant="body-sm" className="text-ink-muted">
-              Company summary
-            </Typography>
-            <View className="flex-row items-center gap-1 bg-blue/[0.10] rounded-full px-2 py-[3px]">
-              <SparkleIcon size={10} color="#1D3F8A" />
-              <Typography className="text-[9.5px] font-bold text-blue">AI</Typography>
-            </View>
-          </View>
-          {companySummary ? (
-            <View className="bg-white border border-hairline rounded-md px-4 py-[14px] gap-2">
-              <Typography className="text-[13px] leading-[1.5] text-navy">{companySummary}</Typography>
-              <Pressable onPress={generateCompanySummary} disabled={summaryLoading}>
-                <Typography className="text-[12px] font-bold text-gold">Regenerate</Typography>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable
-              onPress={generateCompanySummary}
-              disabled={summaryLoading}
-              className="h-12 rounded-md border border-dashed border-hairline bg-white items-center justify-center flex-row gap-2"
-            >
-              {summaryLoading ? (
-                <Typography className="text-[13.5px] font-semibold text-slate">Fetching company info…</Typography>
-              ) : (
-                <>
-                  <SparkleIcon size={14} color="#0B132B" />
-                  <Typography className="text-[13.5px] font-semibold text-navy">Get AI company summary</Typography>
-                </>
-              )}
-            </Pressable>
-          )}
-        </View>
-
-        <Typography className="text-[10px] font-bold tracking-[0.12em] text-slate mt-6 mb-3" style={{ textTransform: 'uppercase' }}>
-          Event fields
-        </Typography>
-        {customFields.length === 0 ? (
-          <Typography className="text-[12.5px] text-slate">No custom fields set for this event.</Typography>
-        ) : (
-          <View className="gap-4">
-            {customFields.map((field) => (
-              <CustomFieldInput
-                key={field.id}
-                field={field}
-                value={customValues[field.id]}
-                onChange={(value) => setCustomValues((prev) => ({ ...prev, [field.id]: value }))}
-              />
-            ))}
-          </View>
-        )}
-
-        <Pressable
-          onPress={() => setConsent((c) => !c)}
-          className="flex-row items-center justify-between bg-white border border-hairline rounded-md px-4 py-[14px] mt-5"
-        >
-          <View className="flex-1 pr-3">
-            <Typography className="text-[13px] font-semibold text-navy">Consent to follow up</Typography>
-            <Typography className="text-[11.5px] text-slate mt-[2px]">Confirmed verbally at the stall</Typography>
-          </View>
-          <Toggle value={consent} onValueChange={setConsent} />
-        </Pressable>
-      </ScrollView>
-
-      <View className="bg-white border-t border-hairline flex-row gap-[10px] px-5 pt-[14px] pb-6">
-        <Pressable onPress={() => router.replace('/(app)/(tabs)')} className="w-[54px] h-[54px] rounded-md bg-white border border-hairline items-center justify-center">
-          <TrashIcon />
-        </Pressable>
-        <Pressable
-          disabled={!canSave}
-          onPress={async () => {
-            if (!event || !user) return;
-            setIsSaving(true);
-            const lead = await useLeadsStore.getState().addLead({
-              organizationId: user.organizationId,
-              eventId: event.id,
-              capturedBy: user.id,
-              source: 'card_scan',
-              consentGiven: consent,
-              name,
-              company,
-              phone,
-              email,
-              designation,
-              note,
-              companyLandline,
-              companyWebsite,
-              companyAddress,
-              branchAddress,
-              companySummary,
-              hasVoice,
-              voiceUri: voiceUri ?? undefined,
-              voiceDurationSeconds,
-              voiceExtension,
-              customFieldValues: customValues,
-              imageUri: imageUri ?? undefined,
-            });
-            useCaptureDraftStore.getState().reset();
-            router.replace({
-              pathname: '/(app)/capture/saved',
-              params: { name, isDraft: lead.syncStatus === 'draft' ? '1' : '0' },
-            });
-          }}
-          className={`flex-1 h-[54px] rounded-md items-center justify-center ${
-            canSave ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface shadow-[0_10px_24px_rgba(244,176,0,0)]'
-          }`}
-        >
-          <Typography className={`text-[16px] font-bold ${canSave ? 'text-navy' : 'text-slate'}`}>Save lead</Typography>
-        </Pressable>
-      </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

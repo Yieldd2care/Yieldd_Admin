@@ -1,19 +1,48 @@
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
+
+import { KeyboardSafe } from './KeyboardSafe';
 
 interface Props {
   children: ReactNode;
 }
 
+/**
+ * The bottom sheet every modal is built on.
+ *
+ * The keyboard handling lives here rather than in each modal, because "the
+ * deal value box is behind the keyboard" was reported against one sheet and was
+ * true of all of them. One place to get right, seven screens fixed.
+ *
+ * Three parts, and all three are needed:
+ *
+ *   - `KeyboardSafe` lifts the sheet clear of the keyboard on iOS. Android
+ *     resizes the window itself, so the sheet rises with it.
+ *   - The sheet is capped at 88% of the screen and scrolls inside that. A sheet
+ *     taller than the space left above the keyboard cannot be lifted into view;
+ *     it has to scroll.
+ *   - `keyboardShouldPersistTaps="handled"` so Confirm works on the first tap
+ *     rather than the second. The default swallows that tap to dismiss the
+ *     keyboard, which reads as a dead button.
+ */
 export function SheetShell({ children }: Props) {
   return (
-    <View className="flex-1 justify-end bg-navy/[0.55]">
+    <KeyboardSafe className="flex-1 justify-end bg-navy/[0.55]">
+      {/* Tap-outside-to-close. Kept above the sheet in source order so it does
+          not sit over the content. */}
       <Pressable className="flex-1" onPress={() => router.back()} />
-      <View className="bg-white rounded-t-[22px] px-6 pt-[10px] pb-8">
+      <View className="bg-white rounded-t-[22px] px-6 pt-[10px]" style={{ maxHeight: '88%' }}>
         <View className="w-9 h-1 rounded-full bg-hairline self-center mb-[18px]" />
-        {children}
+        <ScrollView
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="pb-8"
+        >
+          {children}
+        </ScrollView>
       </View>
-    </View>
+    </KeyboardSafe>
   );
 }

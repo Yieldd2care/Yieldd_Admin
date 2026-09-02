@@ -11,6 +11,7 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { useMyCard } from '../../../hooks/useBusinessCard';
 import { scanCard } from '../../../lib/api/cardScan';
+import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 
 /**
  * What was read off the rep's own business card, before it is kept.
@@ -116,110 +117,112 @@ export default function ScanOwnCardConfirmScreen() {
           </Pressable>
         }
       />
-      <ScrollView contentContainerClassName="px-5 pt-5 pb-6" showsVerticalScrollIndicator={false}>
-        <Typography className="text-[13px] text-slate mb-5">
-          Check what we read off your card, then save it to your Yieldd profile.
-        </Typography>
+      <KeyboardSafe>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-5 pb-6" showsVerticalScrollIndicator={false}>
+          <Typography className="text-[13px] text-slate mb-5">
+            Check what we read off your card, then save it to your Yieldd profile.
+          </Typography>
 
-        {scanState === 'reading' ? (
-          <View className="flex-row items-center gap-[10px] bg-navy/[0.04] border border-hairline rounded-md px-4 py-3 mb-4">
-            <ActivityIndicator size="small" color="#F4B000" />
-            <Typography className="text-[12.5px] font-semibold text-navy flex-1">
-              Reading your card&#8230; you can start typing, nothing will be overwritten.
-            </Typography>
-          </View>
-        ) : null}
-
-        {scanState === 'done' ? (
-          <View className="flex-row items-start gap-2 bg-gold/[0.08] border border-gold/[0.30] rounded-md px-[14px] py-3 mb-4">
-            <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
-            <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
-              Filled in from your card. Check the spelling and the number &mdash; this is what the
-              people you meet will see.
-            </Typography>
-          </View>
-        ) : null}
-
-        {scanState === 'empty' ? (
-          <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
-            <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
-              Nothing readable on that photo. Type your details in, or retake it.
-            </Typography>
-          </View>
-        ) : null}
-
-        {scanState === 'failed' && scanMessage ? (
-          <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
-            <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
-              {scanMessage}
-            </Typography>
-          </View>
-        ) : null}
-
-        <View className="gap-4">
-          <TextInput label="Full name" value={name} onChangeText={setName} />
-          <TextInput label="Company" value={company} onChangeText={setCompany} />
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <TextInput label="Designation" value={designation} onChangeText={setDesignation} />
+          {scanState === 'reading' ? (
+            <View className="flex-row items-center gap-[10px] bg-navy/[0.04] border border-hairline rounded-md px-4 py-3 mb-4">
+              <ActivityIndicator size="small" color="#F4B000" />
+              <Typography className="text-[12.5px] font-semibold text-navy flex-1">
+                Reading your card&#8230; you can start typing, nothing will be overwritten.
+              </Typography>
             </View>
-            <View className="flex-1">
-              <TextInput label="Mobile" value={mobile} onChangeText={setMobile} keyboardType="phone-pad" />
+          ) : null}
+
+          {scanState === 'done' ? (
+            <View className="flex-row items-start gap-2 bg-gold/[0.08] border border-gold/[0.30] rounded-md px-[14px] py-3 mb-4">
+              <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
+              <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
+                Filled in from your card. Check the spelling and the number &mdash; this is what the
+                people you meet will see.
+              </Typography>
             </View>
+          ) : null}
+
+          {scanState === 'empty' ? (
+            <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
+              <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
+                Nothing readable on that photo. Type your details in, or retake it.
+              </Typography>
+            </View>
+          ) : null}
+
+          {scanState === 'failed' && scanMessage ? (
+            <View className="bg-surface rounded-md px-[14px] py-3 mb-4">
+              <Typography className="text-[12.5px] font-medium text-navy leading-[1.45]">
+                {scanMessage}
+              </Typography>
+            </View>
+          ) : null}
+
+          <View className="gap-4">
+            <TextInput label="Full name" value={name} onChangeText={setName} />
+            <TextInput label="Company" value={company} onChangeText={setCompany} />
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <TextInput label="Designation" value={designation} onChangeText={setDesignation} />
+              </View>
+              <View className="flex-1">
+                <TextInput label="Mobile" value={mobile} onChangeText={setMobile} keyboardType="phone-pad" />
+              </View>
+            </View>
+            <TextInput label="Email" value={email} editable={false} />
+            <TextInput label="Website (optional)" value={website} onChangeText={setWebsite} autoCapitalize="none" keyboardType="url" />
+            <TextInput label="LinkedIn (optional)" value={linkedin} onChangeText={setLinkedin} autoCapitalize="none" />
+            <TextInput label="Office address (optional)" value={officeAddress} onChangeText={setOfficeAddress} />
           </View>
-          <TextInput label="Email" value={email} editable={false} />
-          <TextInput label="Website (optional)" value={website} onChangeText={setWebsite} autoCapitalize="none" keyboardType="url" />
-          <TextInput label="LinkedIn (optional)" value={linkedin} onChangeText={setLinkedin} autoCapitalize="none" />
-          <TextInput label="Office address (optional)" value={officeAddress} onChangeText={setOfficeAddress} />
+        </ScrollView>
+        <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
+          {error ? (
+            <Typography className="text-[12.5px] font-semibold text-[#C23B3B] text-center mb-3 leading-[1.45]">
+              {error}
+            </Typography>
+          ) : null}
+          <Pressable
+            disabled={saving}
+            onPress={async () => {
+              if (saving) return;
+              setError(null);
+              setSaving(true);
+
+              // Name, designation, mobile and company are real columns now, so
+              // they go to the database. Writing them straight into the store —
+              // which is what this screen used to do — looked like it had worked
+              // and was wiped by the next profile refresh.
+              const result = await updateProfile({ name, designation, phone: mobile, company });
+              setSaving(false);
+
+              if (result.error) {
+                setError(result.error);
+                return;
+              }
+
+              // The photo has been read and is not wanted again. Left in the
+              // draft it would still be there when the next lead capture opened,
+              // which is one route away from your own card being filed under a
+              // stranger's name.
+              useCaptureDraftStore.getState().setImageUri(null);
+              useCaptureDraftStore.getState().setBackImageUri(null);
+
+              // The rest goes to the card builder as a starting point rather
+              // than straight to the database: creating the row here would put a
+              // public page live before anyone had seen it.
+              router.replace({
+                pathname: '/(app)/card/edit',
+                params: { website, linkedin, officeAddress },
+              });
+            }}
+            className={`h-[54px] rounded-md bg-gold items-center justify-center shadow-[0_10px_24px_rgba(244,176,0,0.30)] ${saving ? 'opacity-50' : ''}`}
+          >
+            <Typography className="text-[16px] font-bold text-navy">
+              {saving ? 'Saving…' : 'Save to my profile'}
+            </Typography>
+          </Pressable>
         </View>
-      </ScrollView>
-      <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
-        {error ? (
-          <Typography className="text-[12.5px] font-semibold text-[#C23B3B] text-center mb-3 leading-[1.45]">
-            {error}
-          </Typography>
-        ) : null}
-        <Pressable
-          disabled={saving}
-          onPress={async () => {
-            if (saving) return;
-            setError(null);
-            setSaving(true);
-
-            // Name, designation, mobile and company are real columns now, so
-            // they go to the database. Writing them straight into the store —
-            // which is what this screen used to do — looked like it had worked
-            // and was wiped by the next profile refresh.
-            const result = await updateProfile({ name, designation, phone: mobile, company });
-            setSaving(false);
-
-            if (result.error) {
-              setError(result.error);
-              return;
-            }
-
-            // The photo has been read and is not wanted again. Left in the
-            // draft it would still be there when the next lead capture opened,
-            // which is one route away from your own card being filed under a
-            // stranger's name.
-            useCaptureDraftStore.getState().setImageUri(null);
-            useCaptureDraftStore.getState().setBackImageUri(null);
-
-            // The rest goes to the card builder as a starting point rather
-            // than straight to the database: creating the row here would put a
-            // public page live before anyone had seen it.
-            router.replace({
-              pathname: '/(app)/card/edit',
-              params: { website, linkedin, officeAddress },
-            });
-          }}
-          className={`h-[54px] rounded-md bg-gold items-center justify-center shadow-[0_10px_24px_rgba(244,176,0,0.30)] ${saving ? 'opacity-50' : ''}`}
-        >
-          <Typography className="text-[16px] font-bold text-navy">
-            {saving ? 'Saving…' : 'Save to my profile'}
-          </Typography>
-        </Pressable>
-      </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

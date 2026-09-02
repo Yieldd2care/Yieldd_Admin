@@ -21,6 +21,7 @@ import { useCurrentEvent } from '../../../hooks/useEvents';
 import { fetchEventFields } from '../../../lib/api/eventFields';
 import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldValue } from '../../../data/leads';
+import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 
 function BigField({ label, ...rest }: { label: string } & TextInputProps) {
   return (
@@ -132,7 +133,12 @@ export default function ManualEntryScreen() {
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader title="Manual entry" />
 
-      <ScrollView contentContainerClassName="px-5 pt-[26px] pb-6" showsVerticalScrollIndicator={false}>
+      <KeyboardSafe>
+      <ScrollView
+        contentContainerClassName="px-5 pt-[26px] pb-6"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {!event ? <NoEventNotice /> : <EventContextBar className="mb-4" />}
         <SyncIndicator className="mb-4" />
         <Typography className="text-[13.5px] text-slate mb-6">
@@ -301,6 +307,7 @@ export default function ManualEntryScreen() {
           <Typography className={`text-[16px] font-bold ${canSave ? 'text-navy' : 'text-slate'}`}>Save lead</Typography>
         </Pressable>
       </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }
