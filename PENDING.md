@@ -19,7 +19,7 @@ Full diagnosis for each is in its numbered section below.
 | 1 | 17a | Repoint the 5 links that open wizard steps for the wrong event | `[x]` done 2026-09-02 |
 | 2 | 16 | Four dead lead buttons (Call / WhatsApp / Email / Save contact) | `[x]` done 2026-09-02 |
 | 3 | 17b | Edit-event screen — name, city, dates, costs | `[x]` done 2026-09-02 |
-| 4 | 19 | Event lead count stale until pull-to-refresh | `[ ]` |
+| 4 | 19 | Event lead count stale until pull-to-refresh | `[x]` done 2026-09-02 |
 | 5 | 14 | Template editor behind the keyboard (3 screens) | `[ ]` |
 | 6 | 15 | Variable instructions — **and** the subject-line context bug | `[ ]` |
 | 7 | 13 | Scanning your own card fills nothing | `[ ]` |
@@ -60,15 +60,28 @@ see #18) or read and discarded.
   app are [hooks/useEvents.ts:129,143](hooks/useEvents.ts) (event create/update) plus templates,
   organization and team. `useLeadsStore` never touches react-query. So `eventKeys.list()` and the
   `statsKeys` queries hold their last value until a manual refresh.
-- **Fix:** invalidate `eventKeys.all` and the stats keys when a lead saves and when the outbox
-  drains. The store is plain zustand with no query client in scope, so pass the invalidation in —
-  a `subscribe` in a provider, or a callback fired at the transition to `synced`
-  ([useLeadsStore.ts:338](stores/useLeadsStore.ts)). **Leave the 30s default alone**; it exists
-  for a reason. Invalidating on a real event is the right lever, not shortening the cache.
-- **Second half, or the number is still briefly wrong:** a lead still `draft` genuinely is not on
-  the server, so a server count of 1 is *correct* at that moment. The home screen counts drafts
-  locally and the events tab does not, which is why the two disagree. Either count pending local
-  leads into the figure or show the sync marker beside it.
+- ~~**Fix**~~ — **DONE 2026-09-02.** Three parts, and the third turned out to matter most.
+  1. **`syncDrafts` now invalidates `eventKeys.all` and `statsKeys.all` when something actually
+     reached the server.** The store imports the `queryClient` singleton directly, the same way
+     `useSessionStore` already does for `resetQueryCache` — no provider plumbing needed. It is
+     collected into one flag per drain rather than fired per lead, or a rep who captured forty
+     offline would trigger forty refetches of the same two queries on reconnect. **The 30s
+     `staleTime` is untouched** — it is deliberate for hall mobile data, and react-query only
+     refetches queries that are mounted, so this costs one request on the screen being looked at.
+  2. **The events tab shows `+N syncing`** beside the server's count, rather than adding local
+     drafts into it. A merged total would be a number the server does not agree with, and a lead
+     inserted just as the response was lost would briefly be counted twice. The drafts are
+     grouped in a `useMemo` over a raw selector — deriving inside a zustand selector returns a
+     new object every render and loops.
+  3. ⚠️ **A capture made while a drain was running never synced until the next app foreground.**
+     `syncDrafts` returns early if a drain is in progress, and iterates a snapshot taken at the
+     start — so scanning two cards back to back, which is the ordinary case at a stall, left the
+     second one queued and the event genuinely showing one lead. It now runs a follow-up pass
+     when the last one made progress. This was very likely the real cause of the report, not
+     just the stale cache.
+- **Checked:** `npx tsc --noEmit` exit 0; `npm run verify:stats` (21 checks, live database,
+  including that a rep still gets the real total through the server-side aggregate);
+  `npm run verify:messaging` (18 checks).
 
 ### 18. Only the front of a card is scanned, and no branch address — reported 2026-09-02
 

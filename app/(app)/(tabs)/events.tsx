@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -7,6 +8,7 @@ import { Button } from '../../../components/ui/Button';
 import { CalendarIcon, PlusIcon } from '../../../components/ui/icons';
 import { STATUS_CLASSES, STATUS_LABEL, STATUS_TEXT, type EventStatus } from '../../../data/events';
 import { useEvents } from '../../../hooks/useEvents';
+import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
 
 const GROUPS: EventStatus[] = ['live', 'upcoming', 'closed'];
@@ -14,6 +16,29 @@ const GROUPS: EventStatus[] = ['live', 'upcoming', 'closed'];
 export default function EventListScreen() {
   const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
   const { data: events, isLoading, isRefetching, error, refetch } = useEvents();
+
+  /**
+   * Captures still in the outbox, per event.
+   *
+   * `event.leads` is counted by the server and is right, but for a few seconds
+   * after a scan — or for as long as there is no signal — it is legitimately
+   * behind what the rep just did. Shown separately rather than added in: a
+   * single merged total would be a number the server does not agree with, and
+   * a lead that was inserted just as the response was lost would briefly be
+   * counted twice.
+   *
+   * Selected raw and grouped here, never inside the selector — deriving in a
+   * zustand selector returns a new object every render and loops.
+   */
+  const allLeads = useLeadsStore((s) => s.leads);
+  const pendingByEvent = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const lead of allLeads) {
+      if (lead.syncStatus !== 'draft') continue;
+      counts[lead.eventId] = (counts[lead.eventId] ?? 0) + 1;
+    }
+    return counts;
+  }, [allLeads]);
 
   const isEmpty = !isLoading && !error && !events?.length;
 
@@ -90,7 +115,7 @@ export default function EventListScreen() {
                 <Pressable
                   key={event.id}
                   onPress={() => router.push({ pathname: '/(app)/events/[id]/dashboard', params: { id: event.id } })}
-                  className={`flex-row items-center gap-[14px] bg-white border rounded-2xl p-4 mb-3 ${event.status === 'live' ? 'border-gold/[0.45] shadow-[0_10px_24px_rgba(244,176,0,0.10)]' : 'border-hairline'}`}
+                  className={`flex-row items-center gap-[14px] bg-white border rounded-2xl p-4 mb-3 ${event.status === 'live' ? 'border-gold/[0.45] shadow-[0_10px_24px_rgba(244,176,0,0.10)]' : 'border-hairline shadow-[0_10px_24px_rgba(244,176,0,0)]'}`}
                 >
                   <View className={`w-11 h-11 rounded-xl items-center justify-center ${event.status === 'live' ? 'bg-navy' : 'bg-surface'}`}>
                     <CalendarIcon color={event.status === 'live' ? '#F4B000' : '#0B132B'} strokeWidth={1.75} />
@@ -105,7 +130,16 @@ export default function EventListScreen() {
                         {event.dayLabel ?? STATUS_LABEL[event.status]}
                       </Typography>
                     </View>
-                    {event.leads ? <Typography className="text-[12px] font-bold text-navy">{event.leads} leads</Typography> : null}
+                    {event.leads ? (
+                      <Typography className="text-[12px] font-bold text-navy">
+                        {event.leads} leads
+                      </Typography>
+                    ) : null}
+                    {pendingByEvent[event.id] ? (
+                      <Typography className="text-[11px] font-semibold text-slate">
+                        +{pendingByEvent[event.id]} syncing
+                      </Typography>
+                    ) : null}
                   </View>
                 </Pressable>
               ))}

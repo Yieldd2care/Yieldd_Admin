@@ -13,6 +13,29 @@ import {
 import { captureTimeLabel, initialOf } from '../lib/mappers/lead';
 import { cardImagePath, uploadCardImage } from '../lib/api/storage';
 import { attachVoiceNote, requestTranscription } from '../lib/api/voiceNotes';
+import { queryClient } from '../lib/queryClient';
+import { eventKeys } from '../hooks/useEvents';
+import { statsKeys } from '../hooks/useEventStats';
+
+/**
+ * Tells the event list and the ROI numbers that a lead has landed.
+ *
+ * Those figures are server-side aggregates — an event's lead count and every
+ * stat come back with the event, not from this list, because a rep can only see
+ * their own rows and counting on the device would report a fraction of the
+ * truth. Nothing was telling them a capture had happened, so a rep who scanned
+ * two cards saw "1 lead" against the event until they pulled to refresh.
+ *
+ * Invalidating is the right lever rather than shortening `staleTime`. The 30
+ * seconds set in lib/queryClient.ts is deliberate — this app runs on exhibition
+ * hall mobile data — and react-query only refetches queries that are actually
+ * mounted, so this costs one request on the screen being looked at and nothing
+ * anywhere else.
+ */
+function eventCountsChanged() {
+  void queryClient.invalidateQueries({ queryKey: eventKeys.all });
+  void queryClient.invalidateQueries({ queryKey: statsKeys.all });
+}
 
 /**
  * Leads on this device.
@@ -285,6 +308,11 @@ export const useLeadsStore = create<LeadsState>()(
         if (get().isSyncing) return;
         set({ isSyncing: true });
 
+        // Whether anything reached the server this pass. Collected rather than
+        // invalidated per lead: a rep who captured forty offline would
+        // otherwise fire forty refetches of the same two queries on reconnect.
+        let serverChanged = false;
+
         try {
           for (const lead of [...get().leads]) {
             if (lead.syncError) continue; // Needs attention, not another attempt.
@@ -333,6 +361,8 @@ export const useLeadsStore = create<LeadsState>()(
                 continue;
               }
 
+              // A new row on the server: the event's lead count just moved.
+              serverChanged = true;
               set((state) => ({
                 leads: state.leads.map((l) =>
                   l.id === lead.id ? { ...l, syncStatus: 'synced' as const } : l
@@ -420,6 +450,9 @@ export const useLeadsStore = create<LeadsState>()(
                 }
                 break;
               }
+              // A status change or a deal value moves the ROI figures and the
+              // leaderboard, not just the count.
+              serverChanged = true;
               set((state) => ({
                 leads: state.leads.map((l) =>
                   l.id === lead.id ? { ...l, pendingPatch: undefined } : l
@@ -429,6 +462,22 @@ export const useLeadsStore = create<LeadsState>()(
           }
         } finally {
           set({ isSyncing: false, lastSyncedAt: new Date().toISOString() });
+          if (serverChanged) eventCountsChanged();
+        }
+
+        /**
+         * A capture made *while* this pass was running was not in its snapshot,
+         * and its own `syncDrafts()` call hit the re-entrancy guard at the top
+         * and did nothing. Two cards scanned back to back is the ordinary case
+         * at a stall, so without this the second one waits for the next app
+         * foreground — and the event really does show one lead.
+         *
+         * Guarded on `serverChanged`, so this only runs again when the last
+         * pass made progress. Every pass either turns a draft into a row or
+         * clears a patch, both finite, so it cannot spin.
+         */
+        if (serverChanged && get().leads.some((l) => l.syncStatus === 'draft' && !l.syncError)) {
+          void get().syncDrafts(currentUserId);
         }
       },
 
