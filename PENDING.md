@@ -17,8 +17,8 @@ Full diagnosis for each is in its numbered section below.
 | Order | # | Correction | Status |
 |---|---|---|---|
 | 1 | 17a | Repoint the 5 links that open wizard steps for the wrong event | `[x]` done 2026-09-02 |
-| 2 | 17b | Edit-event screen — name, city, dates, costs | `[~]` in progress |
-| 3 | 16 | Four dead lead buttons (Call / WhatsApp / Email / Save contact) | `[ ]` |
+| 2 | 16 | Four dead lead buttons (Call / WhatsApp / Email / Save contact) | `[x]` done 2026-09-02 |
+| 3 | 17b | Edit-event screen — name, city, dates, costs | `[ ]` |
 | 4 | 19 | Event lead count stale until pull-to-refresh | `[ ]` |
 | 5 | 14 | Template editor behind the keyboard (3 screens) | `[ ]` |
 | 6 | 15 | Variable instructions — **and** the subject-line context bug | `[ ]` |
@@ -174,10 +174,28 @@ see #18) or read and discarded.
   `recordSend` ([lib/api/messageSends.ts](lib/api/messageSends.ts)) runs after every WhatsApp and
   email send — without it the send history and follow-up counts disagree with reality — and
   `markSavedToContacts` sets the per-lead state the detail screen shows as "Saved".
-- **Fix:** extract the four handlers out of `leads/[id].tsx` into one shared
-  `useLeadActions(lead)` hook and consume it from both places. Empty-field handling already
-  exists — `openDialer` returns *"This lead has no phone number."* — so surface that rather than
-  opening a broken `tel:` or `mailto:`. `LeadRow` should also reflect the saved-to-contacts state.
+- ~~**Fix**~~ — **DONE 2026-09-02.** New [hooks/useLeadActions.ts](hooks/useLeadActions.ts) holds
+  all four, and both `LeadRow` and `leads/[id].tsx` now call it — the detail screen's local
+  copies are gone, so there is one implementation rather than two that drift.
+  - **`recordSend` comes with them.** This is the part that mattered: sends from the list are now
+    recorded exactly as sends from the detail screen are. Wiring the buttons without it would
+    have quietly under-reported most sends the product makes, since the list is where a rep
+    works.
+  - **Save contact** also carries `markSavedToContacts`, so the row shows the green tick the
+    detail screen shows.
+  - **Unreachable actions are dimmed, not hidden** — `canCall` / `canWhatsApp` / `canEmail`.
+    Dimming keeps the icons in the same position on every row, which matters at a stall; hiding
+    them would move the email icon around from lead to lead. WhatsApp is judged on
+    `whatsappDigits`, not merely on a phone being present: a number with no country code cannot
+    be linked to, and `whatsappUrl` falls back to opening WhatsApp with no recipient — fine as a
+    deliberate choice on the detail screen, misleading as a live-looking icon in a list.
+  - The row's action buttons call `e.stopPropagation()`, or the row's own press would open the
+    lead detail screen behind the dialer.
+  - The hook takes `StoredLead | undefined` because the detail screen renders a "this lead isn't
+    here" state before it has one, and a hook cannot be called after that early return.
+  - `npx tsc --noEmit` — exit 0.
+- **Not covered, deliberately:** the Search stub on the home screen, and the sales/billing
+  "isn't wired up" alerts on upgrade, profile and payment failure — those belong to Phase 4.
 - **Same screen, decide separately:** Search is still a stub —
   [index.tsx:190](app/(app)/(tabs)/index.tsx).
 

@@ -1,16 +1,56 @@
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { Typography } from '../ui/Typography';
 import { ContactsIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../ui/icons';
 import { STATUS_DOT, STATUS_TEXT } from '../../data/leads';
+import { useLeadActions } from '../../hooks/useLeadActions';
 import type { StoredLead } from '../../stores/useLeadsStore';
 
-function leadActionStub(action: string, name: string) {
-  Alert.alert(action, `${action} isn't wired up for ${name} yet.`);
+/**
+ * One tappable action on a lead row.
+ *
+ * `disabled` dims rather than hides. A row whose icons change position from
+ * lead to lead is harder to use at a stall than one where the email icon is
+ * always third and sometimes grey.
+ */
+function RowAction({
+  onPress,
+  disabled,
+  children,
+  className = 'bg-surface',
+  style,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  className?: string;
+  style?: { backgroundColor: string };
+}) {
+  return (
+    <Pressable
+      onPress={(e) => {
+        // Without this the row's own onPress fires too and the lead detail
+        // screen opens behind the dialer.
+        e.stopPropagation();
+        if (!disabled) onPress();
+      }}
+      className={`w-[30px] h-[30px] rounded-full items-center justify-center ${className} ${
+        disabled ? 'opacity-35' : ''
+      }`}
+      style={style}
+    >
+      {children}
+    </Pressable>
+  );
 }
 
 export function LeadRow({ lead }: { lead: StoredLead }) {
+  // The same four actions the lead detail screen uses, including the send
+  // record. These four buttons used to raise "isn't wired up yet" alerts.
+  const { call, whatsapp, email, saveToContacts, savedToContacts, canCall, canWhatsApp, canEmail } =
+    useLeadActions(lead);
+
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/(app)/leads/[id]', params: { id: lead.id } })}
@@ -38,43 +78,23 @@ export function LeadRow({ lead }: { lead: StoredLead }) {
         </View>
       </View>
       <View className="flex-row items-center gap-[6px]">
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            leadActionStub('Call', lead.name);
-          }}
-          className="w-[30px] h-[30px] rounded-full bg-surface items-center justify-center"
-        >
+        <RowAction onPress={() => void call()} disabled={!canCall}>
           <PhoneIcon size={14} color="#0B132B" />
-        </Pressable>
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            leadActionStub('WhatsApp', lead.name);
-          }}
-          className="w-[30px] h-[30px] rounded-full items-center justify-center"
+        </RowAction>
+        <RowAction
+          onPress={() => void whatsapp()}
+          disabled={!canWhatsApp}
+          className=""
           style={{ backgroundColor: '#25D366' }}
         >
           <WhatsAppIcon size={14} color="#fff" />
-        </Pressable>
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            leadActionStub('Email', lead.name);
-          }}
-          className="w-[30px] h-[30px] rounded-full bg-surface items-center justify-center"
-        >
+        </RowAction>
+        <RowAction onPress={() => void email()} disabled={!canEmail}>
           <MailIcon size={14} color="#0B132B" />
-        </Pressable>
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            leadActionStub('Save contact', lead.name);
-          }}
-          className="w-[30px] h-[30px] rounded-full bg-surface items-center justify-center"
-        >
-          <ContactsIcon size={14} color="#0B132B" />
-        </Pressable>
+        </RowAction>
+        <RowAction onPress={() => void saveToContacts()}>
+          <ContactsIcon size={14} color={savedToContacts ? '#2E9C61' : '#0B132B'} />
+        </RowAction>
       </View>
     </Pressable>
   );
