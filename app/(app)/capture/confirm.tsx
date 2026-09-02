@@ -25,9 +25,10 @@ import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldValue } from '../../../data/leads';
 
 export default function ConfirmLeadScreen() {
-  // Blank, not pre-filled. Card reading is not built yet, and seeding the form
-  // with a plausible-looking stranger is how "Rajesh Menon" ends up saved as a
-  // real lead by a rep moving fast between conversations.
+  // Blank, not pre-filled. The card scan fills these in below once it has
+  // actually read a photo — seeding the form up front with a plausible-looking
+  // stranger is how "Rajesh Menon" ends up saved as a real lead by a rep moving
+  // fast between conversations.
   const [name, setName] = useState('');
   const [designation, setDesignation] = useState('');
   const [phone, setPhone] = useState('');
@@ -38,6 +39,7 @@ export default function ConfirmLeadScreen() {
   const [companyLandline, setCompanyLandline] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
+  const [branchAddress, setBranchAddress] = useState('');
   const [companySummary, setCompanySummary] = useState('');
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -49,6 +51,7 @@ export default function ConfirmLeadScreen() {
   const voiceDurationSeconds = useCaptureDraftStore((s) => s.voiceDurationSeconds);
   const voiceExtension = useCaptureDraftStore((s) => s.voiceExtension);
   const imageUri = useCaptureDraftStore((s) => s.imageUri);
+  const backImageUri = useCaptureDraftStore((s) => s.backImageUri);
   const customFields = useEventFieldsStore((s) => s.customFields);
   const setFields = useEventFieldsStore((s) => s.setFields);
 
@@ -82,7 +85,7 @@ export default function ConfirmLeadScreen() {
     let cancelled = false;
 
     void (async () => {
-      const result = await scanCard(imageUri);
+      const result = await scanCard(imageUri, backImageUri ?? undefined);
       if (cancelled) return;
 
       if (!result.ok) {
@@ -119,6 +122,9 @@ export default function ConfirmLeadScreen() {
       setCompanyAddress((current) =>
         f.companyAddress && !current.trim() ? f.companyAddress : current
       );
+      setBranchAddress((current) =>
+        f.branchAddress && !current.trim() ? f.branchAddress : current
+      );
       void fillIfEmpty;
 
       setScanState('done');
@@ -128,7 +134,7 @@ export default function ConfirmLeadScreen() {
     return () => {
       cancelled = true;
     };
-  }, [imageUri]);
+  }, [imageUri, backImageUri]);
 
   // The fields on this form belong to this event, and an admin can change them
   // mid-show — so they are loaded here rather than trusted from whatever the
@@ -314,6 +320,7 @@ export default function ConfirmLeadScreen() {
             keyboardType="url"
           />
           <TextInput label="Address (optional)" value={companyAddress} onChangeText={setCompanyAddress} />
+          <TextInput label="Branch address (optional)" value={branchAddress} onChangeText={setBranchAddress} />
         </View>
 
         <View className="mt-4">
@@ -405,6 +412,7 @@ export default function ConfirmLeadScreen() {
               companyLandline,
               companyWebsite,
               companyAddress,
+              branchAddress,
               companySummary,
               hasVoice,
               voiceUri: voiceUri ?? undefined,
@@ -420,7 +428,7 @@ export default function ConfirmLeadScreen() {
             });
           }}
           className={`flex-1 h-[54px] rounded-md items-center justify-center ${
-            canSave ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface'
+            canSave ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface shadow-[0_10px_24px_rgba(244,176,0,0)]'
           }`}
         >
           <Typography className={`text-[16px] font-bold ${canSave ? 'text-navy' : 'text-slate'}`}>Save lead</Typography>

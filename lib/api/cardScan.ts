@@ -24,6 +24,8 @@ export type ScannedCard = {
   email: string | null;
   companyWebsite: string | null;
   companyAddress: string | null;
+  /** A second address — branch, works or regional office — when the card has one. */
+  branchAddress: string | null;
 };
 
 export type ScanResult =
@@ -39,14 +41,36 @@ type FunctionFields = {
   email: string | null;
   company_website: string | null;
   company_address: string | null;
+  branch_address: string | null;
 };
 
-export async function scanCard(imageUri: string): Promise<ScanResult> {
+/**
+ * `backImageUri` is optional and stays that way.
+ *
+ * Most cards have nothing useful on the back, so requiring a second photo would
+ * slow every capture to buy something that helps a minority of them. When it is
+ * supplied both images go up in one call, labelled front and back — two
+ * unlabelled photos read as two different cards, and the model then has to guess
+ * which address belongs to which.
+ *
+ * A back photo that cannot be read is dropped rather than failing the scan: the
+ * front is the half that carries the name and the number.
+ */
+export async function scanCard(imageUri: string, backImageUri?: string): Promise<ScanResult> {
   let base64: string;
   try {
     base64 = await readAsBase64(imageUri);
   } catch {
     return { ok: false, message: "Couldn't open that photo.", retryable: false };
+  }
+
+  let backBase64: string | undefined;
+  if (backImageUri) {
+    try {
+      backBase64 = await readAsBase64(backImageUri);
+    } catch {
+      backBase64 = undefined;
+    }
   }
 
   const { data, error } = await supabase.functions.invoke<{
@@ -55,7 +79,11 @@ export async function scanCard(imageUri: string): Promise<ScanResult> {
     error?: string;
     retryable?: boolean;
   }>('extract-card', {
-    body: { image_base64: base64, mime_type: 'image/jpeg' },
+    body: {
+      image_base64: base64,
+      ...(backBase64 ? { back_image_base64: backBase64 } : {}),
+      mime_type: 'image/jpeg',
+    },
   });
 
   if (error) {
@@ -90,6 +118,7 @@ export async function scanCard(imageUri: string): Promise<ScanResult> {
       email: f.email,
       companyWebsite: f.company_website,
       companyAddress: f.company_address,
+      branchAddress: f.branch_address,
     },
   };
 }

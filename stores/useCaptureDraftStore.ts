@@ -15,6 +15,18 @@ type CaptureDraftState = {
   imageUri: string | null;
   setImageUri: (uri: string | null) => void;
 
+  /**
+   * The back of the same card, when the rep chose to take it.
+   *
+   * Optional on purpose — most cards have nothing useful on the back, so
+   * requiring it would slow every capture to help a minority. It is read by
+   * the extraction and then discarded: only the front is uploaded, because the
+   * `card-images` policies match `leads.card_image_path` exactly and a second
+   * object would have no row to point at it.
+   */
+  backImageUri: string | null;
+  setBackImageUri: (uri: string | null) => void;
+
   /** The recording on disk, waiting for the lead to be saved. */
   voiceUri: string | null;
   voiceDurationSeconds: number;
@@ -28,6 +40,7 @@ type CaptureDraftState = {
 const EMPTY = {
   hasVoice: false,
   imageUri: null,
+  backImageUri: null,
   voiceUri: null,
   voiceDurationSeconds: 0,
   voiceExtension: '.m4a',
@@ -38,6 +51,7 @@ export const useCaptureDraftStore = create<CaptureDraftState>((set) => ({
 
   setHasVoice: (value) => set({ hasVoice: value }),
   setImageUri: (uri) => set({ imageUri: uri }),
+  setBackImageUri: (uri) => set({ backImageUri: uri }),
 
   setVoiceNote: (input) =>
     set(

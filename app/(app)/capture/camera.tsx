@@ -17,17 +17,46 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const setImageUri = useCaptureDraftStore((s) => s.setImageUri);
+  const setBackImageUri = useCaptureDraftStore((s) => s.setBackImageUri);
+
+  /**
+   * Which side is being photographed.
+   *
+   * The back is offered, never required. Most cards carry nothing useful on it,
+   * so demanding a second photo would slow every capture at a stall to help a
+   * minority of cards — but Indian cards that print a branch or works address
+   * often print it on the back, and that is exactly what was being lost.
+   */
+  const [side, setSide] = useState<'front' | 'back'>('front');
+
+  const goToConfirm = () =>
+    router.push(isProfileScan ? '/(app)/card/scan-confirm' : '/(app)/capture/confirm');
 
   const capture = async () => {
     if (capturing || !cameraRef.current) return;
     setCapturing(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
-      if (photo) setImageUri(photo.uri);
-      router.push(isProfileScan ? '/(app)/card/scan-confirm' : '/(app)/capture/confirm');
+
+      if (side === 'front') {
+        // A fresh front means any back left from a previous card is not this
+        // card's back, and sending it would put a stranger's address on a lead.
+        if (photo) setImageUri(photo.uri);
+        setBackImageUri(null);
+        setSide('back');
+        return;
+      }
+
+      if (photo) setBackImageUri(photo.uri);
+      goToConfirm();
     } finally {
       setCapturing(false);
     }
+  };
+
+  const skipBack = () => {
+    setBackImageUri(null);
+    goToConfirm();
   };
 
   if (!permission) {
@@ -94,8 +123,17 @@ export default function CameraScreen() {
           ))}
         </View>
         <View className="mt-8 bg-navy/[0.55] border border-white/[0.12] rounded-full px-[18px] py-[9px]">
-          <Typography className="text-[12.5px] font-semibold text-white">Align the card within the frame</Typography>
+          <Typography className="text-[12.5px] font-semibold text-white">
+            {side === 'front'
+              ? 'Align the card within the frame'
+              : 'Now the back — or skip if it is blank'}
+          </Typography>
         </View>
+        {side === 'back' ? (
+          <Typography className="mt-3 text-[12px] text-white/[0.62] text-center max-w-[260px] leading-[1.5]">
+            Worth doing if the card prints a branch or works address on the back.
+          </Typography>
+        ) : null}
       </View>
 
       <View className="absolute top-0 left-0 right-0 flex-row items-center justify-between px-5 pt-14">
@@ -122,9 +160,17 @@ export default function CameraScreen() {
           </Pressable>
           <View className="w-11 h-11" />
         </View>
-        <Pressable onPress={() => router.replace(isProfileScan ? '/(app)/card/edit' : '/(app)/capture/manual')}>
-          <Typography className="text-[13px] font-semibold text-white/[0.80]">Enter manually instead</Typography>
-        </Pressable>
+        {side === 'back' ? (
+          <Pressable onPress={skipBack} disabled={capturing}>
+            <Typography className="text-[13px] font-bold text-gold">
+              Skip the back &mdash; read the front
+            </Typography>
+          </Pressable>
+        ) : (
+          <Pressable onPress={() => router.replace(isProfileScan ? '/(app)/card/edit' : '/(app)/capture/manual')}>
+            <Typography className="text-[13px] font-semibold text-white/[0.80]">Enter manually instead</Typography>
+          </Pressable>
+        )}
       </View>
     </View>
   );

@@ -23,7 +23,7 @@ Full diagnosis for each is in its numbered section below.
 | 5 | 14 | Template editor behind the keyboard (3 screens) | `[x]` done 2026-09-02 |
 | 6 | 15 | Variable instructions — **and** the subject-line context bug | `[x]` done 2026-09-02 |
 | 7 | 13 | Scanning your own card fills nothing | `[x]` done 2026-09-02 |
-| 8 | 18 | Back-of-card scan + branch address field | `[~]` in progress |
+| 8 | 18 | Back-of-card scan + branch address field | `[x]` done 2026-09-02 |
 
 **Blocked on you, not on code**
 
@@ -37,8 +37,8 @@ Full diagnosis for each is in its numbered section below.
 
 **Decisions taken 2026-09-02:** edit-event covers everything asked at creation · back of card is
 an optional second shot, not compulsory · branch address becomes a new field.
-**Still to decide, before #18 is built:** whether the back *photo* is stored (a schema change —
-see #18) or read and discarded.
+**Settled while building #18:** the back photo is **read and discarded**, not stored — storing it
+would have meant a second column plus four storage-policy amendments for a picture nothing reads.
 
 ---
 
@@ -113,6 +113,33 @@ see #18) or read and discarded.
   export — `ExportColumns` ([lib/api/exportLeads.ts:22-38](lib/api/exportLeads.ts)) groups by
   `identity` / `contact` / …, so branch address joins the `contact` group rather than becoming a
   new toggle.
+- ~~**Fix**~~ — **DONE 2026-09-02, deployed.** Migration `20260902100000_lead_branch_address.sql`
+  rehearsed then pushed, types regenerated, `extract-card` redeployed.
+  - **The back is an optional second shot.** The camera takes the front, then asks for the back
+    with a **Skip the back** alongside the shutter. Both images go up in one call, **labelled
+    front and back** — two unlabelled photos read as two different cards, and the model then has
+    to guess which address belongs to which. A new front clears any previous back, or a stranger's
+    address could ride along on the next lead.
+  - **The back photo is read and discarded**, per the trap above. Storing it would have needed a
+    second column plus four storage-policy amendments for a picture nothing ever reads back.
+  - `branch_address` runs the whole way through: migration → generated types → prompt → function
+    → `ScannedCard` → `leads` insert and patch → the store → both capture screens → CSV export
+    (in the `contact` column group).
+- 🔎 **Found while verifying, and it was NOT introduced by this change.** The function read
+  `payload.content[0].text` — only the *first* content block. Any response whose text was not
+  block zero yielded an empty string and fell through to "nothing readable on that photo",
+  **indistinguishable from a genuinely unreadable card**. It made `verify:card` fail two runs out
+  of three, on different fixtures each time. Both the function and
+  `scripts/compare-card-models.mjs` now join every text block. The comparison script had the same
+  defect, so it could have scored a perfect extraction as 0/8 and blamed the model.
+- **Measured, not assumed** — `npm run compare:card-models --models claude-sonnet-5 --runs 2`:
+  **144/144 correct, 0 invented, 0 wrong, 0 missed**, 4.4s average. Sonnet stays the right choice.
+  A new fixture `card-branch.jpeg` prints a registered office and a works/branch address under
+  their own headings, and **every single-address fixture now asserts `branch_address: null`**, so
+  the harness catches a model that invents a second address out of one. The scorer's denominator
+  now follows `FIELDS.length` instead of a hardcoded 8.
+- **Also checked:** `npx tsc --noEmit` exit 0; `verify:card`, `verify:csv`, `verify:duplicate` all
+  pass against the live database.
 - **Two rules this repo already learned, both apply:** rehearse the migration in a transaction
   first (`npm run db:rehearse` — there is no rollback net), and **re-run
   `npm run compare:card-models`** because the prompt is changing. Sonnet was chosen on a

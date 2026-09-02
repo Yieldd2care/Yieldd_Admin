@@ -57,6 +57,7 @@ export default function ManualEntryScreen() {
   const [companyLandline, setCompanyLandline] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
+  const [branchAddress, setBranchAddress] = useState('');
   const [companySummary, setCompanySummary] = useState('');
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -179,6 +180,7 @@ export default function ManualEntryScreen() {
               keyboardType="url"
             />
             <SmallField placeholder="Address (optional)" value={companyAddress} onChangeText={setCompanyAddress} />
+            <SmallField placeholder="Branch address (optional)" value={branchAddress} onChangeText={setBranchAddress} />
 
             <View className="mt-1">
               <View className="flex-row items-center gap-1 mb-[9px]">
@@ -280,6 +282,7 @@ export default function ManualEntryScreen() {
               companyLandline,
               companyWebsite,
               companyAddress,
+              branchAddress,
               companySummary,
               hasVoice,
               voiceUri: voiceUri ?? undefined,
@@ -293,7 +296,7 @@ export default function ManualEntryScreen() {
               params: { name, isDraft: lead.syncStatus === 'draft' ? '1' : '0' },
             });
           }}
-          className={`h-[54px] rounded-md items-center justify-center ${canSave ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface'}`}
+          className={`h-[54px] rounded-md items-center justify-center ${canSave ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface shadow-[0_10px_24px_rgba(244,176,0,0)]'}`}
         >
           <Typography className={`text-[16px] font-bold ${canSave ? 'text-navy' : 'text-slate'}`}>Save lead</Typography>
         </Pressable>

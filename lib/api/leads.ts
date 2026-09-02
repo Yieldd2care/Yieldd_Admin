@@ -126,6 +126,7 @@ export type LeadCaptureInput = {
   companyLandline?: string;
   companyWebsite?: string;
   companyAddress?: string;
+  branchAddress?: string;
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   /**
@@ -154,6 +155,7 @@ function toInsert(input: LeadCaptureInput): Inserts<'leads'> {
     company_landline: input.companyLandline?.trim() || null,
     company_website: input.companyWebsite?.trim() || null,
     company_address: input.companyAddress?.trim() || null,
+    branch_address: input.branchAddress?.trim() || null,
     company_summary: input.companySummary?.trim() || null,
     custom_field_values: (input.customFieldValues ?? {}) as Inserts<'leads'>['custom_field_values'],
     card_image_path: input.cardImagePath ?? null,
@@ -193,6 +195,7 @@ export type LeadPatch = {
   companyLandline?: string;
   companyWebsite?: string;
   companyAddress?: string;
+  branchAddress?: string;
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   status?: LeadStatus;
@@ -217,6 +220,7 @@ export function toUpdate(patch: LeadPatch): Updates<'leads'> {
   if (patch.companyLandline !== undefined) row.company_landline = patch.companyLandline.trim() || null;
   if (patch.companyWebsite !== undefined) row.company_website = patch.companyWebsite.trim() || null;
   if (patch.companyAddress !== undefined) row.company_address = patch.companyAddress.trim() || null;
+  if (patch.branchAddress !== undefined) row.branch_address = patch.branchAddress.trim() || null;
   if (patch.companySummary !== undefined) row.company_summary = patch.companySummary.trim() || null;
   if (patch.customFieldValues !== undefined) {
     row.custom_field_values = patch.customFieldValues as Updates<'leads'>['custom_field_values'];

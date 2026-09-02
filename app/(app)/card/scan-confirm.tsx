@@ -32,6 +32,7 @@ export default function ScanOwnCardConfirmScreen() {
   const updateProfile = useSessionStore((s) => s.updateProfile);
   const { data: card } = useMyCard();
   const imageUri = useCaptureDraftStore((s) => s.imageUri);
+  const backImageUri = useCaptureDraftStore((s) => s.backImageUri);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +70,7 @@ export default function ScanOwnCardConfirmScreen() {
     let cancelled = false;
 
     void (async () => {
-      const result = await scanCard(imageUri);
+      const result = await scanCard(imageUri, backImageUri ?? undefined);
       if (cancelled) return;
 
       if (!result.ok) {
@@ -103,7 +104,7 @@ export default function ScanOwnCardConfirmScreen() {
     return () => {
       cancelled = true;
     };
-  }, [imageUri]);
+  }, [imageUri, backImageUri]);
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
@@ -202,6 +203,7 @@ export default function ScanOwnCardConfirmScreen() {
             // which is one route away from your own card being filed under a
             // stranger's name.
             useCaptureDraftStore.getState().setImageUri(null);
+            useCaptureDraftStore.getState().setBackImageUri(null);
 
             // The rest goes to the card builder as a starting point rather
             // than straight to the database: creating the row here would put a

@@ -46,10 +46,13 @@ const SYSTEM_PROMPT = readFileSync(join(HERE, '..', 'supabase/functions/extract-
 const FIELDS = [
   'full_name', 'designation', 'company', 'phone',
   'company_landline', 'email', 'company_website', 'company_address',
+  'branch_address',
 ];
 
 /** Compared exactly — a wrong digit or a wrong address is unusable. */
-const STRICT = new Set(['phone', 'company_landline', 'email', 'company_website', 'company_address']);
+const STRICT = new Set([
+  'phone', 'company_landline', 'email', 'company_website', 'company_address', 'branch_address',
+]);
 
 const CASES = [
   {
@@ -60,6 +63,7 @@ const CASES = [
       phone: '+91 98204 41720', company_landline: '022 4915 8800',
       email: 'rajesh.menon@northline.co.in', company_website: 'www.northline.co.in',
       company_address: 'Plot 47, MIDC Industrial Area, Andheri East, Mumbai 400093',
+      branch_address: null,
     },
   },
   {
@@ -70,6 +74,7 @@ const CASES = [
       phone: '+91 98204 41720', company_landline: '022 4915 8800',
       email: 'rajesh.menon@northline.co.in', company_website: 'www.northline.co.in',
       company_address: 'Plot 47, MIDC Industrial Area, Andheri East, Mumbai 400093',
+      branch_address: null,
     },
   },
   {
@@ -79,6 +84,7 @@ const CASES = [
       full_name: 'ANANYA KRISHNAN', designation: null, company: null,
       phone: '+91 99450 22187', company_landline: null,
       email: 'ananya.k@gmail.com', company_website: null, company_address: null,
+      branch_address: null,
     },
   },
   {
@@ -92,6 +98,7 @@ const CASES = [
       email: 'vikram.d@shreebalajipolymers.com',
       company_website: 'shreebalajipolymers.com',
       company_address: 'Gat No. 214/2, Sanaswadi, Tal. Shirur, Pune 412208, Maharashtra',
+      branch_address: null,
     },
   },
   {
@@ -102,6 +109,7 @@ const CASES = [
       phone: '+91 94140 77820', company_landline: null,
       email: 'mahesh@rajputtextiles.in', company_website: null,
       company_address: 'Shop No. 8, Bapu Bazar, Jaipur 302003, Rajasthan',
+      branch_address: null,
     },
   },
   {
@@ -112,6 +120,22 @@ const CASES = [
       phone: '098 6702 4413', company_landline: null,
       email: 'studio@aarohiinteriors.co.in', company_website: 'aarohiinteriors.co.in',
       company_address: '12 Lavelle Road, Bengaluru 560001',
+      branch_address: null,
+    },
+  },
+  {
+    // Two addresses under their own headings — the case that made
+    // branch_address necessary. Before it existed, whichever address the model
+    // picked was kept and the other was silently lost.
+    file: 'card-branch.jpeg',
+    label: 'two addresses (registered office + works/branch)',
+    truth: {
+      full_name: 'Meenakshi Rathore', designation: 'Director — Procurement',
+      company: 'HARIOM AGRO INDUSTRIES',
+      phone: '+91 94268 30512', company_landline: '+91 79 2657 4410',
+      email: 'meenakshi@hariomagro.in', company_website: 'www.hariomagro.in',
+      company_address: '301 Sunrise Chambers, Ashram Road, Ahmedabad 380009, Gujarat',
+      branch_address: 'Survey No. 88/3, Kadi—Kalol Highway, Kadi, Mehsana 382715, Gujarat',
     },
   },
   {
@@ -163,7 +187,14 @@ async function ask(model, base64) {
   if (!res.ok) return { ms, error: `HTTP ${res.status} ${(await res.text()).slice(0, 160)}` };
 
   const body = await res.json();
-  const text = body.content?.[0]?.text ?? '';
+  // Every text block, joined — not `content[0]`. Reading only the first block
+  // scored a perfect extraction as 0/8 whenever the response was not shaped
+  // exactly as expected, which would have blamed the model for a bug in the
+  // harness. The deployed function had the same defect; both are fixed.
+  const text = (Array.isArray(body.content) ? body.content : [])
+    .filter((b) => b?.type === 'text' && typeof b.text === 'string')
+    .map((b) => b.text)
+    .join('\n');
   let parsed = null;
   const match = text.match(/\{[\s\S]*\}/);
   if (match) { try { parsed = JSON.parse(match[0]); } catch { /* left null */ } }
@@ -201,14 +232,14 @@ for (const model of MODELS) {
 
       const flag = s.invented || s.wrong ? '!' : ' ';
       console.log(
-        `${flag} ${testCase.label.padEnd(38)} ${s.exact}/8  ${String(result.ms).padStart(5)} ms` +
+        `${flag} ${testCase.label.padEnd(38)} ${s.exact}/${FIELDS.length}  ${String(result.ms).padStart(5)} ms` +
           `  ${String(result.usage.input_tokens ?? 0).padStart(5)} in / ${String(result.usage.output_tokens ?? 0).padStart(3)} out`
       );
       s.notes.forEach((n) => console.log(`      ${n}`));
     }
   }
 
-  const total = CASES.length * RUNS * 8;
+  const total = CASES.length * RUNS * FIELDS.length;
   summary.push({
     model, exact, total, missed, invented, wrong, errored,
     avgMs: Math.round(ms / calls),

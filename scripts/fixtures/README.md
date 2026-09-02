@@ -20,7 +20,11 @@ as JPEG. The ground truth for each is written into
 | `card-dense.jpeg` | three numbers, a GST line, a long two-line works address |
 | `card-devanagari.jpeg` | a Devanagari name beside the English one, on a dark card |
 | `card-script.jpeg` | decorative script face, low contrast — the hardest read |
+| `card-branch.jpeg` | a registered office **and** a works/branch address, each under its own heading — the two must land in `company_address` and `branch_address` and not be merged or swapped |
 | `not-a-card.jpeg` | a hall signboard. **Everything must come back empty.** |
+
+Every single-address card asserts `branch_address: null`, so the harness also
+catches a model that invents a second address out of one.
 
 The last one is the important one. A model that scores well on six cards and
 invents a person out of a signpost is not usable, and an accuracy average would

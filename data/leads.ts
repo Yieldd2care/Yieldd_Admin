@@ -65,6 +65,8 @@ export type Lead = {
   companyLandline?: string;
   companyWebsite?: string;
   companyAddress?: string;
+  /** A second address printed on the card - branch, works or regional office. */
+  branchAddress?: string;
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   imageUri?: string;

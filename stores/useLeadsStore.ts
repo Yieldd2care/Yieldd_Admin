@@ -106,6 +106,7 @@ export type NewLeadInput = {
   companyLandline?: string;
   companyWebsite?: string;
   companyAddress?: string;
+  branchAddress?: string;
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   imageUri?: string;
@@ -154,6 +155,7 @@ function applyPatch(lead: StoredLead, patch: LeadPatch): StoredLead {
     ...(patch.companyLandline !== undefined ? { companyLandline: patch.companyLandline } : {}),
     ...(patch.companyWebsite !== undefined ? { companyWebsite: patch.companyWebsite } : {}),
     ...(patch.companyAddress !== undefined ? { companyAddress: patch.companyAddress } : {}),
+    ...(patch.branchAddress !== undefined ? { branchAddress: patch.branchAddress } : {}),
     ...(patch.companySummary !== undefined ? { companySummary: patch.companySummary } : {}),
     ...(patch.customFieldValues !== undefined ? { customFieldValues: patch.customFieldValues } : {}),
     ...(patch.status !== undefined ? { status: patch.status } : {}),
@@ -252,6 +254,7 @@ export const useLeadsStore = create<LeadsState>()(
           companyLandline: input.companyLandline,
           companyWebsite: input.companyWebsite,
           companyAddress: input.companyAddress,
+          branchAddress: input.branchAddress,
           companySummary: input.companySummary,
           customFieldValues: input.customFieldValues,
           imageUri: input.imageUri,
@@ -336,6 +339,7 @@ export const useLeadsStore = create<LeadsState>()(
                 companyLandline: lead.companyLandline,
                 companyWebsite: lead.companyWebsite,
                 companyAddress: lead.companyAddress,
+                branchAddress: lead.branchAddress,
                 companySummary: lead.companySummary,
                 customFieldValues: lead.customFieldValues,
                 consentGiven: lead.consentGiven,

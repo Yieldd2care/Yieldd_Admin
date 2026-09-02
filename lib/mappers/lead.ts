@@ -89,6 +89,7 @@ export function toLead(row: RowWithVoice): Lead {
     companyLandline: row.company_landline ?? undefined,
     companyWebsite: row.company_website ?? undefined,
     companyAddress: row.company_address ?? undefined,
+    branchAddress: row.branch_address ?? undefined,
     companySummary: row.company_summary ?? undefined,
     customFieldValues: (row.custom_field_values ?? undefined) as
       | Record<string, CustomFieldValue>

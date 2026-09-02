@@ -92,7 +92,8 @@ export async function buildLeadsCsv(
 
   const headers: string[] = ['Captured on'];
   if (columns.identity) headers.push('Name', 'Designation', 'Company');
-  if (columns.contact) headers.push('Phone', 'Email', 'Company landline', 'Website', 'Address');
+  if (columns.contact)
+    headers.push('Phone', 'Email', 'Company landline', 'Website', 'Address', 'Branch address');
   if (columns.statusAndFollowUp) headers.push('Status', 'Follow-up date', 'Note', 'Consent given');
   if (columns.dealValue) headers.push('Deal value (₹)', 'Closed on');
   if (columns.transcript) headers.push('Voice note summary', 'Voice note transcript');
@@ -108,7 +109,8 @@ export async function buildLeadsCsv(
         row.email ?? '',
         row.company_landline ?? '',
         row.company_website ?? '',
-        row.company_address ?? ''
+        row.company_address ?? '',
+        row.branch_address ?? ''
       );
     }
     if (columns.statusAndFollowUp) {

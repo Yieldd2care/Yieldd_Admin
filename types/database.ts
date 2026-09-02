@@ -440,6 +440,7 @@ export type Database = {
       leads: {
         Row: {
           assigned_to: string | null
+          branch_address: string | null
           captured_by: string
           card_image_path: string | null
           company: string | null
@@ -474,6 +475,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          branch_address?: string | null
           captured_by: string
           card_image_path?: string | null
           company?: string | null
@@ -508,6 +510,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          branch_address?: string | null
           captured_by?: string
           card_image_path?: string | null
           company?: string | null
@@ -772,6 +775,7 @@ export type Database = {
           category: string | null
           created_at: string
           id: string
+          last_digest_sent_at: string | null
           name: string
           onboarding_intent: string | null
           plan_tier: Database["public"]["Enums"]["org_plan_tier"]
@@ -783,6 +787,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           id?: string
+          last_digest_sent_at?: string | null
           name: string
           onboarding_intent?: string | null
           plan_tier?: Database["public"]["Enums"]["org_plan_tier"]
@@ -794,6 +799,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           id?: string
+          last_digest_sent_at?: string | null
           name?: string
           onboarding_intent?: string | null
           plan_tier?: Database["public"]["Enums"]["org_plan_tier"]
@@ -1090,6 +1096,10 @@ export type Database = {
         Returns: boolean
       }
       can_use_ai: { Args: never; Returns: boolean }
+      claim_weekly_digest: {
+        Args: { p_min_interval?: string; p_organization_id: string }
+        Returns: boolean
+      }
       current_organization_id: { Args: never; Returns: string }
       event_hourly_capture: {
         Args: { p_day?: string; p_event_id: string }
@@ -1163,6 +1173,22 @@ export type Database = {
         Returns: undefined
       }
       suggest_card_slug: { Args: { p_base: string }; Returns: string }
+      weekly_digest_rows: {
+        Args: never
+        Returns: {
+          contacted_week: number
+          deals_won: number
+          event_id: string
+          event_name: string
+          last_sent_at: string
+          organization_id: string
+          organization_name: string
+          pending_followups: number
+          spend_paisa: number
+          total_leads: number
+          won_value_paisa: number
+        }[]
+      }
     }
     Enums: {
       activity_type:
@@ -1215,12 +1241,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1244,11 +1270,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1269,11 +1295,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1294,11 +1320,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1311,11 +1337,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

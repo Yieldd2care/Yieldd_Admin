@@ -36,6 +36,11 @@ const MAX_BASE64_LENGTH = Math.ceil((10 * 1024 * 1024 * 4) / 3);
 
 const SYSTEM_PROMPT = `You read business cards and return what is printed on them.
 
+You may be given one image or two. Two images are the front and the back of the
+SAME card — read them together and return one object describing that one card.
+The back of a card is often blank, a logo, or the same details in another
+language; if it adds nothing, that is a normal result, not a failure.
+
 Return ONLY a JSON object, no prose and no code fence, with exactly these keys:
 
   full_name        the person's name
@@ -46,11 +51,17 @@ Return ONLY a JSON object, no prose and no code fence, with exactly these keys:
   email            their email address
   company_website  the company's website
   company_address  the postal address as printed, on one line
+  branch_address   a SECOND address, when the card prints one
 
 Rules that matter more than completeness:
 
 - Use null for anything not printed on the card. Never guess, never infer a
   company from an email domain, never complete a partial address.
+- Indian cards often print two addresses — a registered or head office and a
+  branch, works, factory or regional office. Put the head or registered office
+  in company_address and the other in branch_address. If a card prints only one
+  address it goes in company_address and branch_address is null. Never split one
+  address across the two fields, and never copy the same address into both.
 - Copy text exactly as printed, including spelling and capitalisation of names.
 - A tagline or line of business printed under the company name is not part of
   the company name. "NORTHLINE ENGINEERING" above "PRECISION CASTINGS" is a
@@ -71,6 +82,7 @@ type Extracted = {
   email: string | null;
   company_website: string | null;
   company_address: string | null;
+  branch_address: string | null;
 };
 
 const EMPTY: Extracted = {
@@ -82,9 +94,10 @@ const EMPTY: Extracted = {
   email: null,
   company_website: null,
   company_address: null,
+  branch_address: null,
 };
 
-/** Keeps only the eight known keys, and turns blanks into null. */
+/** Keeps only the nine known keys, and turns blanks into null. */
 function normalise(raw: Record<string, unknown>): Extracted {
   const clean = (value: unknown): string | null => {
     if (typeof value !== 'string') return null;
@@ -104,6 +117,7 @@ function normalise(raw: Record<string, unknown>): Extracted {
     email: clean(raw.email)?.toLowerCase() ?? null,
     company_website: clean(raw.company_website),
     company_address: clean(raw.company_address),
+    branch_address: clean(raw.branch_address),
   };
 }
 
@@ -116,7 +130,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Card reading is not configured.' }, 503);
   }
 
-  let body: { image_base64?: string; mime_type?: string };
+  let body: { image_base64?: string; back_image_base64?: string; mime_type?: string };
   try {
     body = await req.json();
   } catch {
@@ -124,12 +138,20 @@ Deno.serve(async (req) => {
   }
 
   const imageBase64 = body.image_base64;
+  // Optional. Plenty of cards print the addresses, or a second language, on the
+  // back — but plenty print nothing there at all, which is why the app offers
+  // the second shot rather than demanding it.
+  const backImageBase64 = body.back_image_base64;
   const mimeType = body.mime_type ?? 'image/jpeg';
 
   if (!imageBase64) return jsonResponse({ error: 'No image was sent.' }, 400);
   if (!ALLOWED_MIME.has(mimeType)) return jsonResponse({ error: 'Unsupported image type.' }, 400);
-  if (imageBase64.length > MAX_BASE64_LENGTH) {
-    return jsonResponse({ error: 'That photo is too large. Try again.' }, 413);
+  // Checked separately and against the same limit: two 9 MiB images are within
+  // the per-image cap and well past what the model will take in one request.
+  for (const image of [imageBase64, backImageBase64]) {
+    if (image && image.length > MAX_BASE64_LENGTH) {
+      return jsonResponse({ error: 'That photo is too large. Try again.' }, 413);
+    }
   }
 
   try {
@@ -147,10 +169,24 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
-              { type: 'text', text: 'Read this business card.' },
-            ],
+            // Labelled front and back rather than sent as two bare images. Two
+            // unlabelled photos of the same card read as two cards, and the
+            // model then has to guess which address belongs to which.
+            content: backImageBase64
+              ? [
+                  { type: 'text', text: 'Front of the card:' },
+                  { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
+                  { type: 'text', text: 'Back of the same card:' },
+                  {
+                    type: 'image',
+                    source: { type: 'base64', media_type: mimeType, data: backImageBase64 },
+                  },
+                  { type: 'text', text: 'Read this business card.' },
+                ]
+              : [
+                  { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
+                  { type: 'text', text: 'Read this business card.' },
+                ],
           },
         ],
       }),
@@ -173,13 +209,35 @@ Deno.serve(async (req) => {
     }
 
     const payload = await response.json();
-    const text: string = payload?.content?.[0]?.text ?? '';
+
+    // EVERY text block, joined — not `content[0]`.
+    //
+    // Reading only the first block is why extraction intermittently came back
+    // completely empty: any response whose first block is not the text one, or
+    // whose JSON is split across blocks, yielded '' and fell through to the
+    // "unreadable card" answer below. That failure is indistinguishable from a
+    // genuinely unreadable photo, which is the worst way for this to break.
+    const blocks: unknown[] = Array.isArray(payload?.content) ? payload.content : [];
+    const text: string = blocks
+      .filter(
+        (b): b is { type: string; text: string } =>
+          typeof b === 'object' &&
+          b !== null &&
+          (b as { type?: unknown }).type === 'text' &&
+          typeof (b as { text?: unknown }).text === 'string'
+      )
+      .map((b) => b.text)
+      .join('\n');
 
     // Defensive parse: the instruction says JSON only, but a stray code fence
     // or a sentence in front of it must not lose the whole extraction.
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
-      console.error('no JSON in model output', text.slice(0, 400));
+      console.error('no JSON in model output', {
+        stop_reason: payload?.stop_reason,
+        block_types: blocks.map((b) => (b as { type?: string } | null)?.type),
+        text: text.slice(0, 400),
+      });
       return jsonResponse({ fields: EMPTY, read: false });
     }
 
