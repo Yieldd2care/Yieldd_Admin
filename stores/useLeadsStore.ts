@@ -200,9 +200,21 @@ export const useLeadsStore = create<LeadsState>()(
               const base: StoredLead = {
                 ...row,
                 syncStatus: 'synced',
-                eventId: local?.eventId ?? opts.eventId ?? '',
-                capturedBy: local?.capturedBy ?? '',
-                organizationId: local?.organizationId ?? '',
+                /**
+                 * The server is the authority on who a lead belongs to, and it
+                 * now sends these back.
+                 *
+                 * They used to fall back to `''` whenever the lead was not
+                 * still sitting in the local outbox — which is every lead after
+                 * a cold start, since the outbox only holds what has not synced
+                 * yet. An empty `eventId` is why a follow-up went out with no
+                 * event name and no stall number: the message screen looks the
+                 * event up by that id, found nothing, and rendered `{{event}}`
+                 * and `{{stall}}` as blanks.
+                 */
+                eventId: row.eventId || local?.eventId || opts.eventId || '',
+                capturedBy: row.capturedBy || local?.capturedBy || '',
+                organizationId: row.organizationId || local?.organizationId || '',
                 localImageUri: local?.localImageUri,
                 localVoiceUri: local?.localVoiceUri,
                 voiceDurationSeconds: local?.voiceDurationSeconds,

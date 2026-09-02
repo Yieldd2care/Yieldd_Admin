@@ -7,7 +7,7 @@ import { Typography } from '../../../components/ui/Typography';
 import { MailIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
-import { useCurrentEvent } from '../../../hooks/useEvents';
+import { useCurrentEvent, useEvent } from '../../../hooks/useEvents';
 import { useEventTemplate } from '../../../hooks/useMessageTemplates';
 import { openEmail, openWhatsApp, renderTemplate } from '../../../lib/messaging';
 import { completeBatch, recordSend, startBatch } from '../../../lib/api/messageSends';
@@ -27,8 +27,8 @@ export default function SendQueueScreen() {
 
   const allLeads = useLeadsStore((s) => s.leads);
   const user = useSessionStore((s) => s.user);
-  const { event } = useCurrentEvent();
-  const { template } = useEventTemplate(event?.id, channel);
+  // The batch row records where the run was started from.
+  const { event: currentEvent } = useCurrentEvent();
 
   const queue = useMemo(() => {
     const wanted = (ids ?? '').split(',').filter(Boolean);
@@ -49,7 +49,7 @@ export default function SendQueueScreen() {
     let cancelled = false;
     void startBatch({
       organizationId: user.organizationId,
-      eventId: event?.id ?? null,
+      eventId: currentEvent?.id ?? null,
       createdBy: user.id,
       channel,
       totalCount: queue.length,
@@ -59,7 +59,7 @@ export default function SendQueueScreen() {
     return () => {
       cancelled = true;
     };
-  }, [user, queue.length, event?.id, channel]);
+  }, [user, queue.length, currentEvent?.id, channel]);
 
   const total = queue.length;
   const lead = queue[index];
@@ -69,14 +69,28 @@ export default function SendQueueScreen() {
     if (done && total > 0) void completeBatch(batchId.current);
   }, [done, total]);
 
+  /**
+   * The message follows THIS LEAD's event, not whichever event happens to be
+   * selected.
+   *
+   * `useCurrentEvent()` falls back to the soonest upcoming show when nothing is
+   * explicitly picked, so a follow-up to someone met at Kisan was being written
+   * with Plastindia's name and Plastindia's (missing) stall number. The
+   * template comes from the lead's event too — that is the whole point of
+   * choosing one per event.
+   */
+  const leadEventId = lead?.eventId || undefined;
+  const { data: leadEvent } = useEvent(leadEventId);
+  const { template } = useEventTemplate(leadEventId ?? currentEvent?.id, channel);
+
   // One context for both. The subject used to be rendered with three of the
   // five fields, so a subject line using {{sender}} lost the name here while
   // keeping it when sent from the lead detail screen.
   const mergeContext = {
     name: lead?.name,
     company: lead?.company,
-    event: event?.name,
-    stall: event?.stallNumber,
+    event: leadEvent?.name,
+    stall: leadEvent?.stallNumber,
     sender: user?.name,
     senderCompany: user?.company,
   };

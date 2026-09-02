@@ -8,7 +8,7 @@ import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { AlertCircleIcon, CheckIcon, MailIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
-import { useCurrentEvent } from '../../../hooks/useEvents';
+import { useCurrentEvent, useEvent } from '../../../hooks/useEvents';
 import { useEventTemplate } from '../../../hooks/useMessageTemplates';
 import { renderTemplate, whatsappDigits } from '../../../lib/messaging';
 
@@ -27,8 +27,8 @@ export default function BulkSendScreen() {
 
   const allLeads = useLeadsStore((s) => s.leads);
   const user = useSessionStore((s) => s.user);
+  // Which leads are offered: the event being worked in.
   const { event } = useCurrentEvent();
-  const { template } = useEventTemplate(event?.id, channel);
 
   const leads = useMemo(
     () =>
@@ -82,12 +82,24 @@ export default function BulkSendScreen() {
     );
 
   const previewLead = reachable.find((l) => isSelected(l.id)) ?? reachable[0];
+
+  /**
+   * The preview is rendered from the PREVIEW LEAD's event, because that is
+   * what the send queue will use when the message actually goes out. Reading
+   * the current event here instead showed a message naming one show while the
+   * queue sent another — `useCurrentEvent()` falls back to the soonest upcoming
+   * one, which is not necessarily the show these leads came from.
+   */
+  const previewEventId = previewLead?.eventId || event?.id;
+  const { data: previewEvent } = useEvent(previewEventId);
+  const { template } = useEventTemplate(previewEventId, channel);
+
   // One context for the body and the subject alike — see the subject below.
   const mergeContext = {
     name: previewLead?.name,
     company: previewLead?.company,
-    event: event?.name,
-    stall: event?.stallNumber,
+    event: previewEvent?.name,
+    stall: previewEvent?.stallNumber,
     sender: user?.name,
     senderCompany: user?.company,
   };

@@ -6,6 +6,30 @@ export type LeadRow = Tables<'leads'>;
 type DbLeadStatus = Enums<'lead_status'>;
 
 /**
+ * Which event, organisation and person a lead belongs to.
+ *
+ * Kept apart from `Lead` because `Lead` is the shape screens render and none of
+ * these are ever shown — but they are not optional either. `eventId` in
+ * particular is what a follow-up reads the event name and stall number from,
+ * and it used to be dropped on the floor: the mapper never carried it, so every
+ * lead loaded from the server got an empty string and `{{event}}` and
+ * `{{stall}}` came out blank in the message a customer received.
+ */
+export type LeadOwnership = {
+  eventId: string;
+  capturedBy: string;
+  organizationId: string;
+};
+
+export function toOwnership(row: LeadRow): LeadOwnership {
+  return {
+    eventId: row.event_id,
+    capturedBy: row.captured_by,
+    organizationId: row.organization_id,
+  };
+}
+
+/**
  * The screens say `Qualified`, the column says `qualified`.
  *
  * Both directions are written out rather than lower-cased on the fly: adding a

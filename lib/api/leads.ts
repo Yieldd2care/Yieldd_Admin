@@ -3,7 +3,14 @@ import { randomUUID } from 'expo-crypto';
 
 import { supabase } from '../supabase';
 import { rupeesToPaise, type Inserts, type Updates } from '../db';
-import { statusToDb, temperatureToDb, toLead, type LeadRow } from '../mappers/lead';
+import {
+  statusToDb,
+  temperatureToDb,
+  toLead,
+  toOwnership,
+  type LeadOwnership,
+  type LeadRow,
+} from '../mappers/lead';
 import { phoneMatchKey } from '../phone';
 import type { CustomFieldValue, Lead, LeadStatus, LeadTemperature } from '../../data/leads';
 
@@ -49,13 +56,23 @@ export function isPermanentFailure(error: PostgrestError): boolean {
 // Reads
 // ---------------------------------------------------------------------------
 
-export async function fetchLeads(opts: { eventId?: string } = {}): Promise<Lead[]> {
+/**
+ * Every lead this person can see, carrying the columns that say which event
+ * and organisation each one belongs to.
+ *
+ * The ownership columns are returned alongside the display shape rather than
+ * folded into `Lead`, because no screen renders them — but the leads store
+ * needs them, and it previously had nowhere to get them from.
+ */
+export async function fetchLeads(
+  opts: { eventId?: string } = {}
+): Promise<(Lead & LeadOwnership)[]> {
   let query = supabase.from('leads').select(SELECT).order('created_at', { ascending: false });
   if (opts.eventId) query = query.eq('event_id', opts.eventId);
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data as LeadRow[]).map(toLead);
+  return (data as LeadRow[]).map((row) => ({ ...toLead(row), ...toOwnership(row) }));
 }
 
 export type DuplicateMatch = {
