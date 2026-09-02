@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
+import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { COST_KEYS, useEventDraftStore, type CostKey } from '../../../../stores/useEventDraftStore';
-import { useUpdateEvent } from '../../../../hooks/useEvents';
+import { useEvent, useUpdateEvent } from '../../../../hooks/useEvents';
 
 // Typed rather than `as const` so `hint` is optional on every entry — with
 // `as const` the array widens to a union in which only Staff has `hint`, and
@@ -32,8 +33,24 @@ function toAmount(value: string): number {
 }
 
 export default function EventCostScreen() {
+  /**
+   * Step 2 of the wizard, and also the only way to edit an event's cost later.
+   *
+   * The second use is why `eventId` arrives as a route parameter. Reading it
+   * from the draft store — which is all this screen used to do — meant that
+   * "Edit cost" on the ROI screen opened a form whose save was skipped
+   * entirely: the wizard clears the draft when it finishes, so `eventId` was
+   * null, the write was guarded away, and the costs went into a draft nobody
+   * would look at again. Worse, with a half-finished wizard still in the draft
+   * they went onto *that* event instead of the one being looked at.
+   */
+  const { eventId: eventIdParam } = useLocalSearchParams<{ eventId?: string }>();
+  const editingOne = Boolean(eventIdParam);
+
   const savedCosts = useEventDraftStore((s) => s.costs);
-  const eventId = useEventDraftStore((s) => s.eventId);
+  const draftEventId = useEventDraftStore((s) => s.eventId);
+  const eventId = eventIdParam ?? draftEventId;
+  const { data: event } = useEvent(editingOne ? eventIdParam : undefined);
   const updateEvent = useUpdateEvent();
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +60,24 @@ export default function EventCostScreen() {
       {} as Record<CostKey, string>
     )
   );
+
+  /**
+   * When editing a specific event the numbers must come off that event, not
+   * the draft. Seeding from the draft would show one event's costs while
+   * saving them onto another, and an untouched field would blank a real figure.
+   * Runs once per event: `costs` is a fresh object on every query result, so
+   * the id is the dependency, not the object.
+   */
+  useEffect(() => {
+    if (!editingOne || !event) return;
+    setValues(
+      COST_KEYS.reduce(
+        (acc, key) => ({ ...acc, [key]: event.costs[key] ? String(event.costs[key]) : '' }),
+        {} as Record<CostKey, string>
+      )
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingOne, event?.id]);
 
   const total = useMemo(
     () => Object.values(values).reduce((sum, v) => sum + toAmount(v), 0),
@@ -70,6 +105,18 @@ export default function EventCostScreen() {
         setError(e instanceof Error ? e.message : "Those costs didn't save. Try again.");
         return;
       }
+    } else if (editingOne) {
+      // Only reachable if the parameter arrived empty. Saying so beats a
+      // "Saving…" that returns you to an unchanged ROI figure.
+      setError("That event could not be identified, so nothing was saved.");
+      return;
+    }
+
+    if (editingOne) {
+      // Editing one event is not the wizard: the draft belongs to whatever
+      // event is being created next, and must not take these numbers.
+      router.back();
+      return;
     }
 
     useEventDraftStore.getState().setCosts(costs);
@@ -78,7 +125,11 @@ export default function EventCostScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
-      <WizardHeader title="What did this cost?" step={2} />
+      {editingOne ? (
+        <ScreenHeader title={event?.name ? `${event.name} — cost` : 'Event cost'} />
+      ) : (
+        <WizardHeader title="What did this cost?" step={2} />
+      )}
       <ScrollView contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
         <Typography className="text-[13px] leading-[1.55] text-slate mb-5">
           This is the number the ROI dashboard is built on &mdash; add whatever you know now, adjust later.
@@ -122,14 +173,16 @@ export default function EventCostScreen() {
       </ScrollView>
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
         <Button
-          label={updateEvent.isPending ? 'Saving…' : 'Continue'}
+          label={updateEvent.isPending ? 'Saving…' : editingOne ? 'Save cost' : 'Continue'}
           disabled={updateEvent.isPending}
           onPress={commitAndContinue}
           className="w-full"
         />
-        <Pressable onPress={commitAndContinue} disabled={updateEvent.isPending}>
-          <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
-        </Pressable>
+        {editingOne ? null : (
+          <Pressable onPress={commitAndContinue} disabled={updateEvent.isPending}>
+            <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );

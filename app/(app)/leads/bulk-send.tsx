@@ -67,6 +67,20 @@ export default function BulkSendScreen() {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  /**
+   * The organisation's templates, not the create-event wizard.
+   *
+   * Both of these links used to open `events/new/templates`, a wizard step that
+   * writes to whatever event id happens to be left in the draft store — nothing
+   * at all once a wizard has been finished, and the *wrong* event if one was
+   * abandoned half way. What the rep wants here is the template these sends
+   * actually read, which is the organisation-level row this screen edits.
+   */
+  const openTemplateSettings = () =>
+    router.push(
+      channel === 'whatsapp' ? '/(app)/settings/whatsapp-template' : '/(app)/settings/email-template'
+    );
+
   const previewLead = reachable.find((l) => isSelected(l.id)) ?? reachable[0];
   const preview = template
     ? renderTemplate(template.body, {
@@ -137,7 +151,7 @@ export default function BulkSendScreen() {
                   {preview}
                 </Typography>
               </View>
-              <Pressable onPress={() => router.push('/(app)/events/new/templates')} className="mt-[10px]">
+              <Pressable onPress={openTemplateSettings} className="mt-[10px]">
                 <Typography className="text-[12px] font-bold text-gold">
                   Edit the {channel === 'whatsapp' ? 'WhatsApp' : 'email'} template
                 </Typography>
@@ -147,10 +161,7 @@ export default function BulkSendScreen() {
             <View className="bg-section rounded-[10px] px-[13px] py-[11px]">
               <Typography className="text-[12.5px] text-slate leading-[1.5]">
                 No {channel === 'whatsapp' ? 'WhatsApp' : 'email'} template yet.{' '}
-                <Typography
-                  className="text-[12.5px] font-bold text-gold"
-                  onPress={() => router.push('/(app)/events/new/templates')}
-                >
+                <Typography className="text-[12.5px] font-bold text-gold" onPress={openTemplateSettings}>
                   Write one
                 </Typography>{' '}
                 and it will be used here.
@@ -217,7 +228,7 @@ export default function BulkSendScreen() {
           onPress={start}
           disabled={!selectedIds.length || !template}
           className={`h-[54px] rounded-md items-center justify-center ${
-            selectedIds.length && template ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface'
+            selectedIds.length && template ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface shadow-[0_10px_24px_rgba(244,176,0,0)]'
           }`}
         >
           <Typography

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../../components/ui/Typography';
 import { Button } from '../../../../components/ui/Button';
+import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
 import { CheckIcon, CloseIcon, PlusIcon, UsersIcon, WhatsAppIcon } from '../../../../components/ui/icons';
 import { useEventDraftStore, type DraftRep as Rep } from '../../../../stores/useEventDraftStore';
@@ -24,9 +25,27 @@ function waDigits(phone: string | null): string {
 }
 
 export default function InviteRepsScreen() {
+  /**
+   * This screen is step 3 of the wizard AND the "+ Invite" button in Settings →
+   * Team, and the difference has to be explicit.
+   *
+   * It used to read the event id straight out of the create-event draft. Inside
+   * the wizard that is right. Opened from Settings it is not: the draft holds
+   * whatever event a wizard was last opened on, so an invite sent from Settings
+   * was attached to a stale event — or, once a wizard had been finished and the
+   * draft cleared, silently to no event at all. `scope=team` says out loud that
+   * this invite belongs to the organisation and not to any event.
+   */
+  const { scope } = useLocalSearchParams<{ scope?: string }>();
+  const standalone = scope === 'team';
+
   const savedReps = useEventDraftStore((s) => s.invitedReps);
-  const eventName = useEventDraftStore((s) => s.name);
-  const eventId = useEventDraftStore((s) => s.eventId);
+  const draftEventName = useEventDraftStore((s) => s.name);
+  // Same reasoning as the id: naming a stale event in the WhatsApp invite is
+  // worse than the generic wording `inviteMessage` falls back to.
+  const eventName = standalone ? undefined : draftEventName;
+  const draftEventId = useEventDraftStore((s) => s.eventId);
+  const eventId = standalone ? null : draftEventId;
   const user = useSessionStore((s) => s.user);
 
   const [reps, setReps] = useState<Rep[]>(
@@ -84,7 +103,10 @@ export default function InviteRepsScreen() {
       });
       setInvites((prev) => [...prev, ...fresh]);
       setReps([{ id: `r${nextId++}`, name: '', phone: '' }]);
-      useEventDraftStore.getState().setInvitedReps([...savedReps, ...ready]);
+      // Only the wizard's own draft gets written back. Invites raised from
+      // Settings are not part of any event being created, and writing them here
+      // would show them as already invited on the next event someone starts.
+      if (!standalone) useEventDraftStore.getState().setInvitedReps([...savedReps, ...ready]);
       return fresh;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Those invites didn't send.");
@@ -109,13 +131,19 @@ export default function InviteRepsScreen() {
     if (fresh?.length) sendOne(fresh[0]);
   };
 
-  const goNext = () => router.push('/(app)/events/new/fields');
+  // Opened from Settings there is no step 4 to go to — pushing one would drop
+  // someone who only wanted to invite a rep into the middle of a wizard.
+  const goNext = () => (standalone ? router.back() : router.push('/(app)/events/new/fields'));
 
   const pendingToSend = invites.filter((i) => !sent[i.id]).length;
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
-      <WizardHeader title="Bring your team in" step={3} />
+      {standalone ? (
+        <ScreenHeader title="Invite a rep" />
+      ) : (
+        <WizardHeader title="Bring your team in" step={3} />
+      )}
       <ScrollView contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
         {invites.length ? (
           <View className="mb-5">
@@ -216,15 +244,17 @@ export default function InviteRepsScreen() {
             </Typography>
           </Pressable>
         ) : (
-          <Button label="Continue" onPress={goNext} className="w-full" />
+          <Button label={standalone ? 'Done' : 'Continue'} onPress={goNext} className="w-full" />
         )}
         <Pressable onPress={goNext}>
           <Typography className="text-[13px] font-semibold text-slate">
-            {readyCount > 0
-              ? 'Skip for now'
-              : pendingToSend > 0
-                ? `Continue — ${pendingToSend} still to send`
-                : 'Skip for now'}
+            {standalone
+              ? 'Done'
+              : readyCount > 0
+                ? 'Skip for now'
+                : pendingToSend > 0
+                  ? `Continue — ${pendingToSend} still to send`
+                  : 'Skip for now'}
           </Typography>
         </Pressable>
       </View>

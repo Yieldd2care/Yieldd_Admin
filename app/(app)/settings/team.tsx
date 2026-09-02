@@ -35,7 +35,11 @@ export default function TeamManagementScreen() {
         right={
           isAdmin ? (
             <Pressable
-              onPress={() => router.push('/(app)/events/new/invite')}
+              // `scope: 'team'` matters. Without it the invite screen falls back
+              // to the event id left in the create-event draft, so inviting a
+              // rep from Settings attached them to whichever event a wizard was
+              // last opened on — an event nobody chose here.
+              onPress={() => router.push({ pathname: '/(app)/events/new/invite', params: { scope: 'team' } })}
               className="bg-gold rounded-full px-[14px] py-[9px]"
             >
               <Typography className="text-[12.5px] font-bold text-navy">+ Invite</Typography>

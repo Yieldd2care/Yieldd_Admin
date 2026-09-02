@@ -16,8 +16,8 @@ Full diagnosis for each is in its numbered section below.
 
 | Order | # | Correction | Status |
 |---|---|---|---|
-| 1 | 17a | Repoint the 5 links that open wizard steps for the wrong event | `[~]` in progress |
-| 2 | 17b | Edit-event screen — name, city, dates, costs | `[ ]` |
+| 1 | 17a | Repoint the 5 links that open wizard steps for the wrong event | `[x]` done 2026-09-02 |
+| 2 | 17b | Edit-event screen — name, city, dates, costs | `[~]` in progress |
 | 3 | 16 | Four dead lead buttons (Call / WhatsApp / Email / Save contact) | `[ ]` |
 | 4 | 19 | Event lead count stale until pull-to-refresh | `[ ]` |
 | 5 | 14 | Template editor behind the keyboard (3 screens) | `[ ]` |
@@ -131,8 +131,25 @@ see #18) or read and discarded.
 - **Two failure modes, depending on state.** An empty draft silently drops the write and drops
   you into the rest of the wizard. A draft left over from an abandoned wizard is worse: the
   templates or invites are written **to that event instead of the one you were looking at**.
-- **Fix 17a — do this first, on its own.** Repoint those five links away from the wizard, passing
-  the event id explicitly. Small, and it stops writes landing on the wrong event.
+- ~~**Fix 17a**~~ — **DONE 2026-09-02.** All five links now say which event, or which scope, they
+  mean. No screen outside `events/new/` opens a wizard step that guesses any more.
+  - **Bulk send ×2** → the organisation's own template screens
+    (`settings/whatsapp-template` / `email-template`, chosen by the channel being previewed).
+    The wizard step was always the wrong destination: it *creates* templates and repoints the
+    event, where the rep only wanted to edit the message these sends actually read.
+  - **Settings → Team "+ Invite"** → the invite screen with `scope=team`, which forces
+    `eventId` to null. `createInvites` already takes `string | null`, so an organisation invite
+    with no event is a legitimate row, not a workaround. In that mode the screen also shows a
+    plain header instead of "Step 3 of 5", ends on **Done** rather than pushing into step 4, and
+    **no longer writes the reps back into the create-event draft** — which would otherwise show
+    them as already invited on the next event anyone started.
+  - **ROI ×2** → the cost screen with an explicit `eventId` parameter. Given one, that screen now
+    seeds its seven fields from **that event's** stored costs rather than the draft (seeding from
+    the draft would have shown one event's numbers while saving them onto another, and an
+    untouched field would have blanked a real figure), saves with **Save cost**, returns instead
+    of continuing into the invite step, does **not** write to the draft, and says so plainly if
+    the id ever arrives empty rather than reporting a save that did not happen.
+  - `npx tsc --noEmit` — exit 0.
 - **Fix 17b — the edit screen.** New `app/(app)/events/[id]/edit.tsx` keyed by the **route** id,
   following the shape [events/[id]/fields.tsx](app/(app)/events/[id]/fields.tsx) already uses:
   name, city, dates and the seven cost lines, linking out to the existing fields / templates /

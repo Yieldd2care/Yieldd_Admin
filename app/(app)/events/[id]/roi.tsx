@@ -226,7 +226,9 @@ export default function ROIDashboardScreen() {
                   ROI and cost per lead need the event cost. Without it there is nothing to divide by.
                 </Typography>
                 <Pressable
-                  onPress={() => router.push('/(app)/events/new/cost')}
+                  onPress={() =>
+                    router.push({ pathname: '/(app)/events/new/cost', params: { eventId } })
+                  }
                   className="self-start bg-gold rounded-full px-[14px] py-[9px] mt-4"
                 >
                   <Typography className="text-[12.5px] font-bold text-navy">Add event cost</Typography>
@@ -284,7 +286,10 @@ export default function ROIDashboardScreen() {
 
           {stats.canSeeMoney ? (
             <Pressable
-              onPress={() => router.push('/(app)/events/new/cost')}
+              // The event id travels with the link. Without it this opened the
+              // wizard's cost step, which saved onto the draft's event — not
+              // the one this ROI screen is showing.
+              onPress={() => router.push({ pathname: '/(app)/events/new/cost', params: { eventId } })}
               className="flex-row items-center justify-between bg-white border border-hairline rounded-md px-4 py-[14px] mt-3"
             >
               <Typography className="text-[12.5px] text-slate">Event cost</Typography>
