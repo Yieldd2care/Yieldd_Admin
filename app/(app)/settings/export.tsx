@@ -10,8 +10,21 @@ import { useEvents } from '../../../hooks/useEvents';
 
 export default function SettingsExportScreen() {
   const { data: events, isLoading } = useEvents();
-  // Upcoming events are left out on purpose: there is nothing to export yet.
-  const exportable = events?.filter((e) => e.status !== 'upcoming') ?? [];
+
+  /**
+   * An event is exportable when it has leads. Nothing else.
+   *
+   * This used to filter on `status !== 'upcoming'`, with a comment claiming
+   * there was nothing to export yet. That was an assumption about the calendar,
+   * not a fact about the data: `status` is derived from the dates, so a show
+   * starting in two days reads as `upcoming` while already holding leads
+   * captured at a pre-registration, a soft opening, or by a rep testing. Those
+   * leads existed and could not be exported.
+   *
+   * `fetchEvents` counts them in the same query (`leads(count)`, defaulting to
+   * 0), so this costs nothing extra and is the honest signal.
+   */
+  const exportable = events?.filter((e) => (e.leads ?? 0) > 0) ?? [];
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
@@ -22,7 +35,10 @@ export default function SettingsExportScreen() {
           Pick an exhibition to export its leads as an Excel file.
         </Typography>
 
-        {(['live', 'closed'] as EventStatus[]).map((group) => {
+        {/* `upcoming` belongs here now — without its own group an event with
+            leads would pass the filter above and then have nowhere to render.
+            Same order the Events tab uses, so the two screens read alike. */}
+        {(['live', 'upcoming', 'closed'] as EventStatus[]).map((group) => {
           const items = exportable.filter((e) => e.status === group);
           if (!items.length) return null;
           return (
@@ -60,7 +76,7 @@ export default function SettingsExportScreen() {
 
         {!isLoading && !exportable.length ? (
           <Typography className="text-[13.5px] text-slate text-center mt-10 leading-[1.5]">
-            Nothing to export yet &mdash; leads become available once an event is running.
+            Nothing to export yet &mdash; an event appears here as soon as it has its first lead.
           </Typography>
         ) : null}
       </ScrollView>

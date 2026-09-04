@@ -38,7 +38,6 @@ export default function EventDashboardScreen() {
   const { data: leaderboard, error: leaderboardError } = useLeaderboard(eventId || undefined);
 
   const isClosed = event?.status === 'closed';
-  const isUpcoming = event?.status === 'upcoming';
 
   // Optimistic locally so the switch does not lag behind the finger, but the
   // event row is what it actually reads from — the toggle gates the roster for
@@ -225,7 +224,10 @@ export default function EventDashboardScreen() {
             </Pressable>
           ) : null}
 
-          {!isUpcoming ? (
+          {/* Shown once the event has a lead, not once its start date has
+              passed. An upcoming show can already hold leads, and hiding the
+              button on those made them unexportable from here too. */}
+          {(stats?.totalLeads ?? 0) > 0 ? (
             <Pressable
               onPress={() => router.push({ pathname: '/(app)/events/[id]/export', params: { id: eventId } })}
               className="h-[52px] rounded-md border border-hairline bg-white items-center justify-center"

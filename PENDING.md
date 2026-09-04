@@ -24,7 +24,7 @@ Full diagnosis for each is in its numbered section below.
 | 6 | 15 | Variable instructions — **and** the subject-line context bug | `[x]` done 2026-09-02 |
 | 7 | 13 | Scanning your own card fills nothing | `[x]` done 2026-09-02 |
 | 8 | 18 | Back-of-card scan + branch address field | `[x]` done 2026-09-02 |
-| — | 20 | Export Leads hides an event that already has leads | `[ ]` reported 2026-09-02 |
+| 9 | 20 | Export Leads hides an event that already has leads | `[x]` done 2026-09-02 |
 
 **Blocked on you, not on code**
 
@@ -67,14 +67,23 @@ would have meant a second column plus four storage-policy amendments for a pictu
   `upcoming`, while it already holds **3 captured leads**. Leads get taken before a show opens
   (pre-registrations, a soft day, a rep testing) and the export refuses to show them. "There is
   nothing to export yet" is a guess about the dates, not a fact about the data.
-- **Fix, when picked up:** gate on whether the event **has leads**, not on its status —
-  `event.leads` is already returned by `fetchEvents` and is exactly the right signal. An event
-  with zero leads can still be listed and simply say so, or stay hidden; either is honest. The
-  same change belongs on the dashboard button.
-- **Worth deciding at the same time:** whether an upcoming event should show in the *grouped*
-  list at all, since the screen currently only renders the `live` and `closed` groups — a third
-  group, or dropping the grouping, is part of the fix.
-- **Not fixed** — logged on 2026-09-02 for review.
+- **RULE DECIDED 2026-09-02 by the user:** *"If, in any event, even one lead gets captured, then
+  it should come in the export leads list."* So the gate is **`event.leads > 0`**, and the
+  event's status stops mattering entirely. `fetchEvents` already returns that count, so nothing
+  new has to be fetched.
+- ~~**Fix**~~ — **DONE 2026-09-02.**
+  - [settings/export.tsx](app/(app)/settings/export.tsx) filters on `(e.leads ?? 0) > 0`.
+    `fetchEvents` already counts them in the same query (`leads(count)`, defaulting to 0), so
+    this costs no extra round trip.
+  - An **Upcoming** group was added to the list. Without it an event could pass the filter and
+    then have nowhere to render — the screen only had `live` and `closed`. Same order the
+    Events tab uses, so the two screens read alike.
+  - The dashboard's **Export leads** button now shows on `stats.totalLeads > 0` instead of
+    `!isUpcoming`, and `isUpcoming` is gone from that screen.
+  - The empty state no longer says leads "become available once an event is running", which was
+    the same false claim in prose.
+  - **Checked against the live database:** Kisan (`upcoming`, 3 leads) now qualifies;
+    Plastindia (`upcoming`, 0 leads) still does not. `tsc` exit 0, `verify:csv` passes.
 
 ### 19. Event lead count is stale until you pull to refresh — reported 2026-09-02
 
