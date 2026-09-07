@@ -1,0 +1,194 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    body { margin:0; font-family:Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#1D3F8A; text-decoration:none; } a:hover { color:#0B132B; }
+    .nav { display:flex; align-items:center; gap:11px; padding:9px 22px; color:rgba(255,255,255,0.55); font-size:13.5px; font-weight:500; }
+    .nav.on { color:#fff; font-weight:600; background:#101C3E; box-shadow:inset 3px 0 0 #F4B000; }
+    .cap { font-size:9.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+    .card { background:#fff; border:1px solid #E3E7EF; border-radius:16px; }
+    .bar { width:100%; border-radius:6px 6px 0 0; }
+  </style>
+</helmet>
+<div style="display:flex; width:1440px; height:980px; background:#F5F7FB; overflow:hidden">
+
+  <aside style="width:240px; background:#0B132B; display:flex; flex-direction:column; padding:24px 0; flex-shrink:0">
+    <div style="display:flex; align-items:center; gap:10px; padding:0 22px 26px">
+      <div style="width:28px; height:28px; border-radius:8px; background:#F4B000; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; color:#0B132B">Y</div>
+      <div style="font-weight:800; font-size:17px; color:#fff; letter-spacing:-0.01em">Yieldd</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:2px">
+      <div class="nav on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Leads</div>
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Events</div>
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/></svg>Follow-ups</div>
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Team</div>
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v12H8l-4 4z"/></svg>Templates</div>
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>Export</div>
+      <div class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09A1.65 1.65 0 0 0 20.91 10H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
+    </div>
+    <div style="margin-top:auto; padding:16px 22px 0; border-top:1px solid rgba(255,255,255,0.10); display:flex; align-items:center; gap:10px">
+      <div style="width:32px; height:32px; border-radius:50%; background:#1D3F8A; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:12.5px">SS</div>
+      <div style="min-width:0">
+        <div style="color:#fff; font-size:13px; font-weight:600">Sarfaraz Shaikh</div>
+        <div style="color:rgba(255,255,255,0.45); font-size:11px; font-weight:500">Admin</div>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1; display:flex; flex-direction:column; min-width:0">
+    <header style="background:#fff; border-bottom:1px solid #E3E7EF; padding:20px 32px; display:flex; align-items:center; justify-content:space-between">
+      <div>
+        <div style="font-size:26px; font-weight:800; color:#0B132B; letter-spacing:-0.01em">Home</div>
+        <div style="font-size:13px; color:#5A6B87; margin-top:3px">Sunday, 7 September</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px">
+        <div style="display:flex; align-items:center; gap:8px; background:#EEF1F7; border-radius:999px; padding:9px 16px">
+          <div style="width:6px; height:6px; border-radius:50%; background:#4ED17F"></div>
+          <span style="font-size:12.5px; font-weight:700; color:#0B132B">India Machine Tools Expo</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5A6B87" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+        <div style="background:#F4B000; border-radius:10px; padding:11px 20px; font-size:13.5px; font-weight:700; color:#0B132B; box-shadow:0 10px 26px rgba(244,176,0,0.34)">Export leads</div>
+      </div>
+    </header>
+
+    <div style="flex:1; overflow:auto; padding:24px 32px">
+
+      <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:16px">
+        <div class="card" style="padding:18px 20px">
+          <div class="cap" style="color:#8A98B0">Captured today</div>
+          <div style="font-size:30px; font-weight:800; color:#0B132B; margin-top:6px; letter-spacing:-0.02em">47</div>
+          <div style="font-size:12px; color:#4ED17F; font-weight:600; margin-top:2px">+12 vs yesterday</div>
+        </div>
+        <div class="card" style="padding:18px 20px">
+          <div class="cap" style="color:#8A98B0">Total leads</div>
+          <div style="font-size:30px; font-weight:800; color:#0B132B; margin-top:6px; letter-spacing:-0.02em">312</div>
+          <div style="font-size:12px; color:#5A6B87; font-weight:500; margin-top:2px">This event</div>
+        </div>
+        <div class="card" style="padding:18px 20px">
+          <div class="cap" style="color:#8A98B0">Follow-ups due</div>
+          <div style="display:flex; align-items:baseline; gap:8px; margin-top:6px">
+            <div style="font-size:30px; font-weight:800; color:#0B132B; letter-spacing:-0.02em">18</div>
+            <div style="width:7px; height:7px; border-radius:50%; background:#F4B000"></div>
+          </div>
+          <div style="font-size:12px; color:#5A6B87; font-weight:500; margin-top:2px">9 overdue</div>
+        </div>
+        <div class="card" style="padding:18px 20px">
+          <div class="cap" style="color:#8A98B0">Not yet synced</div>
+          <div style="font-size:30px; font-weight:800; color:#0B132B; margin-top:6px; letter-spacing:-0.02em">3</div>
+          <div style="font-size:12px; color:#5A6B87; font-weight:500; margin-top:2px">Waiting on signal</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1.45fr 1fr; gap:16px; margin-top:16px">
+
+        <div class="card" style="padding:20px 22px">
+          <div style="display:flex; align-items:center; justify-content:space-between">
+            <div style="font-size:17px; font-weight:700; color:#0B132B">Capture by hour</div>
+            <div style="font-size:12px; color:#5A6B87; font-weight:500">Today, 8am to 8pm</div>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:10px; height:180px; margin-top:22px">
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:18%; background:#EEF1F7"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">8</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:34%; background:#EEF1F7"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">9</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:62%; background:#1D3F8A"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">10</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:88%; background:#F4B000"></div><div style="font-size:10.5px; color:#0B132B; font-weight:700">11</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:71%; background:#1D3F8A"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">12</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:40%; background:#EEF1F7"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">1</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:55%; background:#1D3F8A"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">2</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:76%; background:#1D3F8A"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">3</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:49%; background:#EEF1F7"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">4</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:28%; background:#EEF1F7"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">5</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:14%; background:#EEF1F7"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">6</div></div>
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px"><div class="bar" style="height:8%; background:#EEF1F7"></div><div style="font-size:10.5px; color:#8A98B0; font-weight:600">7</div></div>
+          </div>
+          <div style="margin-top:16px; padding-top:14px; border-top:1px solid #E3E7EF; font-size:12.5px; color:#5A6B87">Busiest hour was <strong style="color:#0B132B; font-weight:700">11am</strong> with 9 leads. Staff the stall heavier before lunch.</div>
+        </div>
+
+        <div class="card" style="padding:20px 22px">
+          <div style="font-size:17px; font-weight:700; color:#0B132B">Team today</div>
+          <div style="display:flex; flex-direction:column; margin-top:16px">
+            <div style="display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid #E3E7EF">
+              <div style="width:22px; font-size:12px; font-weight:800; color:#F4B000">1</div>
+              <div style="width:30px; height:30px; border-radius:50%; background:#0B132B; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700">AK</div>
+              <div style="flex:1; font-size:13.5px; font-weight:600; color:#0B132B">Aarti Kulkarni</div>
+              <div style="font-size:15px; font-weight:800; color:#0B132B">19</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid #E3E7EF">
+              <div style="width:22px; font-size:12px; font-weight:800; color:#8A98B0">2</div>
+              <div style="width:30px; height:30px; border-radius:50%; background:#1D3F8A; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700">RM</div>
+              <div style="flex:1; font-size:13.5px; font-weight:600; color:#0B132B">Rohit Mehta</div>
+              <div style="font-size:15px; font-weight:800; color:#0B132B">14</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid #E3E7EF">
+              <div style="width:22px; font-size:12px; font-weight:800; color:#8A98B0">3</div>
+              <div style="width:30px; height:30px; border-radius:50%; background:#5A6B87; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700">SS</div>
+              <div style="flex:1; font-size:13.5px; font-weight:600; color:#0B132B">Sarfaraz Shaikh</div>
+              <div style="font-size:15px; font-weight:800; color:#0B132B">9</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; padding:11px 0">
+              <div style="width:22px; font-size:12px; font-weight:800; color:#8A98B0">4</div>
+              <div style="width:30px; height:30px; border-radius:50%; background:#97A3B8; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700">NP</div>
+              <div style="flex:1; font-size:13.5px; font-weight:600; color:#0B132B">Nikhil Patil</div>
+              <div style="font-size:15px; font-weight:800; color:#0B132B">5</div>
+            </div>
+          </div>
+          <div style="margin-top:14px; padding-top:14px; border-top:1px solid #E3E7EF; font-size:12px; color:#5A6B87">Leaderboard is visible to reps for this event.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px; overflow:hidden">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid #E3E7EF">
+          <div style="font-size:17px; font-weight:700; color:#0B132B">Recent leads</div>
+          <div style="font-size:12.5px; font-weight:700; color:#1D3F8A">View all</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.4fr 1.3fr 0.8fr 0.7fr 0.6fr; padding:11px 22px; background:#F5F7FB; border-bottom:1px solid #E3E7EF">
+          <div class="cap" style="color:#8A98B0">Name</div>
+          <div class="cap" style="color:#8A98B0">Company</div>
+          <div class="cap" style="color:#8A98B0">Captured by</div>
+          <div class="cap" style="color:#8A98B0">Temp</div>
+          <div class="cap" style="color:#8A98B0; text-align:right">Time</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.4fr 1.3fr 0.8fr 0.7fr 0.6fr; padding:14px 22px; border-bottom:1px solid #E3E7EF; align-items:center">
+          <div style="font-size:13.5px; font-weight:600; color:#0B132B">Deepak Ranganathan</div>
+          <div style="font-size:13px; color:#3C4C68">Precision Tools Pvt Ltd</div>
+          <div style="font-size:13px; color:#5A6B87">Aarti K.</div>
+          <div><span style="background:#FDECEC; color:#C4392E; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px">Hot</span></div>
+          <div style="font-size:12.5px; color:#8A98B0; text-align:right">2m ago</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.4fr 1.3fr 0.8fr 0.7fr 0.6fr; padding:14px 22px; border-bottom:1px solid #E3E7EF; align-items:center">
+          <div style="font-size:13.5px; font-weight:600; color:#0B132B">Meera Iyer</div>
+          <div style="font-size:13px; color:#3C4C68">Sunrise Fabrication</div>
+          <div style="font-size:13px; color:#5A6B87">Rohit M.</div>
+          <div><span style="background:#FFF6E0; color:#8A6100; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px">Warm</span></div>
+          <div style="font-size:12.5px; color:#8A98B0; text-align:right">14m ago</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.4fr 1.3fr 0.8fr 0.7fr 0.6fr; padding:14px 22px; border-bottom:1px solid #E3E7EF; align-items:center">
+          <div style="font-size:13.5px; font-weight:600; color:#0B132B">Sandeep Nair</div>
+          <div style="font-size:13px; color:#3C4C68">Kerala Steelworks</div>
+          <div style="font-size:13px; color:#5A6B87">Aarti K.</div>
+          <div><span style="background:#FDECEC; color:#C4392E; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px">Hot</span></div>
+          <div style="font-size:12.5px; color:#8A98B0; text-align:right">31m ago</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.4fr 1.3fr 0.8fr 0.7fr 0.6fr; padding:14px 22px; align-items:center">
+          <div style="font-size:13.5px; font-weight:600; color:#0B132B">Farhan Qureshi</div>
+          <div style="font-size:13px; color:#3C4C68">Deccan Hydraulics</div>
+          <div style="font-size:13px; color:#5A6B87">Nikhil P.</div>
+          <div><span style="background:#EEF1F7; color:#5A6B87; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px">Cold</span></div>
+          <div style="font-size:12.5px; color:#8A98B0; text-align:right">48m ago</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>

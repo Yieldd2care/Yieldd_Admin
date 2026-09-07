@@ -1,0 +1,28 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",           "x": 0,    "y": 0,    "w": 1440, "h": 980,  "title": "Home" },
+    { "file": "Leads.dc.html",          "x": 1560, "y": 0,    "w": 1440, "h": 1080, "title": "Leads" },
+    { "file": "LeadDetail.dc.html",     "x": 3120, "y": 0,    "w": 1440, "h": 1180, "title": "Lead detail" },
+
+    { "file": "Events.dc.html",         "x": 0,    "y": 1340, "w": 1440, "h": 720,  "title": "Events" },
+    { "file": "EventDashboard.dc.html", "x": 1560, "y": 1340, "w": 1440, "h": 1080, "title": "Event dashboard" },
+    { "file": "EventROI.dc.html",       "x": 3120, "y": 1340, "w": 1440, "h": 900,  "title": "Event ROI" },
+
+    { "file": "FollowUps.dc.html",      "x": 0,    "y": 2580, "w": 1440, "h": 1020, "title": "Follow-ups" },
+    { "file": "Team.dc.html",           "x": 1560, "y": 2580, "w": 1440, "h": 720,  "title": "Team" },
+    { "file": "Templates.dc.html",      "x": 3120, "y": 2580, "w": 1440, "h": 860,  "title": "Templates" },
+
+    { "file": "Export.dc.html",         "x": 0,    "y": 3760, "w": 1440, "h": 800,  "title": "Export" },
+    { "file": "Settings.dc.html",       "x": 1560, "y": 3760, "w": 1440, "h": 900,  "title": "Settings" }
+  ],
+  "annotations": [
+    {
+      "id": "scope-note",
+      "x": 0,
+      "y": -190,
+      "w": 620,
+      "text": "Yieldd web dashboard - admin screens for desktop.\n\nEvery screen here is backed by something that already exists in the app: event_stats, event_hourly_capture, event_leaderboard, the seven event cost columns, lead_activity, message_templates, event_custom_field_defs.\n\nNo Popl features have been imported - no tags, no card view tracking, no CRM sync, no billing.\n\nNames, companies and figures are sample data."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
