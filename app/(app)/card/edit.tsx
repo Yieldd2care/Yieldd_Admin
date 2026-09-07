@@ -36,6 +36,7 @@ import {
 } from '../../../lib/api/businessCard';
 import { cardShareUrl, displayUrl, linkedinUrl, type SocialLink } from '../../../lib/cardLinks';
 import { buildVCard } from '../../../lib/vcard';
+import { CenterColumn } from '../../../components/shared/CenterColumn';
 
 /**
  * The card builder.
@@ -302,6 +303,7 @@ export default function CardEditScreen() {
           }
         />
         <ScrollView contentContainerClassName="items-center px-5 pt-[22px] pb-5" showsVerticalScrollIndicator={false}>
+          <CenterColumn max="max-w-[560px]" className="items-center">
           {notice ? (
             <View className="w-full bg-gold/[0.12] border border-gold/[0.35] rounded-md px-4 py-3 mb-4">
               <Typography className="text-[12.5px] text-navy leading-[1.45]">{notice}</Typography>
@@ -343,8 +345,10 @@ export default function CardEditScreen() {
               </Typography>
             ) : null}
           </View>
+          </CenterColumn>
         </ScrollView>
         <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 gap-3 items-center">
+          <CenterColumn max="max-w-[560px]" className="gap-3 items-center">
           <Button
             label="Share your card"
             onPress={() => router.push('/(app)/card/share')}
@@ -354,6 +358,7 @@ export default function CardEditScreen() {
           <Pressable onPress={() => router.push('/(app)/card/first-scan')}>
             <Typography className="text-[13px] font-semibold text-gold">Continue</Typography>
           </Pressable>
+          </CenterColumn>
         </View>
       </SafeAreaView>
     );
@@ -364,10 +369,11 @@ export default function CardEditScreen() {
       <CardHeader title={card ? 'Your card' : 'Build your card'} onBack={() => router.back()} />
       <KeyboardSafe>
       <ScrollView
-        contentContainerClassName="px-5 pt-[22px] pb-5"
+        contentContainerClassName="px-5 pt-[22px] pb-5 items-center"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        <CenterColumn max="max-w-[560px]">
         <View className="bg-navy rounded-2xl p-5 overflow-hidden">
           {photoPreview ? (
             <Image source={{ uri: photoPreview }} className="w-14 h-14 rounded-xl" resizeMode="cover" />
@@ -486,9 +492,11 @@ export default function CardEditScreen() {
           </View>
           <Toggle value={isPublished} onValueChange={setIsPublished} />
         </View>
+        </CenterColumn>
       </ScrollView>
 
-      <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
+      <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center">
+        <CenterColumn max="max-w-[560px]">
         {error ? (
           <Typography className="text-[12.5px] font-semibold text-[#C23B3B] text-center mb-3 leading-[1.45]">
             {error}
@@ -499,6 +507,7 @@ export default function CardEditScreen() {
           onPress={onSave}
           disabled={save.isPending || photoBusy}
         />
+        </CenterColumn>
       </View>
       </KeyboardSafe>
     </SafeAreaView>

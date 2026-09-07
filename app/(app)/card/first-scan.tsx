@@ -6,6 +6,8 @@ import { Typography } from '../../../components/ui/Typography';
 import { Button } from '../../../components/ui/Button';
 import { NavyGlowBackdrop } from '../../../components/app/NavyGlowBackdrop';
 import { CameraIcon } from '../../../components/ui/icons';
+import { homeRoute } from '../../../lib/auth/nextRoute';
+import { CenterColumn } from '../../../components/shared/CenterColumn';
 
 export default function FirstScanPromptScreen() {
   return (
@@ -24,6 +26,7 @@ export default function FirstScanPromptScreen() {
       </View>
 
       <View className="items-center gap-[14px] px-8 pb-8">
+        <CenterColumn className="items-center gap-[14px]">
         <Button
           label="Scan a card"
           shape="pill"
@@ -31,9 +34,10 @@ export default function FirstScanPromptScreen() {
           onPress={() => router.push({ pathname: '/(app)/capture/camera', params: { mode: 'profile' } })}
           className="w-full"
         />
-        <Pressable onPress={() => router.replace('/(app)')}>
+        <Pressable onPress={() => router.replace(homeRoute())}>
           <Typography className="text-[13px] font-semibold text-white/[0.75]">Skip to home</Typography>
         </Pressable>
+        </CenterColumn>
       </View>
     </SafeAreaView>
   );

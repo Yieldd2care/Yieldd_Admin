@@ -14,6 +14,7 @@ import {
 } from '../../../../stores/useEventDraftStore';
 import { useEvent } from '../../../../hooks/useEvents';
 import { fetchEventInvites } from '../../../../lib/api/invites';
+import { homeRoute } from '../../../../lib/auth/nextRoute';
 
 export default function EventSetupCompleteScreen() {
   // Read one field at a time rather than deriving inside a selector — a
@@ -78,7 +79,7 @@ export default function EventSetupCompleteScreen() {
     // The draft has served its purpose. Leaving it behind would pre-fill the
     // next event with this one's answers.
     useEventDraftStore.getState().reset();
-    router.replace('/(app)');
+    router.replace(homeRoute());
   };
 
   return (

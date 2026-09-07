@@ -1,6 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 
 import { useSessionStore } from '../../stores/useSessionStore';
+import { homeRoute } from '../../lib/auth/nextRoute';
 
 export default function AuthLayout() {
   const user = useSessionStore((s) => s.user);
@@ -12,7 +13,7 @@ export default function AuthLayout() {
   // because the fork screen now lives under (app) — while it sat here, a
   // just-signed-up user was authenticated and would have been bounced off it
   // before they could choose.
-  if (user) return <Redirect href="/(app)" />;
+  if (user) return <Redirect href={homeRoute()} />;
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }

@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { NavyGlowBackdrop } from '../components/app/NavyGlowBackdrop';
 import { supabase } from '../lib/supabase';
 import { useSessionStore } from '../stores/useSessionStore';
+import { homeRoute } from '../lib/auth/nextRoute';
 
 type Invite = {
   organization_name: string;
@@ -133,7 +134,7 @@ export default function InviteScreen() {
           className="w-full mt-8"
         />
         <Typography
-          onPress={() => router.replace('/(app)')}
+          onPress={() => router.replace(homeRoute())}
           className="mt-5 text-[12.5px] font-bold text-gold text-center"
         >
           Stay signed in as {user.name}

@@ -8,6 +8,8 @@ import { Typography } from '../../../components/ui/Typography';
 import { NavyGlowBackdrop } from '../../../components/app/NavyGlowBackdrop';
 import { ChevronRightIcon, UsersIcon, ProfileIcon } from '../../../components/ui/icons';
 import { useSessionStore } from '../../../stores/useSessionStore';
+import { homeRoute } from '../../../lib/auth/nextRoute';
+import { CenterColumn } from '../../../components/shared/CenterColumn';
 
 function ChecklistIllustration() {
   return (
@@ -67,7 +69,7 @@ export default function ForkScreen() {
   // off from the rest of the app. They can start an event from Home when ready.
   const chooseTeam = async () => {
     void setAccountIntent('team');
-    router.replace('/(app)');
+    router.replace(homeRoute());
   };
 
   const chooseSolo = async () => {
@@ -78,7 +80,8 @@ export default function ForkScreen() {
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
-      <View className="flex-1">
+      <View className="flex-1 items-center">
+        <CenterColumn max="max-w-[460px]" className="flex-1">
         <View className="items-center pt-8 px-8">
           <ChecklistIllustration />
         </View>
@@ -103,6 +106,7 @@ export default function ForkScreen() {
             onPress={chooseSolo}
           />
         </View>
+        </CenterColumn>
       </View>
     </SafeAreaView>
   );

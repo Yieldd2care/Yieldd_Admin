@@ -309,13 +309,20 @@ export default function VoiceNoteScreen() {
       </View>
 
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
+        {/* The disabled state carries the same shadow at zero alpha rather than
+            no shadow at all. `shadow-*` compiles to a CSS variable, and
+            NativeWind can only make a component a variable provider on its
+            first render — so a button that gained its first shadow the moment
+            the recording stopped sent react-native-css-interop down its
+            upgrade-warning path, where its own prop stringifier throws
+            "Couldn't find a navigation context" at you. See AGENTS.md. */}
         <Pressable
           onPress={attach}
           disabled={!hasRecording || state.isRecording}
           className={`h-[54px] rounded-md items-center justify-center ${
             hasRecording && !state.isRecording
               ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]'
-              : 'bg-surface'
+              : 'bg-surface shadow-[0_10px_24px_rgba(244,176,0,0)]'
           }`}
         >
           <Typography

@@ -206,7 +206,7 @@ export default function ExportScreen() {
           disabled={isBusy || !rangeReady || !anyColumn}
           className={`h-[54px] rounded-md items-center justify-center flex-row gap-2 ${
             isBusy || !rangeReady || !anyColumn
-              ? 'bg-surface'
+              ? 'bg-surface shadow-[0_10px_24px_rgba(244,176,0,0)]'
               : 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]'
           }`}
         >

@@ -92,10 +92,16 @@ export default function RootLayout() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!ready) {
-    return null;
-  }
-
+  // The navigator renders from the very first frame and is never taken away
+  // again. Returning null while waiting was a real hazard: anything that
+  // flipped `ready` back — a Fast Refresh re-evaluating the session store is
+  // enough — unmounted the entire navigation tree underneath whatever was
+  // mid-render, and React Navigation threw "Couldn't find a navigation
+  // context" at it. Only a screen that re-renders continuously would ever be
+  // caught in that window, which is why it looked like a voice-recording bug.
+  //
+  // Nothing is lost by rendering: the splash above stays up until `ready`, and
+  // app/index.tsx holds its redirect until the session is known.
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>

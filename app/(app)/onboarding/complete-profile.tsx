@@ -11,6 +11,7 @@ import { RadialGlow } from '../../../components/ui/RadialGlow';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { nextRouteAfterAuth } from '../../../lib/auth/nextRoute';
 import { isValidPhone } from '../../../lib/phone';
+import { CenterColumn } from '../../../components/shared/CenterColumn';
 
 /** The name handle_new_user() falls back to when no company was supplied. */
 const PLACEHOLDER_ORG = 'My workspace';
@@ -78,11 +79,12 @@ export default function CompleteProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
-          contentContainerClassName="flex-grow justify-center px-8 py-10"
+          contentContainerClassName="flex-grow justify-center items-center px-8 py-10"
           bounces={false}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <CenterColumn>
           <Typography className="text-[12px] font-bold tracking-[0.14em] text-gold text-center">
             ALMOST THERE
           </Typography>
@@ -138,6 +140,7 @@ export default function CompleteProfileScreen() {
           >
             Sign out
           </Typography>
+          </CenterColumn>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
