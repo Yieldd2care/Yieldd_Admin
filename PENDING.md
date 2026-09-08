@@ -55,7 +55,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 | 3 | 24 | Team — no Invite member button | `[x]` done 2026-09-08 |
 | 4 | 23 | Templates — read-only, no New template | `[x]` done 2026-09-08 |
 | 5 | 22 | Follow-ups — no way to act on a due follow-up | `[x]` done 2026-09-08 |
-| 6 | 25 | Export — only the current event, not a choice of events | `[ ]` |
+| 6 | 25 | Export — only the current event, not a choice of events | `[x]` done 2026-09-08 |
 
 ---
 
@@ -346,7 +346,7 @@ the specific plan and account we are on**, because it is now in writing on a pub
   "you are over your seats" note and blocks nothing, matching the phone. Real enforcement would need
   an RPC or constraint and is a separate decision.
 
-### 25. Web dashboard — Export only knows about the current event — reported 2026-09-07
+### 25. Web dashboard — Export only knows about the current event — reported 2026-09-07, DONE 2026-09-08
 
 - **Where:** [app/(dash)/export.tsx](app/(dash)/export.tsx)
 - **What is missing:** the scope choice is *this event* or *won only*. There is no event picker, so
@@ -356,6 +356,17 @@ the specific plan and account we are on**, because it is now in writing on a pub
 - **Note on scope:** `buildLeadsCsv` takes `event` / `won` / `range` — there is no "everything"
   scope, which is why the dashboard does not offer one. Adding an event dropdown is a UI change;
   adding "all events" would need a new scope in [lib/api/exportLeads.ts](lib/api/exportLeads.ts).
+- **Fixed 2026-09-08:** [app/(dash)/export.tsx](app/(dash)/export.tsx) now has an event picker built
+  from `useEvents()` (opening on `useCurrentEvent()`), all three scopes, the six `ExportColumns`
+  toggles, and a From/To range using `DateField` — its sheet is a plain `Modal`, so it works in a
+  browser unchanged.
+- **Carried over from the phone:** `to` is sent as `23:59:59.999` or the last day is silently cut
+  off, and custom-field headers are resolved through `fetchEventFields` so a column reads
+  "Budget range" rather than a UUID. The property is `name`, not `label`.
+- **Filename now uses `csvFilename(event.name)`** — the dashboard was hardcoding
+  `yieldd-leads-<date>.csv` and ignoring the shared helper.
+- Escaping in [lib/csv.ts](lib/csv.ts) is untouched; `npm run verify:csv` still passes, including the
+  guard that a `+91 …` phone number is *not* prefixed with an apostrophe.
 
 ### 26. Web dashboard — no route to ROI, and no per-event download — reported 2026-09-07, DONE 2026-09-08
 
