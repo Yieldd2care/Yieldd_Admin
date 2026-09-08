@@ -53,7 +53,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 | 1 | 21 | Events — no Create event, no Edit event | `[x]` done 2026-09-08 |
 | 2 | 26 | Events — no way to reach ROI, no per-event download | `[x]` done 2026-09-08 |
 | 3 | 24 | Team — no Invite member button | `[x]` done 2026-09-08 |
-| 4 | 23 | Templates — read-only, no New template | `[ ]` |
+| 4 | 23 | Templates — read-only, no New template | `[x]` done 2026-09-08 |
 | 5 | 22 | Follow-ups — no way to act on a due follow-up | `[ ]` |
 | 6 | 25 | Export — only the current event, not a choice of events | `[ ]` |
 
@@ -280,7 +280,7 @@ the specific plan and account we are on**, because it is now in writing on a pub
   WhatsApp Web or a mail client, which may not be signed in. Worth deciding whether the web
   action is Send, or Copy the message, or just Open the lead.
 
-### 23. Web dashboard — Templates can be read but not written — reported 2026-09-07
+### 23. Web dashboard — Templates can be read but not written — reported 2026-09-07, DONE 2026-09-08
 
 - **Where:** [app/(dash)/templates.tsx](app/(dash)/templates.tsx)
 - **What is missing:** no **New template**, no edit, no set-as-default, no attachment. The body is
@@ -291,6 +291,17 @@ the specific plan and account we are on**, because it is now in writing on a pub
   [app/(app)/settings/whatsapp-template.tsx](app/(app)/settings/whatsapp-template.tsx).
 - **Keep:** the six real tokens stay the only ones offered. Two invented ones were being sent once
   (#15) and the legend is what stops that coming back.
+- **Fixed 2026-09-08:** [app/(dash)/templates.tsx](app/(dash)/templates.tsx) can create, edit,
+  set-as-default and delete, against the existing `useTemplateMutations`. Admin only; a rep sees the
+  templates and no buttons.
+- **The token list is now derived**, not typed: `MERGE_FIELDS` drives both the chips and a live
+  warning. Typing `{{senderCompany}}` — which this very screen used to advertise — now raises
+  "this is not a real token … it will be sent exactly as written". Verified in a browser: it catches
+  `{{senderCompany}}` and `{{invented}}`, and clears when they are corrected.
+- **Subject is null for WhatsApp**, not `''` — `message_templates_subject_email_only` is a CHECK
+  constraint and an empty string is rejected.
+- **Delete goes through ConfirmDialog.** On the phone it is `Alert.alert`, which on web is an empty
+  function — the confirmation would never appear and the delete would never fire.
 
 ### 24. Web dashboard — Team has no Invite button — reported 2026-09-07, DONE 2026-09-08
 
