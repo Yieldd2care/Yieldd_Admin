@@ -43,7 +43,112 @@ would have meant a second column plus four storage-policy amendments for a pictu
 
 ---
 
+**Web dashboard queue — reported 2026-09-07**
+
+The dashboard shipped read-only: it shows what exists but has almost no way to
+act on it. Six gaps, all "the screen is there, the button is not".
+
+| Order | # | Correction | Status |
+|---|---|---|---|
+| 1 | 21 | Events — no Create event, no Edit event | `[x]` done 2026-09-08 |
+| 2 | 26 | Events — no way to reach ROI, no per-event download | `[ ]` |
+| 3 | 24 | Team — no Invite member button | `[ ]` |
+| 4 | 23 | Templates — read-only, no New template | `[ ]` |
+| 5 | 22 | Follow-ups — no way to act on a due follow-up | `[ ]` |
+| 6 | 25 | Export — only the current event, not a choice of events | `[ ]` |
+
+---
+
 ## Open
+
+### 21. Web dashboard — Events is a list you cannot add to — reported 2026-09-07, DONE 2026-09-08
+
+- **Where:** [app/(dash)/events.tsx](app/(dash)/events.tsx)
+- **What is missing:** no **Create event**, no **Edit event**. The screen renders the table and
+  nothing else, so an admin who opens the dashboard to set up a show has to pick up a phone.
+- **What exists to build on:** the create wizard is six screens under
+  [app/(app)/events/new/](app/(app)/events/new/) and the editor is
+  [app/(app)/events/[id]/edit.tsx](app/(app)/events/[id]/edit.tsx). Both write through
+  `createEvent` / `updateEvent` in [lib/api/events.ts](lib/api/events.ts), so the mutations are
+  done — this is a web form over existing calls, not new backend work.
+- **Decide first:** whether the web version is the same six-step wizard or one long form. A wizard
+  earns its keep on a phone, where only one field fits at a time; on a monitor it is six clicks
+  for something that fits on one screen.
+- **Fixed 2026-09-08:** **New event** on the Events header (admin only) and **Edit** on every row.
+  One form, not a wizard — the whole thing fits on a monitor, so six steps would have been six
+  clicks for nothing. [components/dash/EventForm.tsx](components/dash/EventForm.tsx) is shared by
+  [app/(dash)/events/new.tsx](app/(dash)/events/new.tsx) and
+  [app/(dash)/events/[id]/edit.tsx](app/(dash)/events/[id]/edit.tsx).
+- **Reused rather than rebuilt:** `useCreateEvent` / `useUpdateEvent` already carry the org id, the
+  user and the plan guards, and [components/app/DateField.tsx](components/app/DateField.tsx) works
+  unchanged in a browser — its sheet is a plain `Modal`. No new API, no second date picker.
+- **Costs are on the same screen**, in rupees as `Event.costs` already is. `createEvent` takes no
+  costs, so a create with costs is two writes, the same split the wizard's cost step makes; the
+  second write is skipped when every box is blank.
+- **Watch:** `Event.totalCost` is rupees and `formatPaise` expects paise, so the list multiplies by
+  100. Getting that wrong shows ₹6,840 for a ₹6,84,000 stall.
+
+### 22. Web dashboard — Follow-ups lists what is due and offers no way to do it — reported 2026-09-07
+
+- **Where:** [app/(dash)/follow-ups.tsx](app/(dash)/follow-ups.tsx)
+- **What is missing:** every row says who is due and how overdue, then stops. No send, no open the
+  lead, no mark done, no reschedule.
+- **The awkward part:** sending is a deep link — `wa.me` / `mailto:` — which hands a pre-filled
+  draft to the app on the device. That is the right call on a phone. On a desktop it opens
+  WhatsApp Web or a mail client, which may not be signed in. Worth deciding whether the web
+  action is Send, or Copy the message, or just Open the lead.
+
+### 23. Web dashboard — Templates can be read but not written — reported 2026-09-07
+
+- **Where:** [app/(dash)/templates.tsx](app/(dash)/templates.tsx)
+- **What is missing:** no **New template**, no edit, no set-as-default, no attachment. The body is
+  rendered as static text; the token list is a legend, not an editor.
+- **What exists to build on:** `useTemplateMutations` in
+  [hooks/useMessageTemplates.ts](hooks/useMessageTemplates.ts) already covers create, update,
+  delete and set-default, and the phone editor is
+  [app/(app)/settings/whatsapp-template.tsx](app/(app)/settings/whatsapp-template.tsx).
+- **Keep:** the six real tokens stay the only ones offered. Two invented ones were being sent once
+  (#15) and the legend is what stops that coming back.
+
+### 24. Web dashboard — Team has no Invite button — reported 2026-09-07
+
+- **Where:** [app/(dash)/team.tsx](app/(dash)/team.tsx)
+- **What is missing:** an admin can see members, seats and roles, and can invite nobody. No
+  deactivate or reassign-role either.
+- **What exists to build on:** [lib/api/invites.ts](lib/api/invites.ts) mints the token and
+  `useSetMemberStatus` in [hooks/useTeam.ts](hooks/useTeam.ts) handles activate/deactivate.
+- **The catch:** an invite is delivered by opening WhatsApp with a pre-filled message. On desktop
+  that needs a different ending — show the invite link with a Copy button, or send the invite
+  email — since there is no WhatsApp app to hand it to.
+- **Guard:** admin only, and refuse past `organizations.seats`.
+
+### 25. Web dashboard — Export only knows about the current event — reported 2026-09-07
+
+- **Where:** [app/(dash)/export.tsx](app/(dash)/export.tsx)
+- **What is missing:** the scope choice is *this event* or *won only*. There is no event picker, so
+  exporting last quarter's show means switching the current event first.
+- **Also missing:** the column-group toggles and the date range that the phone screen has
+  ([app/(app)/events/[id]/export.tsx](app/(app)/events/[id]/export.tsx)).
+- **Note on scope:** `buildLeadsCsv` takes `event` / `won` / `range` — there is no "everything"
+  scope, which is why the dashboard does not offer one. Adding an event dropdown is a UI change;
+  adding "all events" would need a new scope in [lib/api/exportLeads.ts](lib/api/exportLeads.ts).
+
+### 26. Web dashboard — no route to ROI, and no per-event download — reported 2026-09-07
+
+- **Where:** [app/(dash)/events.tsx](app/(dash)/events.tsx)
+- **What is missing:** an event row is not clickable. There is no event dashboard, no ROI screen,
+  and no download for that one event — so the seven-column cost model, which is the thing Yieldd
+  does better than anyone it competes with, is invisible on the web.
+- **What exists to build on:** `event_stats` already returns `wonValuePaise`, `spendPaise` and
+  `expectedValuePaise`, and [lib/roi.ts](lib/roi.ts) has `roiPercent`, `costPerLeadPaise` and
+  `costPerWonPaise`. The phone screen is
+  [app/(app)/events/[id]/roi.tsx](app/(app)/events/[id]/roi.tsx).
+- **Two rules that must survive the port:** money is `null` for a rep, not zero — RLS returns
+  nothing and a `0` would read as "this event made nothing"; and every figure comes from the
+  server function, never a count done in the browser.
+- **Design already drawn:** [docs/web-dashboard/EventROI.dc.html](docs/web-dashboard/EventROI.dc.html)
+  and `EventDashboard.dc.html`, in the canvas from 2026-09-07.
+
 
 ### 20. Export Leads hides an event that already has leads — reported 2026-09-02
 

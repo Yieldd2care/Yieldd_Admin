@@ -153,11 +153,26 @@ export function Empty({ title, body }: { title: string; body: string }) {
   );
 }
 
-export function GoldButton({ label, onPress }: { label: string; onPress?: () => void }) {
+export function GoldButton({
+  label,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  onPress?: () => void;
+  disabled?: boolean;
+}) {
   return (
     <Pressable
-      onPress={onPress}
-      className="bg-gold rounded-md px-5 py-[11px] shadow-[0_10px_26px_rgba(244,176,0,0.34)]"
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      // The shadow class is identical in both states and only `opacity` moves.
+      // A className that gains its first shadow-* after the first render makes
+      // NativeWind try to upgrade the component mid-life, and the warning it
+      // prints throws "Couldn't find a navigation context" — see AGENTS.md.
+      className={`bg-gold rounded-md px-5 py-[11px] shadow-[0_10px_26px_rgba(244,176,0,0.34)] ${
+        disabled ? 'opacity-40' : ''
+      }`}
     >
       <Typography className="text-[13.5px] font-bold text-navy">{label}</Typography>
     </Pressable>
