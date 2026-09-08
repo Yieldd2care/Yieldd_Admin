@@ -54,7 +54,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 | 2 | 26 | Events — no way to reach ROI, no per-event download | `[x]` done 2026-09-08 |
 | 3 | 24 | Team — no Invite member button | `[x]` done 2026-09-08 |
 | 4 | 23 | Templates — read-only, no New template | `[x]` done 2026-09-08 |
-| 5 | 22 | Follow-ups — no way to act on a due follow-up | `[ ]` |
+| 5 | 22 | Follow-ups — no way to act on a due follow-up | `[x]` done 2026-09-08 |
 | 6 | 25 | Export — only the current event, not a choice of events | `[ ]` |
 
 ---
@@ -270,7 +270,7 @@ the specific plan and account we are on**, because it is now in writing on a pub
 - **Watch:** `Event.totalCost` is rupees and `formatPaise` expects paise, so the list multiplies by
   100. Getting that wrong shows ₹6,840 for a ₹6,84,000 stall.
 
-### 22. Web dashboard — Follow-ups lists what is due and offers no way to do it — reported 2026-09-07
+### 22. Web dashboard — Follow-ups lists what is due and offers no way to do it — reported 2026-09-07, DONE 2026-09-08
 
 - **Where:** [app/(dash)/follow-ups.tsx](app/(dash)/follow-ups.tsx)
 - **What is missing:** every row says who is due and how overdue, then stops. No send, no open the
@@ -279,6 +279,22 @@ the specific plan and account we are on**, because it is now in writing on a pub
   draft to the app on the device. That is the right call on a phone. On a desktop it opens
   WhatsApp Web or a mail client, which may not be signed in. Worth deciding whether the web
   action is Send, or Copy the message, or just Open the lead.
+- **Fixed 2026-09-08:** [app/(dash)/follow-ups.tsx](app/(dash)/follow-ups.tsx) rows now carry
+  **WhatsApp**, **Copy** and **Done**, with All / Overdue / Today filters.
+- **Built on `useLeadActions`, not on the phone's follow-up screen** — see the two defects noted
+  under "Out of scope" below. The hook gained an optional `onError` callback (the phone still gets
+  `Alert.alert` when it is omitted) plus `whatsappText` / `whatsappHref` / `noteWhatsAppOpened`,
+  which the web needs as values because its send is an anchor rather than a handler.
+- **The send is a real `<a target="_blank">` inside the click.** A programmatic open after an await
+  is popup-blocked and still resolves, so the phone's pattern would claim a send that never left.
+  Verified in a browser: a bare `9820441720` renders as `wa.me/919820441720` — country code
+  repaired by `whatsappDigits`, which is exactly what the phone screen gets wrong.
+- **Done** is `editLead(id, { followUpDate: null })` + `syncDrafts()`. `LeadPatch` has always typed
+  it `string | null` and the mapper has always written it; there was simply no UI. Verified: three
+  leads with dates, click Done, two remain.
+- **No dialler and no `mailto:` on desktop.** `tel:` sets `window.location` and navigates the
+  dashboard away; `mailto:` opens a blank tab when no handler is registered and still reports
+  success, which would record a send that was never composed. Copy covers both honestly.
 
 ### 23. Web dashboard — Templates can be read but not written — reported 2026-09-07, DONE 2026-09-08
 

@@ -1,19 +1,20 @@
-import { useMemo } from 'react';
-import { View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { DashShell } from '../../components/dash/DashShell';
-import { Empty, Panel, Row, Stat, TempChip } from '../../components/dash/primitives';
+import { Empty, Panel, Pill, Row, Stat, TempChip } from '../../components/dash/primitives';
 import { Typography } from '../../components/ui/Typography';
-import { useLeadsStore } from '../../stores/useLeadsStore';
+import { useLeadsStore, type StoredLead } from '../../stores/useLeadsStore';
+import { useSessionStore } from '../../stores/useSessionStore';
+import { useLeadActions } from '../../hooks/useLeadActions';
 
-const COLS = [1.3, 1.2, 1, 0.5, 0.6];
+const COLS = [1.25, 1.15, 1, 0.5, 1.5];
 
 /** Days from today: negative is overdue. */
 function daysOut(iso: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const due = new Date(iso + 'T00:00:00');
-  return Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  return Math.round((new Date(iso + 'T00:00:00').getTime() - today.getTime()) / 86_400_000);
 }
 
 function whenLabel(n: number) {
@@ -24,8 +25,108 @@ function whenLabel(n: number) {
   return { text: `Due in ${n} days`, color: '#5A6B87' };
 }
 
+async function copy(text: string) {
+  try {
+    await globalThis.navigator?.clipboard?.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * One row's actions.
+ *
+ * Built on `useLeadActions`, not on the phone's Follow-ups screen. That screen
+ * has its own `waDigits()` which is a bare `replace(/\D/g,'')` with no country
+ * code repair — a ten-digit Indian mobile becomes `wa.me/9820441720`, the wrong
+ * chat — and it records no send at all, so every WhatsApp opened from it is
+ * invisible in `message_sends`. The hook does both correctly.
+ *
+ * WhatsApp is a real anchor rather than a click handler: a programmatic
+ * `window.open` is popup-blocked once anything is awaited before it, and the
+ * blocked call still resolves, so the UI would claim a send that never left.
+ */
+function FollowUpRow({
+  lead,
+  onError,
+  onDone,
+}: {
+  lead: StoredLead;
+  onError: (title: string, message: string) => void;
+  onDone: (lead: StoredLead) => void;
+}) {
+  const actions = useLeadActions(lead, { onError });
+  const [copied, setCopied] = useState(false);
+  const n = daysOut(lead.followUpDate as string);
+  const w = whenLabel(n);
+
+  return (
+    <Row
+      cols={COLS}
+      cells={[
+        <View>
+          <Typography className="text-[13.5px] font-semibold text-navy" numberOfLines={1}>
+            {lead.name || 'Unnamed'}
+          </Typography>
+          <Typography className="text-[11.5px] text-label" numberOfLines={1}>
+            {lead.phone || 'No number'}
+          </Typography>
+        </View>,
+        lead.company || '—',
+        <View className="flex-row items-center gap-[7px]">
+          <View className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: w.color }} />
+          <Typography className="text-[13px] font-semibold" style={{ color: w.color }}>
+            {w.text}
+          </Typography>
+        </View>,
+        <TempChip value={lead.temperature} />,
+        <View className="flex-row gap-2 justify-end">
+          {actions.canWhatsApp ? (
+            <a
+              href={actions.whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'none' }}
+              onClick={() => actions.noteWhatsAppOpened()}
+            >
+              <View className="bg-gold rounded-sm px-[14px] py-[7px] shadow-[0_10px_26px_rgba(244,176,0,0.34)]">
+                <Typography className="text-[12.5px] font-bold text-navy">WhatsApp</Typography>
+              </View>
+            </a>
+          ) : null}
+          <Pressable
+            onPress={async () => {
+              if (await copy(actions.whatsappText)) {
+                setCopied(true);
+                globalThis.setTimeout(() => setCopied(false), 2000);
+              }
+            }}
+            className="border border-hairline bg-white rounded-sm px-[14px] py-[7px]"
+          >
+            <Typography className="text-[12.5px] font-semibold text-navy">
+              {copied ? 'Copied' : 'Copy'}
+            </Typography>
+          </Pressable>
+          <Pressable
+            onPress={() => onDone(lead)}
+            className="border border-hairline bg-white rounded-sm px-[14px] py-[7px]"
+          >
+            <Typography className="text-[12.5px] font-semibold text-slate">Done</Typography>
+          </Pressable>
+        </View>,
+      ]}
+    />
+  );
+}
+
+type Filter = 'all' | 'overdue' | 'today';
+
 export default function DashFollowUps() {
   const leads = useLeadsStore((s) => s.leads);
+  const userId = useSessionStore((s) => s.user?.id);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [error, setError] = useState<string | null>(null);
 
   const due = useMemo(
     () =>
@@ -36,57 +137,85 @@ export default function DashFollowUps() {
     [leads]
   );
 
-  const overdue = useMemo(() => due.filter((d) => d.n < 0).length, [due]);
-  const todayCount = useMemo(() => due.filter((d) => d.n === 0).length, [due]);
+  const overdue = useMemo(() => due.filter((d) => d.n < 0), [due]);
+  const today = useMemo(() => due.filter((d) => d.n === 0), [due]);
+  const shown = filter === 'overdue' ? overdue : filter === 'today' ? today : due;
+
+  /**
+   * Clearing the date is what marks it done. `editLead` only touches local
+   * state — without `syncDrafts` the change never reaches the server. The
+   * plumbing has always handled an explicit null; it simply had no button.
+   */
+  function markDone(lead: StoredLead) {
+    useLeadsStore.getState().editLead(lead.id, { followUpDate: null });
+    void useLeadsStore.getState().syncDrafts(userId);
+  }
 
   return (
     <DashShell title="Follow-ups" subtitle={due.length ? `${due.length} scheduled` : undefined}>
       <View className="flex-row gap-4 mb-4">
         <Stat
           label="Overdue"
-          value={String(overdue)}
-          sub={overdue ? 'Chase these first' : 'Nothing late'}
-          valueClassName={overdue ? 'text-[#C4392E]' : 'text-navy'}
+          value={String(overdue.length)}
+          sub={overdue.length ? 'Chase these first' : 'Nothing late'}
+          valueClassName={overdue.length ? 'text-[#C4392E]' : 'text-navy'}
         />
-        <Stat label="Due today" value={String(todayCount)} sub="Before the day ends" />
+        <Stat label="Due today" value={String(today.length)} sub="Before the day ends" />
         <Stat label="Scheduled" value={String(due.length)} sub="Across all events" />
       </View>
 
+      <View className="flex-row gap-2 mb-4">
+        <Pill label={`All ${due.length}`} active={filter === 'all'} onPress={() => setFilter('all')} />
+        <Pill
+          label={`Overdue ${overdue.length}`}
+          dot="#C4392E"
+          active={filter === 'overdue'}
+          onPress={() => setFilter('overdue')}
+        />
+        <Pill
+          label={`Today ${today.length}`}
+          dot="#F4B000"
+          active={filter === 'today'}
+          onPress={() => setFilter('today')}
+        />
+      </View>
+
+      {error ? (
+        <Panel className="px-5 py-4 mb-4">
+          <Typography className="text-[13px] font-semibold text-[#C23B3B]">{error}</Typography>
+        </Panel>
+      ) : null}
+
       <Panel className="overflow-hidden">
-        {due.length ? (
+        {shown.length ? (
           <>
-            <Row cols={COLS} header cells={['Lead', 'Company', 'When', 'Temp', 'Phone']} />
-            {due.map(({ lead, n }, i) => {
-              const w = whenLabel(n);
-              return (
-                <Row
-                  key={lead.id}
-                  cols={COLS}
-                  last={i === due.length - 1}
-                  cells={[
-                    <Typography className="text-[13.5px] font-semibold text-navy" numberOfLines={1}>
-                      {lead.name || 'Unnamed'}
-                    </Typography>,
-                    lead.company || '—',
-                    <View className="flex-row items-center gap-[7px]">
-                      <View className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: w.color }} />
-                      <Typography className="text-[13px] font-semibold" style={{ color: w.color }}>
-                        {w.text}
-                      </Typography>
-                    </View>,
-                    <TempChip value={lead.temperature} />,
-                    lead.phone || '—',
-                  ]}
-                />
-              );
-            })}
+            <Row cols={COLS} header cells={['Lead', 'Company', 'When', 'Temp', '']} />
+            {shown.map(({ lead }) => (
+              <FollowUpRow
+                key={lead.id}
+                lead={lead}
+                onError={(title, message) => setError(`${title}: ${message}`)}
+                onDone={markDone}
+              />
+            ))}
           </>
         ) : (
           <Empty
-            title="Nothing to chase"
-            body="Set a follow-up date on a lead and it appears here, oldest first."
+            title={due.length ? 'Nothing in that filter' : 'Nothing to chase'}
+            body={
+              due.length
+                ? 'Clear the filter to see everything scheduled.'
+                : 'Set a follow-up date on a lead and it appears here, oldest first.'
+            }
           />
         )}
+      </Panel>
+
+      <Panel className="px-[22px] py-4 mt-4">
+        <Typography className="text-[12.5px] text-slate leading-[1.6]">
+          WhatsApp opens a chat with the message already written; you press send there. That is recorded
+          as handed over, never as delivered — nothing here can know whether it was read.
+        </Typography>
       </Panel>
     </DashShell>
   );

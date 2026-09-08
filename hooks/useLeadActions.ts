@@ -10,6 +10,7 @@ import {
   openWhatsApp,
   renderTemplate,
   whatsappDigits,
+  whatsappUrl,
   buildMergeContext,
 } from '../lib/messaging';
 import { recordSend } from '../lib/api/messageSends';
@@ -36,8 +37,23 @@ import { saveLeadToContacts } from '../lib/contacts';
  * `lead` is optional because the detail screen renders a "no such lead" state
  * before it has one, and a hook cannot be called after that early return.
  */
-export function useLeadActions(lead: StoredLead | undefined) {
+export function useLeadActions(
+  lead: StoredLead | undefined,
+  opts: {
+    /**
+     * Where a failure should be shown. Omit it and the phone's `Alert.alert`
+     * is used, exactly as before.
+     *
+     * The web dashboard passes one because react-native-web ships `Alert` as
+     * an empty function — every one of these messages would otherwise vanish,
+     * leaving a button that appears to do nothing.
+     */
+    onError?: (title: string, message: string) => void;
+  } = {}
+) {
   const user = useSessionStore((s) => s.user);
+  const fail = (title: string, message: string) =>
+    opts.onError ? opts.onError(title, message) : Alert.alert(title, message);
   const eventId = lead?.eventId || undefined;
 
   // All three are cached queries keyed by event and channel, so a list of forty
@@ -51,7 +67,7 @@ export function useLeadActions(lead: StoredLead | undefined) {
   const call = async () => {
     if (!lead) return;
     const outcome = await openDialer(lead.phone);
-    if (!outcome.ok) Alert.alert('Cannot call', outcome.message);
+    if (!outcome.ok) fail('Cannot call', outcome.message);
   };
 
   const whatsapp = async () => {
@@ -59,7 +75,7 @@ export function useLeadActions(lead: StoredLead | undefined) {
     const body = whatsappTemplate?.body ?? 'Hi {{name}}, great meeting you at {{event}}.';
     const outcome = await openWhatsApp(lead.phone, renderTemplate(body, mergeContext));
     if (!outcome.ok) {
-      Alert.alert('Cannot open WhatsApp', outcome.message);
+      fail('Cannot open WhatsApp', outcome.message);
       return;
     }
     if (user) {
@@ -77,7 +93,7 @@ export function useLeadActions(lead: StoredLead | undefined) {
   const email = async () => {
     if (!lead) return;
     if (!lead.email?.trim()) {
-      Alert.alert('No email', 'This lead was captured without an email address.');
+      fail('No email', 'This lead was captured without an email address.');
       return;
     }
     const body = emailTemplate?.body ?? 'Hi {{name}}, thank you for stopping by our stall.';
@@ -87,7 +103,7 @@ export function useLeadActions(lead: StoredLead | undefined) {
       renderTemplate(body, mergeContext)
     );
     if (!outcome.ok) {
-      Alert.alert('Cannot open mail', outcome.message);
+      fail('Cannot open mail', outcome.message);
       return;
     }
     if (user) {
@@ -127,10 +143,7 @@ export function useLeadActions(lead: StoredLead | undefined) {
     });
 
     if (!outcome.ok) {
-      Alert.alert(
-        outcome.reason === 'permission' ? 'Contacts is off' : 'Could not save',
-        outcome.message
-      );
+      fail(outcome.reason === 'permission' ? 'Contacts is off' : 'Could not save', outcome.message);
       return;
     }
     // The contact form reports dismissal, not Save — so this records that the
@@ -153,5 +166,36 @@ export function useLeadActions(lead: StoredLead | undefined) {
     canCall: Boolean(lead?.phone?.trim()),
     canWhatsApp: Boolean(whatsappDigits(lead?.phone)),
     canEmail: Boolean(lead?.email?.trim()),
+
+    /**
+     * The finished message and the link to it.
+     *
+     * The web needs both as values rather than as an action: a send there is a
+     * real `<a>` inside the click (a programmatic open after an await is
+     * popup-blocked), and "Copy message" needs the text itself.
+     */
+    whatsappText: renderTemplate(
+      whatsappTemplate?.body ?? 'Hi {{name}}, great meeting you at {{event}}.',
+      mergeContext
+    ),
+    whatsappHref: whatsappUrl(
+      lead?.phone,
+      renderTemplate(
+        whatsappTemplate?.body ?? 'Hi {{name}}, great meeting you at {{event}}.',
+        mergeContext
+      )
+    ),
+    /** Records the send the web just handed over, since no outcome comes back. */
+    noteWhatsAppOpened: () => {
+      if (!lead || !user) return;
+      void recordSend({
+        leadId: lead.id,
+        sentBy: user.id,
+        channel: 'whatsapp',
+        templateUsed: whatsappTemplate?.name,
+        templateId: whatsappTemplate?.id,
+        status: 'sent',
+      });
+    },
   };
 }
