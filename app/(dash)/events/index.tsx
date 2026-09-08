@@ -8,7 +8,7 @@ import { useEvents } from '../../../hooks/useEvents';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { formatPaise } from '../../../lib/db';
 
-const COLS = [1.6, 1, 0.95, 0.6, 0.5, 0.7, 0.5];
+const COLS = [1.6, 1, 0.95, 0.6, 0.5, 0.7, 0.75];
 
 function dateRange(start: string, end: string) {
   const fmt = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -42,14 +42,14 @@ export default function DashEvents() {
                 cols={COLS}
                 last={i === events.length - 1}
                 cells={[
-                  <View>
-                    <Typography className="text-[14px] font-semibold text-navy" numberOfLines={1}>
+                  <Pressable onPress={() => router.push(`/(dash)/events/${e.id}`)}>
+                    <Typography className="text-[14px] font-semibold text-blue" numberOfLines={1}>
                       {e.name}
                     </Typography>
                     {e.stallNumber ? (
                       <Typography className="text-[11.5px] text-label mt-[2px]">Stall {e.stallNumber}</Typography>
                     ) : null}
-                  </View>,
+                  </Pressable>,
                   e.city || '—',
                   dateRange(e.startDate, e.endDate),
                   <StatusChip value={e.status} />,
@@ -58,16 +58,22 @@ export default function DashEvents() {
                     {/* totalCost is rupees; formatPaise wants paise. */}
                     {formatPaise(e.totalCost * 100, { fallback: 'Not added' })}
                   </Typography>,
-                  isAdmin ? (
+                  <View className="flex-row gap-2 justify-end">
                     <Pressable
-                      onPress={() => router.push(`/(dash)/events/${e.id}/edit`)}
-                      className="self-end px-3 py-[7px] rounded-sm border border-hairline bg-white"
+                      onPress={() => router.push(`/(dash)/events/${e.id}/roi`)}
+                      className="px-3 py-[7px] rounded-sm border border-hairline bg-white"
                     >
-                      <Typography className="text-[12.5px] font-semibold text-navy">Edit</Typography>
+                      <Typography className="text-[12.5px] font-semibold text-navy">ROI</Typography>
                     </Pressable>
-                  ) : (
-                    <View />
-                  ),
+                    {isAdmin ? (
+                      <Pressable
+                        onPress={() => router.push(`/(dash)/events/${e.id}/edit`)}
+                        className="px-3 py-[7px] rounded-sm border border-hairline bg-white"
+                      >
+                        <Typography className="text-[12.5px] font-semibold text-navy">Edit</Typography>
+                      </Pressable>
+                    ) : null}
+                  </View>,
                 ]}
               />
             ))}

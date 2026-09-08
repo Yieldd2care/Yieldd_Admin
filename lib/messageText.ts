@@ -43,6 +43,33 @@ export const MERGE_FIELDS = [
   { token: '{{sender_company}}', label: 'Your company' },
 ] as const;
 
+/**
+ * The one place a merge context is assembled.
+ *
+ * This object was written out by hand in three screens, and each carried a
+ * comment about the same class of bug: a subject rendered with fewer fields
+ * than its body, because one copy drifted. A fourth copy was about to be
+ * written for the web dashboard, so it lives here now instead.
+ *
+ * `event` must be **the lead's own event**, not whichever event the app happens
+ * to be pointed at. A follow-up once went out naming the wrong show because of
+ * that, and it supplies two of the six fields — the name and the stall.
+ */
+export function buildMergeContext(
+  lead: { name?: string | null; company?: string | null } | null | undefined,
+  event: { name?: string | null; stallNumber?: string | null } | null | undefined,
+  user: { name?: string | null; company?: string | null } | null | undefined
+): MergeContext {
+  return {
+    name: lead?.name,
+    company: lead?.company,
+    event: event?.name,
+    stall: event?.stallNumber,
+    sender: user?.name,
+    senderCompany: user?.company,
+  };
+}
+
 /** Every `{{…}}` in a piece of text, in the order it appears, without repeats. */
 export function mergeTokensIn(text: string): string[] {
   const found = text.match(/\{\{[^}]*\}\}/g) ?? [];

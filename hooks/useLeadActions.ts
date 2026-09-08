@@ -10,6 +10,7 @@ import {
   openWhatsApp,
   renderTemplate,
   whatsappDigits,
+  buildMergeContext,
 } from '../lib/messaging';
 import { recordSend } from '../lib/api/messageSends';
 import { saveLeadToContacts } from '../lib/contacts';
@@ -45,14 +46,7 @@ export function useLeadActions(lead: StoredLead | undefined) {
   const { template: whatsappTemplate } = useEventTemplate(eventId, 'whatsapp');
   const { template: emailTemplate } = useEventTemplate(eventId, 'email');
 
-  const mergeContext = {
-    name: lead?.name,
-    company: lead?.company,
-    event: event?.name,
-    stall: event?.stallNumber,
-    sender: user?.name,
-    senderCompany: user?.company,
-  };
+  const mergeContext = buildMergeContext(lead, event, user);
 
   const call = async () => {
     if (!lead) return;

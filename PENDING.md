@@ -7,7 +7,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done (move to Done se
 
 ---
 
-## Status board — updated 2026-09-02
+## Status board — updated 2026-09-08
 
 Working order agreed 2026-09-02. Solving one at a time, top down.
 Full diagnosis for each is in its numbered section below.
@@ -34,7 +34,7 @@ Full diagnosis for each is in its numbered section below.
 | 7 | Password reset | A merge to master; until then the emailed link 404s |
 | — | App Links | Android SHA-256 fingerprint + Apple Team ID |
 | — | EAS build | A Yieldd-owned Expo account (blocks Google sign-in testing) |
-| — | Play billing | Sell-on-web vs Play Billing, before Phase 4 starts |
+| 27a | Play billing | Sell-on-web vs Play Billing. Now a submission blocker, not a Phase 4 one |
 
 **Decisions taken 2026-09-02:** edit-event covers everything asked at creation · back of card is
 an optional second shot, not compulsory · branch address becomes a new field.
@@ -51,7 +51,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 | Order | # | Correction | Status |
 |---|---|---|---|
 | 1 | 21 | Events — no Create event, no Edit event | `[x]` done 2026-09-08 |
-| 2 | 26 | Events — no way to reach ROI, no per-event download | `[ ]` |
+| 2 | 26 | Events — no way to reach ROI, no per-event download | `[x]` done 2026-09-08 |
 | 3 | 24 | Team — no Invite member button | `[ ]` |
 | 4 | 23 | Templates — read-only, no New template | `[ ]` |
 | 5 | 22 | Follow-ups — no way to act on a due follow-up | `[ ]` |
@@ -59,7 +59,138 @@ act on it. Six gaps, all "the screen is there, the button is not".
 
 ---
 
+**Play Store legal + billing queue — reported 2026-09-08**
+
+An external review of the published privacy policy and terms. Four blockers plus five
+smaller corrections. Every one of them touches **both** the web pages and the app — the app
+links to these same pages, and the Play data safety form has to match them word for word.
+
+| Order | # | Correction | Status |
+|---|---|---|---|
+| 1 | 27a | Play billing — decide sell-on-web, then strip every purchase button from the app | `[ ]` |
+| 2 | 27b | /privacy, /terms, /delete-account must render without JavaScript | `[ ]` |
+| 3 | 27c | Deletion section — the link that renders as plain text | `[ ]` |
+| 4 | 27d | /delete-account — reachable, self-serve, and named in the data safety form | `[ ]` |
+| 5 | 27e | Contacts, camera and microphone are never named in the policy | `[ ]` |
+| 6 | 27f | Two DPDP rights missing — withdraw consent, nominate | `[ ]` |
+| 7 | 27g | Terms promise export at any time; the pricing deck locks it behind Pro | `[ ]` |
+| 8 | 27h | Verify the no-training claim against the actual Anthropic/Deepgram plan | `[ ]` |
+
+---
+
 ## Open
+
+### 27. Privacy policy / Terms review before Play submission — reported 2026-09-08
+
+External review of the live [/privacy](app/(web)/privacy.tsx) and [/terms](app/(web)/terms.tsx)
+pages. **Scope note from you: fix whatever is needed in the web app *and* the app — the goal is
+an upload Play will accept.** Nothing here is started; this section is the note, not the fix.
+
+Everything below was checked against the source, and the checks changed two of the findings —
+see 27c and 27d, where the code is not in the state the reviewer assumed. The rest stand.
+
+---
+
+#### 27a. Google Play billing — the one that is not about the documents
+Play's Payments policy names "cloud software and services, such as data storage services,
+business productivity software" as purchases that **must** use Google Play Billing. Yieldd Pro
+is squarely that, so the **"Pay with UPI" button in the upgrade modal** of the monetization copy
+deck is a direct conflict. This is the same decision already parked under *App store readiness →
+Google Play billing* and under *Blocked on you* in the board; the review turns it from a Phase 4
+question into a submission blocker, because the copy deck describes a flow that would be
+rejected.
+
+- **The route the reviewer recommends, and the one already recommended here:** take payment on
+  **yieldd.co only**. The Android app then does nothing but sign in — **no purchase button, no
+  price, no "Upgrade" link, no modal**. Play polices the link as hard as the button.
+- **What that changes, and it is not small:** the upgrade modal in the copy deck goes; the
+  paywall becomes an explanation with no call to action; anywhere a Free limit is hit, the app
+  can say what Pro includes but cannot route you to buy it.
+- **Decide this before Phase 4 writes any of it**, not after a rejection.
+
+#### 27b. The pages still need JavaScript to render anything
+Unchanged since it was first raised. [vercel.json](vercel.json) rewrites
+`/((?!\.well-known/).*)` to `/index.html`, so every legal route is the Expo web SPA shell — an
+empty page until the bundle boots. A reviewer with JS off, and every crawler, sees nothing.
+
+- **Serve `/privacy` and `/terms` as real static HTML**, and `/delete-account` with them (27d).
+- The obvious shape: pre-rendered files under `public/` with `vercel.json` rewrites that exclude
+  those three paths the way `.well-known/` is already excluded. Whatever the method, the test is
+  `curl` returning the actual words with no browser involved.
+
+#### 27c. The deletion-section sentence — **the link is there in source, and still renders as text**
+The reviewer read this as link text that lost its link:
+
+> What deletion removes, in full, including what is kept when a colleague carries on running the
+> organisation, and how to ask if you can no longer sign in.
+
+**It is not missing.** [app/(web)/privacy.tsx:169](app/(web)/privacy.tsx#L169) wraps the first
+clause in `<LegalLink href="/delete-account">`. The reviewer is right about the *effect* and
+wrong about the cause, and the cause is worse:
+
+- [components/web/LegalPage.tsx:89-98](components/web/LegalPage.tsx#L89-L98) builds `LegalLink`
+  as a `Typography` with **`onPress={() => router.push(href)}`**. On the web that is a `div` with
+  a click handler — **no `<a>`, no `href` in the DOM**. It is not copyable, not right-clickable,
+  invisible to a crawler, and dead with JS off (27b). Styled gold and underlined, so it *looks*
+  like a link and behaves like text.
+- **Fix the component, not the sentence** — every legal link on both pages goes through it. It
+  needs to emit a real anchor (expo-router's `Link`, or a plain `<a>` on web) with the `href`
+  present in the markup.
+- The sentence itself also reads better with the clause promoted; check it once the link works.
+
+#### 27d. A web page for account deletion — **the route exists, so the gap is elsewhere**
+Play requires a **publicly reachable URL** where someone can request deletion **without
+installing the app**, entered separately in the Data Safety form. The reviewer says there is no
+such page. [app/(web)/delete-account.tsx](app/(web)/delete-account.tsx) exists and is already
+recorded as "the public URL Play Console asks for".
+
+So the work is to find out why it read as absent, and it is at least these:
+
+- It is behind the same SPA rewrite (27b), so it does not exist to anyone without JS.
+- The only pointer to it from `/privacy` is the dead pseudo-link in 27c.
+- **Read the page before writing anything else** and check it actually offers a *request* path
+  for someone who **cannot sign in** — the policy currently describes only Settings → Delete
+  account, which is useless to a person who has lost access. If the page merely explains the
+  in-app flow, it does not satisfy the requirement.
+- Then: the URL goes in the Data Safety form, and `/privacy` links to it properly.
+
+#### 27e. Contacts, camera and microphone are never named
+`grep` over [app/(web)/privacy.tsx](app/(web)/privacy.tsx): **zero** occurrences of "camera",
+"microphone". The policy describes card photos and voice notes without ever saying the app asks
+for camera and microphone access. One line covers both.
+
+- **Contacts is the sensitive one.** Saving a lead to the phone's contacts is Phase 1 scope and
+  the policy never mentions it. Note the wrinkle already recorded under *App store readiness →
+  Fixed on 2026-08-31*: `lib/contacts.ts` **no longer requests contacts permission**, because
+  `presentFormAsync` hands the contact to the system's own new-contact screen and needs none;
+  READ/WRITE_CONTACTS are in `android.blockedPermissions`.
+- **That is still worth a sentence, and it is a favourable one:** the feature ships, the app
+  never reads your contact list, and Play sees no contacts permission. Say that in the policy
+  rather than leaving a reviewer to wonder — and make sure the Data Safety form matches, i.e.
+  **do not** declare a contacts permission the manifest does not carry.
+- Re-check the manifest against this before submitting; if any future code re-adds the request,
+  both documents change with it.
+
+#### 27f. Two DPDP rights are missing
+The Act gives people the right to **withdraw consent as easily as they gave it**, and the right
+to **nominate** someone to exercise their rights on death or incapacity. Neither appears under
+*Your other rights*. Two sentences, next to the existing access/correction paragraph.
+
+#### 27g. Export — a three-way contradiction, now written into a contract
+[app/(web)/terms.tsx:100-103](app/(web)/terms.tsx#L100-L103) says: *"You can export your leads
+from the app at any time — do that before you close an account."* The monetization copy deck
+locks export behind Pro. The MVP plan and the UI plan both say export is **not** locked on Free.
+
+- The contradiction predates the documents; the Terms have now made one side of it a promise.
+- **Recommended, and the reviewer agrees:** the UI plan wins — **export stays free**. It is what
+  makes the product feel reversible, and it is the sentence that makes the Terms' "closing
+  deletes the data" honest.
+- Then correct the monetization deck, not the Terms.
+
+#### 27h. Verify the no-training claim rather than assuming it
+[app/(web)/privacy.tsx:113](app/(web)/privacy.tsx#L113) states our providers may not "use it to
+train their models". True of Anthropic's and Deepgram's standard API terms — **check it holds for
+the specific plan and account we are on**, because it is now in writing on a public page.
 
 ### 21. Web dashboard — Events is a list you cannot add to — reported 2026-09-07, DONE 2026-09-08
 
@@ -133,7 +264,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
   scope, which is why the dashboard does not offer one. Adding an event dropdown is a UI change;
   adding "all events" would need a new scope in [lib/api/exportLeads.ts](lib/api/exportLeads.ts).
 
-### 26. Web dashboard — no route to ROI, and no per-event download — reported 2026-09-07
+### 26. Web dashboard — no route to ROI, and no per-event download — reported 2026-09-07, DONE 2026-09-08
 
 - **Where:** [app/(dash)/events.tsx](app/(dash)/events.tsx)
 - **What is missing:** an event row is not clickable. There is no event dashboard, no ROI screen,
@@ -148,6 +279,20 @@ act on it. Six gaps, all "the screen is there, the button is not".
   server function, never a count done in the browser.
 - **Design already drawn:** [docs/web-dashboard/EventROI.dc.html](docs/web-dashboard/EventROI.dc.html)
   and `EventDashboard.dc.html`, in the canvas from 2026-09-07.
+- **Fixed 2026-09-08:** an event name in the list opens
+  [app/(dash)/events/[id]/index.tsx](app/(dash)/events/[id]/index.tsx) — stats, capture by hour,
+  leaderboard, spend — and **ROI** on the row or in the header opens
+  [app/(dash)/events/[id]/roi.tsx](app/(dash)/events/[id]/roi.tsx), which also downloads that one
+  event's CSV. `DashShell` gained breadcrumbs; these are its first detail pages.
+- **The move that made it possible:** `buildRoiPdfHtml` now lives in [lib/roiPdf.ts](lib/roiPdf.ts).
+  It could not be imported from the phone screen — that file pulls in react-native-view-shot,
+  expo-media-library, expo-print and expo-sharing at the top level, all of which would have landed
+  in the browser bundle. The phone imports it from the new home, unchanged.
+- **Printing on web** is a hidden iframe plus `window.print()`. `printToFileAsync` does not exist on
+  web and a popup window would be blocked.
+- **New suite:** `npm run verify:roi-pdf` — 14 assertions, including that a rep sees a dash and never
+  ₹0, that bar widths come from `barWidth` not `shareOfTotal`, and a guard that fails if a native
+  import returns to the shared module.
 
 
 ### 20. Export Leads hides an event that already has leads — reported 2026-09-02
@@ -825,7 +970,7 @@ be an automatic rejection, so neither store can be submitted to until they are d
   Address · Photos or Videos · Audio Data · Other User Content (notes and transcripts) ·
   User ID. Nothing is collected for advertising or analytics.
 
-#### Google Play billing — DECIDE BEFORE BUILDING PHASE 4
+#### Google Play billing — DECIDE BEFORE BUILDING PHASE 4 (see 27a — raised again 2026-09-08)
 Play requires **Google Play Billing** for anything digital bought and used inside the app. A
 Pro plan that unlocks app features is exactly that, so selling it through Razorpay in the
 Android build is a Payments policy violation — rejection, or removal later. Razorpay was

@@ -9,7 +9,7 @@ import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCurrentEvent, useEvent } from '../../../hooks/useEvents';
 import { useEventTemplate } from '../../../hooks/useMessageTemplates';
-import { openEmail, openWhatsApp, renderTemplate } from '../../../lib/messaging';
+import { buildMergeContext, openEmail, openWhatsApp, renderTemplate } from '../../../lib/messaging';
 import { completeBatch, recordSend, startBatch } from '../../../lib/api/messageSends';
 
 /**
@@ -86,14 +86,7 @@ export default function SendQueueScreen() {
   // One context for both. The subject used to be rendered with three of the
   // five fields, so a subject line using {{sender}} lost the name here while
   // keeping it when sent from the lead detail screen.
-  const mergeContext = {
-    name: lead?.name,
-    company: lead?.company,
-    event: leadEvent?.name,
-    stall: leadEvent?.stallNumber,
-    sender: user?.name,
-    senderCompany: user?.company,
-  };
+  const mergeContext = buildMergeContext(lead, leadEvent, user);
 
   const message = lead && template ? renderTemplate(template.body, mergeContext) : '';
 

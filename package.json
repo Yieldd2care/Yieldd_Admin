@@ -67,6 +67,7 @@
     "db:types": "supabase gen types typescript --linked --schema public > types/database.ts",
     "typecheck": "tsc --noEmit",
     "verify:roi": "node scripts/verify-roi.mjs",
+    "verify:roi-pdf": "node scripts/verify-roi-pdf.mjs",
     "verify:stats": "node --env-file=.env scripts/verify-stats.mjs",
     "verify:card": "node --env-file=.env scripts/verify-card-scan.mjs",
     "compare:card-models": "node --env-file=.env scripts/compare-card-models.mjs",

@@ -5,13 +5,15 @@ import { DashShell } from '../../components/dash/DashShell';
 import { Cap, Empty, Panel, Pill } from '../../components/dash/primitives';
 import { Typography } from '../../components/ui/Typography';
 import { useTemplates } from '../../hooks/useMessageTemplates';
+import { MERGE_FIELDS } from '../../lib/messageText';
 
 /**
- * The six tokens the sender actually replaces. Anything else in double braces
- * goes out as literal text, which is what made two invented ones ship once —
- * so the list is shown rather than left to memory.
+ * Read from MERGE_FIELDS rather than typed out here. A hand-written copy of
+ * this list is exactly how `{{senderCompany}}` — which is not a real token —
+ * came to be advertised on this screen; the real one is `{{sender_company}}`.
+ * Anything else in double braces goes out as literal text.
  */
-const TOKENS = ['{{name}}', '{{company}}', '{{event}}', '{{stall}}', '{{sender}}', '{{senderCompany}}'];
+const TOKENS = MERGE_FIELDS.map((f) => f.token);
 
 export default function DashTemplates() {
   const [channel, setChannel] = useState<'whatsapp' | 'email'>('whatsapp');

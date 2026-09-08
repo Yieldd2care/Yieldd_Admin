@@ -10,7 +10,7 @@ import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCurrentEvent, useEvent } from '../../../hooks/useEvents';
 import { useEventTemplate } from '../../../hooks/useMessageTemplates';
-import { renderTemplate, whatsappDigits } from '../../../lib/messaging';
+import { buildMergeContext, renderTemplate, whatsappDigits } from '../../../lib/messaging';
 
 /**
  * Picking who gets a follow-up.
@@ -95,14 +95,7 @@ export default function BulkSendScreen() {
   const { template } = useEventTemplate(previewEventId, channel);
 
   // One context for the body and the subject alike — see the subject below.
-  const mergeContext = {
-    name: previewLead?.name,
-    company: previewLead?.company,
-    event: previewEvent?.name,
-    stall: previewEvent?.stallNumber,
-    sender: user?.name,
-    senderCompany: user?.company,
-  };
+  const mergeContext = buildMergeContext(previewLead, previewEvent, user);
   const preview = template ? renderTemplate(template.body, mergeContext) : '';
 
   const start = () => {

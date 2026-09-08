@@ -59,11 +59,18 @@ export function DashShell({
   title,
   subtitle,
   actions,
+  breadcrumb,
   children,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
+  /**
+   * The trail back out of a detail page — `[{ label: 'Events', href: '/(dash)/events' }]`.
+   * The dashboard's list screens are all top level, so until now there was
+   * nowhere to go back to; ROI, the event dashboard and Edit need one.
+   */
+  breadcrumb?: { label: string; href: string }[];
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -130,6 +137,22 @@ export function DashShell({
       <View className="flex-1 min-w-0">
         <View className="bg-white border-b border-hairline px-8 py-5 flex-row items-center justify-between">
           <View className="min-w-0">
+            {breadcrumb?.length ? (
+              <View className="flex-row items-center gap-[6px] mb-[6px]">
+                {breadcrumb.map((crumb) => (
+                  <View key={crumb.href} className="flex-row items-center gap-[6px]">
+                    <Link href={crumb.href as never} asChild>
+                      <Pressable>
+                        <Typography className="text-[12.5px] font-semibold text-blue">{crumb.label}</Typography>
+                      </Pressable>
+                    </Link>
+                    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#97A3B8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="m9 18 6-6-6-6" />
+                    </Svg>
+                  </View>
+                ))}
+              </View>
+            ) : null}
             <Typography className="text-[26px] font-extrabold text-navy tracking-tight">{title}</Typography>
             {subtitle ? <Typography className="text-[13px] text-slate mt-[3px]">{subtitle}</Typography> : null}
           </View>
