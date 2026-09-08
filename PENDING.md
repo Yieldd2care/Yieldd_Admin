@@ -34,7 +34,7 @@ Full diagnosis for each is in its numbered section below.
 | 7 | Password reset | A merge to master; until then the emailed link 404s |
 | — | App Links | Android SHA-256 fingerprint + Apple Team ID |
 | — | EAS build | A Yieldd-owned Expo account (blocks Google sign-in testing) |
-| 27a | Play billing | Sell-on-web vs Play Billing. Now a submission blocker, not a Phase 4 one |
+| ~~27a~~ | ~~Play billing~~ | **DECIDED 2026-09-08 — sell on yieldd.co only. Not blocked any more; it is now code to remove.** |
 
 **Decisions taken 2026-09-02:** edit-event covers everything asked at creation · back of card is
 an optional second shot, not compulsory · branch address becomes a new field.
@@ -52,7 +52,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 |---|---|---|---|
 | 1 | 21 | Events — no Create event, no Edit event | `[x]` done 2026-09-08 |
 | 2 | 26 | Events — no way to reach ROI, no per-event download | `[x]` done 2026-09-08 |
-| 3 | 24 | Team — no Invite member button | `[ ]` |
+| 3 | 24 | Team — no Invite member button | `[x]` done 2026-09-08 |
 | 4 | 23 | Templates — read-only, no New template | `[ ]` |
 | 5 | 22 | Follow-ups — no way to act on a due follow-up | `[ ]` |
 | 6 | 25 | Export — only the current event, not a choice of events | `[ ]` |
@@ -67,12 +67,12 @@ links to these same pages, and the Play data safety form has to match them word 
 
 | Order | # | Correction | Status |
 |---|---|---|---|
-| 1 | 27a | Play billing — decide sell-on-web, then strip every purchase button from the app | `[ ]` |
+| 1 | 27a | Play billing — **decided 2026-09-08: sell on web only.** Strip purchase from the app | `[ ]` |
 | 2 | 27b | /privacy, /terms, /delete-account must render without JavaScript | `[ ]` |
-| 3 | 27c | Deletion section — the link that renders as plain text | `[ ]` |
+| 3 | 27c | Deletion section — the link that renders as plain text | `[~]` sentence fixed 2026-09-08, anchor still not an `<a>` |
 | 4 | 27d | /delete-account — reachable, self-serve, and named in the data safety form | `[ ]` |
-| 5 | 27e | Contacts, camera and microphone are never named in the policy | `[ ]` |
-| 6 | 27f | Two DPDP rights missing — withdraw consent, nominate | `[ ]` |
+| 5 | 27e | Contacts, camera and microphone are never named in the policy | `[x]` done 2026-09-08 |
+| 6 | 27f | Two DPDP rights missing — withdraw consent, nominate | `[x]` done 2026-09-08 |
 | 7 | 27g | Terms promise export at any time; the pricing deck locks it behind Pro | `[ ]` |
 | 8 | 27h | Verify the no-training claim against the actual Anthropic/Deepgram plan | `[ ]` |
 
@@ -91,6 +91,31 @@ see 27c and 27d, where the code is not in the state the reviewer assumed. The re
 
 ---
 
+---
+
+**Document text updated 2026-09-08** — the wording changes in 27c, 27e and 27f are written.
+Both pages now say *Last updated 8 September 2026*. `npx tsc --noEmit` clean.
+
+- **New section in the policy, [What the app asks your permission for](app/(web)/privacy.tsx)** —
+  camera, microphone, photos and contacts, each with what it is for and when it is asked.
+- **Camera is described as card photography only**, because that is all it is:
+  `useCameraPermissions` appears once, in [app/(app)/capture/camera.tsx](app/(app)/capture/camera.tsx).
+  The QR tab shows a code, it does not scan one — worth re-reading this line if QR scanning is
+  ever added.
+- **Contacts is written as a favourable fact, not an admission**: the feature ships, the phone's
+  own new-contact screen does the writing, Yieldd never reads the contact list and the app asks
+  for no contacts permission. It matches `blockedPermissions` in [app.json:62-64](app.json#L62-L64).
+  **The Data Safety form must agree — do not declare a contacts permission we do not carry.**
+- **Withdraw consent and nominate** are two new paragraphs under *Your other rights*. Nomination
+  is handled by email against the account; there is no nomination screen and none is promised.
+- **The deletion sentence has a verb now** — "Our account deletion page sets out what deletion
+  removes in full…". It reads correctly even while the link still renders as plain text.
+- **Terms, *Ending it*** now points at Settings › Delete account first and email second, since a
+  reviewer reads that section for the deletion path. The export sentence was left alone: there is
+  no plan gating in any of the three export screens, so the Terms are already true (27g).
+- **Still open on this:** 27c's real cause — `LegalLink` is a `Typography` with `onPress`, not an
+  anchor — is untouched, and lands with the static-HTML work in 27b.
+
 #### 27a. Google Play billing — the one that is not about the documents
 Play's Payments policy names "cloud software and services, such as data storage services,
 business productivity software" as purchases that **must** use Google Play Billing. Yieldd Pro
@@ -107,6 +132,32 @@ rejected.
   paywall becomes an explanation with no call to action; anywhere a Free limit is hit, the app
   can say what Pro includes but cannot route you to buy it.
 - **Decide this before Phase 4 writes any of it**, not after a rejection.
+
+**DECIDED 2026-09-08 — sell on yieldd.co only.** You chose the web-only route, so Play Billing is
+off the table and Yieldd keeps 100% of every sale. This closes a decision that had been sitting in
+*Blocked on you* since 2026-08-31.
+
+**What has to come out of the Android app.** Nothing here is done yet.
+
+- [app/(app)/(modals)/upgrade.tsx](app/(app)/(modals)/upgrade.tsx) — the whole modal. It carries
+  the **Pay with UPI** button (line 51) and the **₹10,000 per event** price. Both are the
+  violation, not just the button.
+- [app/(app)/payment/success.tsx](app/(app)/payment/success.tsx) and
+  [app/(app)/payment/failure.tsx](app/(app)/payment/failure.tsx) — a purchase result with no
+  purchase to result from. `failure.tsx` also routes back into the modal twice.
+- The three routes into it: [profile.tsx:154](app/(app)/(tabs)/profile.tsx#L154) (the Upgrade
+  chip), [voice.tsx:190](app/(app)/capture/voice.tsx#L190), and `failure.tsx`.
+- **A link is policy-breaking too.** Do not replace the button with "upgrade at yieldd.co" —
+  Google treats the link exactly as it treats the button. The paywall becomes an explanation with
+  **no call to action at all**.
+- **What stays.** The limit messages are fine and should not be touched: `lib/api/events.ts:43`,
+  `lib/api/voiceNotes.ts:101`, `settings/team.tsx:73`. They say what the plan covers, which is
+  allowed; only "here is how to pay" is not. Re-read their wording once the modal is gone so none
+  of them dead-ends at a screen that no longer exists.
+- **Also:** `Plan & billing` in profile.tsx:167 currently alerts "isn't wired up yet". On the
+  web-only route it should never become a purchase screen in the app.
+- **The pricing number is still unsettled** — see #11. Removing the modal removes the app's copy
+  of ₹10,000, but the website will need whatever number you land on.
 
 #### 27b. The pages still need JavaScript to render anything
 Unchanged since it was first raised. [vercel.json](vercel.json) rewrites
@@ -241,7 +292,7 @@ the specific plan and account we are on**, because it is now in writing on a pub
 - **Keep:** the six real tokens stay the only ones offered. Two invented ones were being sent once
   (#15) and the legend is what stops that coming back.
 
-### 24. Web dashboard — Team has no Invite button — reported 2026-09-07
+### 24. Web dashboard — Team has no Invite button — reported 2026-09-07, DONE 2026-09-08
 
 - **Where:** [app/(dash)/team.tsx](app/(dash)/team.tsx)
 - **What is missing:** an admin can see members, seats and roles, and can invite nobody. No
@@ -252,6 +303,21 @@ the specific plan and account we are on**, because it is now in writing on a pub
   that needs a different ending — show the invite link with a Copy button, or send the invite
   email — since there is no WhatsApp app to hand it to.
 - **Guard:** admin only, and refuse past `organizations.seats`.
+- **Fixed 2026-09-08:** [app/(dash)/team.tsx](app/(dash)/team.tsx) gained an admin-only invite panel
+  (repeating name + phone rows), Deactivate / Restore on members, Revoke on pending invites, and a
+  "Waiting to join" table. New hook `useCreateInvites` in [hooks/useTeam.ts](hooks/useTeam.ts) takes
+  the organisation id and inviter from the session rather than the caller, as `useCreateEvent` does.
+- **Delivery is an anchor, not `Linking.openURL`.** The phone opens WhatsApp *after* awaiting the
+  insert, which in a browser runs outside the click gesture and is silently popup-blocked — and
+  because the promise still resolves, the phone marks it "Sent" regardless. The web renders a real
+  `<a target="_blank" rel="noopener">` plus Copy link and Copy message, and claims nothing was sent.
+  Verified in a browser: the href is `https://wa.me/919820441720?text=…`, country code repaired by
+  `whatsappDigits`.
+- **Confirmations use [ConfirmDialog](components/dash/ConfirmDialog.tsx), never `Alert.alert`** —
+  react-native-web ships `Alert` as an empty function, so a ported confirmation silently does nothing.
+- **Seats are still not enforced** and this does not pretend otherwise: the panel shows an honest
+  "you are over your seats" note and blocks nothing, matching the phone. Real enforcement would need
+  an RPC or constraint and is a separate decision.
 
 ### 25. Web dashboard — Export only knows about the current event — reported 2026-09-07
 
