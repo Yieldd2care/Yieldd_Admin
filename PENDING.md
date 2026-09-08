@@ -57,6 +57,15 @@ act on it. Six gaps, all "the screen is there, the button is not".
 | 5 | 22 | Follow-ups — no way to act on a due follow-up | `[x]` done 2026-09-08 |
 | 6 | 25 | Export — only the current event, not a choice of events | `[x]` done 2026-09-08 |
 
+**Reported 2026-09-08, not started**
+
+| Order | # | Correction | Status |
+|---|---|---|---|
+| 1 | 28 | Phone screens are reachable in a browser and look wrong there | `[ ]` |
+| 2 | 29 | No lead detail page on the web | `[ ]` |
+| 3 | 30 | Phone Follow-ups opens the wrong WhatsApp chat, records no send | `[ ]` |
+| 4 | 31 | Seats are not enforced anywhere | `[ ]` |
+
 ---
 
 **Play Store legal + billing queue — reported 2026-09-08**
@@ -79,6 +88,62 @@ links to these same pages, and the Play data safety form has to match them word 
 ---
 
 ## Open
+
+### 28. Phone screens render in the browser, stretched and half-broken — reported 2026-09-08
+
+- **Where:** [app/(app)/_layout.tsx](app/(app)/_layout.tsx) — there is **no `Platform.OS` guard**, so
+  every `(app)` route is reachable in a browser by URL. `(dash)/_layout.tsx` guards the other
+  direction (native → `(app)`), but nothing stops the reverse.
+- **Reported as:** the ROI dashboard opened on the web showing the phone layout — a back chevron
+  instead of the dashboard chrome, cards stretched across the full monitor, a full-width
+  "Share as image" bar. It looks unfinished next to the rest of the dashboard.
+- **Worse than cosmetic:** that screen's two export buttons cannot work in a browser at all.
+  `Share as image` is `captureRef` (react-native-view-shot, no real web build) plus
+  `MediaLibrary.saveToLibraryAsync` (**no web implementation whatsoever**), and the PDF button is
+  `Print.printToFileAsync`, unsupported on web. All three failure paths then call `Alert.alert`,
+  which react-native-web ships as an empty function — so the buttons do nothing and say nothing.
+- **The web equivalents already exist** as of #26: [app/(dash)/events/[id]/roi.tsx](app/(dash)/events/[id]/roi.tsx)
+  and `.../index.tsx`, which print through a hidden iframe and download a real CSV.
+- **The fix is a redirect, not a redesign.** `(app)/_layout.tsx` should send a web visitor to the
+  matching `(dash)` route where one exists, and the onboarding/capture screens that legitimately have
+  no dashboard equivalent should stay. Worth listing which `(app)` routes a browser may keep before
+  writing it — capture/camera and capture/voice need a device, so they belong on the phone anyway.
+
+### 29. No lead detail page on the web — reported 2026-09-08
+
+- **Where:** `app/(dash)/leads.tsx` is a flat table; there is no `app/(dash)/leads/[id]`.
+- **Consequence:** a lead cannot actually be *worked* in the browser. #22 left "Open lead" out of
+  Follow-ups for this reason and expands the row instead.
+- **What it needs:** the fields, the note, the voice note, the activity timeline, and the status /
+  deal-value flow — remembering that Qualified and Won are refused by
+  `leads_qualified_requires_value` / `leads_won_requires_value` unless a value is written in the same
+  operation, which is why the phone routes both through the deal-value modal rather than writing
+  status first.
+
+### 30. The phone's Follow-ups screen opens the wrong WhatsApp chat — reported 2026-09-08
+
+- **Where:** [app/(app)/follow-ups/index.tsx](app/(app)/follow-ups/index.tsx) — a local `waDigits()`
+  that is `replace(/\D/g,'')` with **no country-code repair**. A ten-digit Indian mobile becomes
+  `https://wa.me/9820441720`, which resolves to the wrong chat or none. `whatsappDigits()` in
+  [lib/messageText.ts](lib/messageText.ts) prefixes `91` and is what every other screen uses.
+- **Second defect, same screen:** it never calls `recordSend`, so every WhatsApp opened from
+  Follow-ups is invisible in `message_sends` and the send history under-reports.
+- **Also:** its message is a hardcoded string, not the event's template.
+- **The fix is to use `useLeadActions`,** which does all three correctly — the web Follow-ups screen
+  was built on it for exactly this reason (#22). Left alone here only because it is mobile code.
+
+### 31. Seats are not enforced anywhere — reported 2026-09-08
+
+- **Where:** nowhere, which is the point. No RPC check, no CHECK constraint, no trigger.
+  `app/(app)/settings/team.tsx` and [app/(dash)/team.tsx](app/(dash)/team.tsx) both compute
+  `seats_included + seats_purchased` client-side and render a warning string; `createInvites` and
+  `handle_new_user()` accept an invitee regardless.
+- **So an organisation can exceed its plan freely**, on either surface. Both screens say so honestly
+  rather than pretending to block.
+- **Decide before building:** whether the limit refuses the invite, refuses the signup, or is only
+  ever a billing conversation. It belongs in the database if it is meant to be real — a client-side
+  check is a suggestion.
+
 
 ### 27. Privacy policy / Terms review before Play submission — reported 2026-09-08
 
