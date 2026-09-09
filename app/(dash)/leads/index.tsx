@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { DashShell } from '../../components/dash/DashShell';
-import { Empty, GoldButton, Panel, Pill, Row, StatusChip, TempChip } from '../../components/dash/primitives';
-import { Typography } from '../../components/ui/Typography';
-import { useLeadsStore } from '../../stores/useLeadsStore';
+import { DashShell } from '../../../components/dash/DashShell';
+import { Empty, GoldButton, Panel, Pill, Row, StatusChip, TempChip } from '../../../components/dash/primitives';
+import { Typography } from '../../../components/ui/Typography';
+import { useLeadsStore } from '../../../stores/useLeadsStore';
 
 type Filter = 'all' | 'hot' | 'warm' | 'cold' | 'due' | 'note' | 'draft';
 
@@ -86,8 +86,8 @@ export default function DashLeads() {
                 cols={COLS}
                 last={i === shown.length - 1}
                 cells={[
-                  <View>
-                    <Typography className="text-[13.5px] font-semibold text-navy" numberOfLines={1}>
+                  <Pressable onPress={() => router.push(`/(dash)/leads/${l.id}`)}>
+                    <Typography className="text-[13.5px] font-semibold text-blue" numberOfLines={1}>
                       {l.name || 'Unnamed'}
                     </Typography>
                     {l.designation ? (
@@ -95,7 +95,7 @@ export default function DashLeads() {
                         {l.designation}
                       </Typography>
                     ) : null}
-                  </View>,
+                  </Pressable>,
                   l.company || '—',
                   l.phone || '—',
                   l.time || '—',

@@ -39,6 +39,15 @@ const EXACT: Record<string, string> = {
  */
 const PATTERNS: { test: RegExp; to: (m: RegExpMatchArray) => string }[] = [
   { test: /^\/events\/new(\/.*)?$/, to: () => '/(dash)/events/new' },
+  /**
+   * A lead's own page. The negative lookahead matters: `/leads/review`,
+   * `/leads/drafts`, `/leads/bulk-send` and `/leads/send-queue` are sibling
+   * screens, not lead ids, and none of them has a dashboard equivalent.
+   */
+  {
+    test: /^\/leads\/(?!review$|drafts$|bulk-send$|send-queue$)([^/]+)$/,
+    to: (m) => `/(dash)/leads/${m[1]}`,
+  },
   { test: /^\/events\/([^/]+)\/roi$/, to: (m) => `/(dash)/events/${m[1]}/roi` },
   { test: /^\/events\/([^/]+)\/edit$/, to: (m) => `/(dash)/events/${m[1]}/edit` },
   { test: /^\/events\/([^/]+)\/dashboard$/, to: (m) => `/(dash)/events/${m[1]}` },

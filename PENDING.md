@@ -62,7 +62,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 | Order | # | Correction | Status |
 |---|---|---|---|
 | 1 | 28 | Phone screens are reachable in a browser and look wrong there | `[x]` done 2026-09-09 |
-| 2 | 29 | No lead detail page on the web | `[ ]` |
+| 2 | 29 | No lead detail page on the web | `[x]` done 2026-09-09 |
 | 3 | 30 | Phone Follow-ups opens the wrong WhatsApp chat, records no send | `[x]` done 2026-09-09 |
 | 4 | 31 | Seats are not enforced anywhere | `[ ]` |
 
@@ -122,7 +122,7 @@ links to these same pages, and the Play data safety form has to match them word 
 - **New suite:** `npm run verify:web-routes` — 31 assertions, most of them guarding the four
   allow-listed cases rather than the redirects.
 
-### 29. No lead detail page on the web — reported 2026-09-08
+### 29. No lead detail page on the web — reported 2026-09-08, DONE 2026-09-09
 
 - **Where:** `app/(dash)/leads.tsx` is a flat table; there is no `app/(dash)/leads/[id]`.
 - **Consequence:** a lead cannot actually be *worked* in the browser. #22 left "Open lead" out of
@@ -132,6 +132,24 @@ links to these same pages, and the Play data safety form has to match them word 
   `leads_qualified_requires_value` / `leads_won_requires_value` unless a value is written in the same
   operation, which is why the phone routes both through the deal-value modal rather than writing
   status first.
+- **Fixed 2026-09-09:** [components/dash/LeadDetail.tsx](components/dash/LeadDetail.tsx), behind the
+  thin route `app/(dash)/leads/[id].tsx`. The list's name column links into it, and #28's table now
+  routes the phone's lead detail here too — with a negative lookahead so `/leads/review`,
+  `/leads/drafts`, `/leads/bulk-send` and `/leads/send-queue` are not mistaken for lead ids.
+- **The deal-value rule is enforced in the UI, not discovered later.** Picking Qualified or Won
+  reveals the value field and Save stays disabled until it is filled; both are written in one patch.
+  A status-first write is refused by the constraint and would surface much later as a sync error.
+- **Two defects in the phone version were not copied:** it pushes `log-outcome` with **no `leadId`**,
+  so logging an outcome from the lead detail screen writes nothing at all — no note, no follow-up
+  date, no history row; and the header's edit button has no handler. Both are still live on mobile
+  and want their own entry.
+- **`lead_activity` has its first reader.** `fetchLeadActivity` in
+  [lib/api/leadActivity.ts](lib/api/leadActivity.ts) — the SELECT policy exists and allows an admin,
+  the capturer, or the assignee, and a refusal returns an empty list rather than breaking the screen.
+  Because nothing has ever written from the buggy path above, the table is likely sparse, so the
+  timeline appends the capture row the lead itself can always describe.
+- **Split as component + route on purpose:** a filename with brackets cannot be imported from
+  anywhere else, which makes the screen impossible to render in a test. The route file is three lines.
 
 ### 30. The phone's Follow-ups screen opens the wrong WhatsApp chat — reported 2026-09-08, DONE 2026-09-09
 

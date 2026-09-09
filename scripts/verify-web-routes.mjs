@@ -107,8 +107,12 @@ eq('voice capture stays', webRedirectFor('/capture/voice'), null);
 
 // --- routes with no dashboard equivalent stay -----------------------------
 eq('the QR tab has no equivalent', webRedirectFor('/qr'), null);
-eq('a lead detail has no equivalent yet (PENDING #29)', webRedirectFor('/leads/lead-1'), null);
-eq('the evening review stays', webRedirectFor('/leads/review'), null);
+eq('a lead detail now has an equivalent', webRedirectFor('/leads/lead-1'), '/(dash)/leads/lead-1');
+// These are sibling screens, not lead ids. A greedy /leads/:id would eat them.
+eq('the evening review is not mistaken for a lead id', webRedirectFor('/leads/review'), null);
+eq('drafts is not a lead id', webRedirectFor('/leads/drafts'), null);
+eq('bulk-send is not a lead id', webRedirectFor('/leads/bulk-send'), null);
+eq('send-queue is not a lead id', webRedirectFor('/leads/send-queue'), null);
 eq('notifications stay', webRedirectFor('/notifications'), null);
 eq('custom fields stay', webRedirectFor('/events/abc-123/fields'), null);
 eq('an unknown path is left alone', webRedirectFor('/something/nobody/added'), null);

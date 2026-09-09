@@ -56,3 +56,63 @@ export async function logLeadActivity(input: ActivityInput): Promise<{ ok: boole
   }
   return { ok: true };
 }
+
+/** One row of a lead's history, ready to render. */
+export type LeadActivity = {
+  id: string;
+  type: Enums<'activity_type'>;
+  outcome: LeadOutcome | null;
+  actorId: string | null;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+};
+
+const ACTIVITY_LABELS: Record<Enums<'activity_type'>, string> = {
+  captured: 'Captured',
+  assigned: 'Assigned',
+  reassigned: 'Reassigned',
+  status_changed: 'Status changed',
+  temperature_set: 'Temperature set',
+  note_added: 'Note added',
+  follow_up_set: 'Follow-up set',
+  outcome_logged: 'Outcome logged',
+  message_sent: 'Message sent',
+  merged_duplicate: 'Merged a duplicate',
+};
+
+/** What to show for a row, with the outcome folded in when there is one. */
+export function activityLabel(row: LeadActivity): string {
+  const base = ACTIVITY_LABELS[row.type] ?? row.type;
+  return row.outcome ? `${base} — ${OUTCOME_LABELS[row.outcome]}` : base;
+}
+
+/**
+ * A lead's history, newest first.
+ *
+ * The first reader this table has ever had — everything until now only wrote
+ * to it, which is why the rows may be sparse. `lead_activity_select` allows an
+ * admin, the person who captured the lead, or whoever it is assigned to; a
+ * refusal comes back as an empty list rather than an error, because a missing
+ * history is not worth breaking the screen over.
+ */
+export async function fetchLeadActivity(leadId: string): Promise<LeadActivity[]> {
+  const { data, error } = await supabase
+    .from('lead_activity')
+    .select('id, activity_type, outcome, actor_id, created_at, metadata')
+    .eq('lead_id', leadId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    if (__DEV__) console.warn('[leadActivity] fetch failed', error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    type: row.activity_type,
+    outcome: row.outcome,
+    actorId: row.actor_id,
+    createdAt: row.created_at,
+    metadata: (row.metadata ?? {}) as Record<string, unknown>,
+  }));
+}
