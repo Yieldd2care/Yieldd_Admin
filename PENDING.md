@@ -63,7 +63,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 |---|---|---|---|
 | 1 | 28 | Phone screens are reachable in a browser and look wrong there | `[x]` done 2026-09-09 |
 | 2 | 29 | No lead detail page on the web | `[ ]` |
-| 3 | 30 | Phone Follow-ups opens the wrong WhatsApp chat, records no send | `[ ]` |
+| 3 | 30 | Phone Follow-ups opens the wrong WhatsApp chat, records no send | `[x]` done 2026-09-09 |
 | 4 | 31 | Seats are not enforced anywhere | `[ ]` |
 
 ---
@@ -133,7 +133,7 @@ links to these same pages, and the Play data safety form has to match them word 
   operation, which is why the phone routes both through the deal-value modal rather than writing
   status first.
 
-### 30. The phone's Follow-ups screen opens the wrong WhatsApp chat — reported 2026-09-08
+### 30. The phone's Follow-ups screen opens the wrong WhatsApp chat — reported 2026-09-08, DONE 2026-09-09
 
 - **Where:** [app/(app)/follow-ups/index.tsx](app/(app)/follow-ups/index.tsx) — a local `waDigits()`
   that is `replace(/\D/g,'')` with **no country-code repair**. A ten-digit Indian mobile becomes
@@ -144,6 +144,12 @@ links to these same pages, and the Play data safety form has to match them word 
 - **Also:** its message is a hardcoded string, not the event's template.
 - **The fix is to use `useLeadActions`,** which does all three correctly — the web Follow-ups screen
   was built on it for exactly this reason (#22). Left alone here only because it is mobile code.
+- **Fixed 2026-09-09**, with your go-ahead to change mobile code. `FollowUpCard` now calls
+  `useLeadActions(lead)` and its local `waDigits`, hardcoded message and `Linking`/`Alert` imports
+  are gone. All three defects close together: `whatsappDigits` prefixes `91`, the event's own
+  template is used, and `recordSend` fires so the send history stops under-reporting.
+- Rendered with seeded leads to confirm the swap changed nothing visible — same rows, same Call and
+  WhatsApp buttons, no console errors.
 
 ### 31. Seats are not enforced anywhere — reported 2026-09-08
 

@@ -1,4 +1,4 @@
-import { Alert, Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -6,6 +6,7 @@ import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { ClockIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { useLeadsStore, type StoredLead } from '../../../stores/useLeadsStore';
+import { useLeadActions } from '../../../hooks/useLeadActions';
 
 /** Midnight local, so "due today" means the whole day rather than this instant. */
 function startOfDay(date: Date): number {
@@ -20,32 +21,27 @@ function dueLabel(followUpDate: string): { text: string; overdue: boolean } {
   return { text: days === -1 ? '1 day overdue' : `${Math.abs(days)} days overdue`, overdue: true };
 }
 
-/** wa.me wants bare digits — no plus, no spaces. */
-function waDigits(phone: string | undefined): string {
-  return (phone ?? '').replace(/\D/g, '');
-}
-
+/**
+ * This screen used to build its own `wa.me` link and its own message, and the
+ * copies had drifted badly from the rest of the app:
+ *
+ *   - its `waDigits` was a bare `replace(/\D/g,'')` with no country-code
+ *     repair, so a ten-digit Indian mobile — which is what is printed on most
+ *     cards here — produced `wa.me/9820441720` and opened the wrong chat, or
+ *     none at all. `whatsappDigits` prefixes `91`.
+ *   - the message was the hardcoded line "following up on our conversation"
+ *     rather than the event's own template, so a rep who had carefully written
+ *     one never saw it used here.
+ *   - nothing was recorded. Every WhatsApp opened from this screen was
+ *     invisible in `message_sends`, which is what the send history and the
+ *     follow-up counts are built from.
+ *
+ * `useLeadActions` does all three correctly and is what every other screen
+ * uses, so this one uses it too.
+ */
 function FollowUpCard({ lead }: { lead: StoredLead }) {
   const { text: when, overdue } = dueLabel(lead.followUpDate as string);
-
-  const call = () => {
-    if (!lead.phone) {
-      Alert.alert('No number', 'This lead was captured without a phone number.');
-      return;
-    }
-    Linking.openURL(`tel:${lead.phone.replace(/\s/g, '')}`).catch(() =>
-      Alert.alert('Call', 'This device cannot place calls.')
-    );
-  };
-
-  const whatsapp = () => {
-    const digits = waDigits(lead.phone);
-    const message = `Hi ${lead.name}, following up on our conversation.`;
-    const url = digits
-      ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
-      : `https://wa.me/?text=${encodeURIComponent(message)}`;
-    Linking.openURL(url).catch(() => Alert.alert('WhatsApp', 'WhatsApp could not be opened.'));
-  };
+  const { call, whatsapp } = useLeadActions(lead);
 
   return (
     <View className={`bg-white border rounded-2xl p-4 mb-3 ${overdue ? 'border-[#C23B3B]/[0.30]' : 'border-hairline'}`}>
