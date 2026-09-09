@@ -61,7 +61,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 
 | Order | # | Correction | Status |
 |---|---|---|---|
-| 1 | 28 | Phone screens are reachable in a browser and look wrong there | `[ ]` |
+| 1 | 28 | Phone screens are reachable in a browser and look wrong there | `[x]` done 2026-09-09 |
 | 2 | 29 | No lead detail page on the web | `[ ]` |
 | 3 | 30 | Phone Follow-ups opens the wrong WhatsApp chat, records no send | `[ ]` |
 | 4 | 31 | Seats are not enforced anywhere | `[ ]` |
@@ -89,7 +89,7 @@ links to these same pages, and the Play data safety form has to match them word 
 
 ## Open
 
-### 28. Phone screens render in the browser, stretched and half-broken — reported 2026-09-08
+### 28. Phone screens render in the browser, stretched and half-broken — reported 2026-09-08, DONE 2026-09-09
 
 - **Where:** [app/(app)/_layout.tsx](app/(app)/_layout.tsx) — there is **no `Platform.OS` guard**, so
   every `(app)` route is reachable in a browser by URL. `(dash)/_layout.tsx` guards the other
@@ -108,6 +108,19 @@ links to these same pages, and the Play data safety form has to match them word 
   matching `(dash)` route where one exists, and the onboarding/capture screens that legitimately have
   no dashboard equivalent should stay. Worth listing which `(app)` routes a browser may keep before
   writing it — capture/camera and capture/voice need a device, so they belong on the phone anyway.
+- **Fixed 2026-09-09:** [lib/webRoutes.ts](lib/webRoutes.ts) maps a de-grouped phone path to its
+  dashboard equivalent, and [app/(app)/_layout.tsx](app/(app)/_layout.tsx) redirects on it. 17 routes
+  move; the six-step `events/new` wizard collapses onto the dashboard's single form.
+- **Placed after the profile-completion guard, deliberately.** Above it, anyone with an incomplete
+  profile would be redirected out of the only screen that can complete it — permanently.
+- **Four things are allow-listed and must stay that way:** `onboarding/*` (the completion guard
+  redirects *into* it), `card/*` (made web-friendly on purpose), `payment/success` and
+  `payment/failure` (**a payment gateway returns a browser to those URLs** — redirecting loses the
+  outcome), and `capture/*` (needs a camera or microphone, and has no dashboard equivalent).
+- **Matching is on the de-grouped path.** `usePathname()` strips group segments, so the table keys
+  are `/events/:id/roi`, never `/(app)/events/:id/roi`. Getting that wrong silently matches nothing.
+- **New suite:** `npm run verify:web-routes` — 31 assertions, most of them guarding the four
+  allow-listed cases rather than the redirects.
 
 ### 29. No lead detail page on the web — reported 2026-09-08
 

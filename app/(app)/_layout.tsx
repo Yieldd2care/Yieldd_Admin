@@ -9,6 +9,7 @@ import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
 import { useSessionStore } from '../../stores/useSessionStore';
 import { useLeadsSync } from '../../hooks/useLeadsSync';
 import { profileNeedsCompletion } from '../../types/session';
+import { webRedirectFor } from '../../lib/webRoutes';
 
 /**
  * Shown when the session is valid but the profile could not be loaded.
@@ -84,6 +85,17 @@ export default function AppLayout() {
   if (profileNeedsCompletion(user) && !pathname.endsWith(COMPLETE_PROFILE)) {
     return <Redirect href="/(app)/onboarding/complete-profile" />;
   }
+
+  // A browser that lands on a phone screen goes to the dashboard's version of
+  // it. Deliberately *after* the completion guard above: put it before, and
+  // anyone with an incomplete profile is redirected out of the only screen
+  // that can complete it, forever.
+  //
+  // Only the routes the dashboard actually has are moved; onboarding, the card
+  // screens, the payment return URLs and anything needing a camera stay where
+  // they are. See lib/webRoutes.ts.
+  const webRoute = webRedirectFor(pathname);
+  if (webRoute) return <Redirect href={webRoute as never} />;
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }
