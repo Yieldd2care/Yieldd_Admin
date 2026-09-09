@@ -65,6 +65,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 | 2 | 29 | No lead detail page on the web | `[x]` done 2026-09-09 |
 | 3 | 30 | Phone Follow-ups opens the wrong WhatsApp chat, records no send | `[x]` done 2026-09-09 |
 | 4 | 31 | Seats are not enforced anywhere | `[ ]` |
+| 5 | 32 | Dashboard Settings is read-only — no way to edit anything | `[x]` done 2026-09-09 |
 
 ---
 
@@ -168,6 +169,34 @@ links to these same pages, and the Play data safety form has to match them word 
   template is used, and `recordSend` fires so the send history stops under-reporting.
 - Rendered with seeded leads to confirm the swap changed nothing visible — same rows, same Call and
   WhatsApp buttons, no console errors.
+
+### 32. Dashboard Settings was a read-only mirror — reported 2026-09-09, DONE 2026-09-09
+
+- **Where:** [app/(dash)/settings.tsx](app/(dash)/settings.tsx). Every field rendered as text and
+  the panel at the bottom said *"editing your profile, templates, notifications and the digital
+  card all live in the phone app for now"* — which was already out of date, because #23 made
+  templates writable on the web.
+- **Both writes it needed already existed and are browser-safe:** `updateProfile` on the session
+  store (`full_name`, `designation`, `phone`) and `useUpdateOrganization` (`name`, `category`).
+  No backend change, no new API.
+- **Fixed 2026-09-09.** Each panel gets its own Edit / Save / Cancel, so a profile change and a
+  company change cannot collide. Category is the same list the phone uses
+  (`PREDEFINED_CATEGORIES` plus locally added ones), rendered as chips rather than the phone's
+  full-screen list, with the saved value folded in so a category set on another device is not
+  silently dropped from the selection.
+- **Two traps that were live here.** The phone's category screen reports both *"Admins only"* and
+  a save failure through `Alert.alert`, which react-native-web ships as an **empty function** —
+  ported as-is, a rep would have clicked Save and seen nothing at all. Every message on this
+  screen is inline state. And `org_admin_update` matches **zero rows** for a rep rather than
+  erroring, so a rep's save would have reported success and changed nothing: the Edit button is
+  admin-gated and reps are told why.
+- **Deliberately still read-only:** email (the profile guard trigger blocks it; the address of
+  record lives in `auth.users`), and plan / seats (`authenticated` holds UPDATE on `name`,
+  `category` and `onboarding_intent` only — see 20260827130400).
+- **Verified in a browser** with Playwright: both forms open, the category chips select, an empty
+  company name and a 3-digit phone are both refused inline, and no page error beyond the
+  dark-mode warning. `npx tsc --noEmit` clean, `npx expo export --platform web` succeeds.
+
 
 ### 31. Seats are not enforced anywhere — reported 2026-09-08
 
