@@ -26,7 +26,16 @@ export default function TeamManagementScreen() {
   // top. The old screen showed a flat "of 10", which is not a number this
   // product sells at any tier.
   const seatLimit = organization?.seats ?? 1;
-  const seatsUsed = activeMembers.length;
+  /**
+   * Mirrors `seats_in_use()` in the database (migration 20260910100000): a
+   * pending invite holds a seat until it is accepted or revoked.
+   *
+   * Counting only active members here would show a free seat that the database
+   * then refuses to fill — the admin taps Invite, fills the form, and is turned
+   * away by a rule this screen had just told them they were inside of.
+   */
+  const seatsUsed = activeMembers.length + invites.length;
+  const seatsFree = Math.max(0, seatLimit - seatsUsed);
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
@@ -70,7 +79,17 @@ export default function TeamManagementScreen() {
           </View>
           {seatsUsed > seatLimit ? (
             <Typography className="text-[11.5px] text-gold mt-[10px] leading-[1.45]">
-              You are over your seat allowance. Upgrade or deactivate someone to stay within it.
+              You are over your seat allowance. Everyone here keeps working, but no new invite can go
+              out until a seat is free.
+            </Typography>
+          ) : seatsFree === 0 ? (
+            <Typography className="text-[11.5px] text-gold mt-[10px] leading-[1.45]">
+              Every seat is in use. Deactivate someone, revoke a pending invite, or add seats before
+              inviting anyone else.
+            </Typography>
+          ) : invites.length ? (
+            <Typography className="text-[11.5px] text-white/[0.55] mt-[10px] leading-[1.45]">
+              {activeMembers.length} joined · {invites.length} invited and not signed in yet.
             </Typography>
           ) : null}
         </View>

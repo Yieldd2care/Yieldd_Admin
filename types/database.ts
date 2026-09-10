@@ -1170,6 +1170,7 @@ export type Database = {
         }[]
       }
       perform_account_deletion: { Args: never; Returns: Json }
+      seats_in_use: { Args: { p_org: string }; Returns: number }
       set_default_message_template: {
         Args: { p_template_id: string }
         Returns: undefined

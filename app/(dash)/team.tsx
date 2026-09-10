@@ -108,16 +108,42 @@ export default function DashTeam() {
     | null
   >(null);
 
-  const seatsUsed = members?.filter((m) => m.status === 'active').length ?? 0;
+  /**
+   * Seats in use, matching `seats_in_use()` in the database exactly.
+   *
+   * A pending invite holds a seat — that is what makes the limit land here,
+   * on the admin, rather than on an invitee weeks later at signup. A
+   * deactivated member holds none, which is what makes "deactivate someone to
+   * free a seat" a true instruction.
+   *
+   * `usePendingInvites` already filters to pending; a rep cannot read invites
+   * at all, so this is only ever a complete number for the admin who needs it.
+   */
+  const activeMembers = members?.filter((m) => m.status === 'active').length ?? 0;
+  const pendingInvites = invites?.length ?? 0;
+  const seatsUsed = activeMembers + pendingInvites;
   // `seats` is already included + purchased; no need to add them again here.
   const seatsTotal = org?.seats ?? null;
   const overSeats = seatsTotal != null && seatsUsed > seatsTotal;
+  const seatsFree = seatsTotal != null ? Math.max(0, seatsTotal - seatsUsed) : null;
 
   const ready = rows.filter((r) => r.name.trim() && r.phone.trim());
+  // The database refuses this too (migration 20260910100000). Checking here as
+  // well is not belt-and-braces for its own sake: it turns a round trip and a
+  // raised exception into a sentence the admin can read before they type.
+  const wouldExceed = seatsFree != null && ready.length > seatsFree;
 
   async function send() {
     if (!ready.length || createInvites.isPending) return;
     setError(null);
+    if (wouldExceed) {
+      setError(
+        seatsFree === 0
+          ? 'Every seat is taken. Deactivate a member, revoke a pending invite, or add seats before inviting anyone else.'
+          : `Only ${seatsFree} ${seatsFree === 1 ? 'seat is' : 'seats are'} free, and you have ${ready.length} people ready. Remove ${ready.length - seatsFree} of them, or add seats.`
+      );
+      return;
+    }
     try {
       const made = await createInvites.mutateAsync({ reps: ready.map((r) => ({ name: r.name, phone: r.phone })) });
       setCreated(made);
@@ -148,7 +174,7 @@ export default function DashTeam() {
   return (
     <DashShell
       title="Team"
-      subtitle={seatsUsed ? `${seatsUsed} active` : undefined}
+      subtitle={activeMembers ? `${activeMembers} active` : undefined}
       actions={
         isAdmin ? (
           <GoldButton label={open ? 'Close' : 'Invite member'} onPress={() => setOpen((o) => !o)} />
@@ -173,8 +199,13 @@ export default function DashTeam() {
                 />
               </View>
               <Typography className="text-[11.5px] text-label mt-[7px] text-right">
-                {overSeats ? `${seatsUsed - seatsTotal} over` : `${seatsTotal - seatsUsed} free`}
+                {overSeats ? `${seatsUsed - seatsTotal} over` : `${seatsFree} free`}
               </Typography>
+              {pendingInvites ? (
+                <Typography className="text-[11px] text-label mt-[3px] text-right">
+                  {activeMembers} joined · {pendingInvites} invited
+                </Typography>
+              ) : null}
             </View>
           ) : null}
         </Panel>
@@ -186,11 +217,14 @@ export default function DashTeam() {
         />
       </View>
 
-      {overSeats ? (
-        <Panel className="px-[22px] py-4 mb-4" >
+      {/* Was a note saying "nothing is blocked". Since 20260910100000 it is a
+          real limit, so the copy says what actually happens. */}
+      {overSeats || seatsFree === 0 ? (
+        <Panel className="px-[22px] py-4 mb-4">
           <Typography className="text-[13px] text-[#8A6100] leading-[1.55]">
-            You are using more seats than the plan includes. Nothing is blocked — this is a note, not a
-            limit — but it is worth sorting out at renewal.
+            {overSeats
+              ? 'You are using more seats than the plan includes. Everyone already here keeps working, and any invite already sent still works — but no new invite can go out until a seat is free.'
+              : 'Every seat is in use. Deactivate a member, revoke a pending invite, or add seats before inviting anyone else.'}
           </Typography>
         </Panel>
       ) : null}
@@ -200,6 +234,11 @@ export default function DashTeam() {
           <Typography className="text-[17px] font-bold text-navy">Invite people</Typography>
           <Typography className="text-[12.5px] text-slate mt-1 leading-[1.55]">
             They join as reps. Each gets a one-time link that expires in 14 days.
+            {seatsFree != null
+              ? seatsFree === 0
+                ? ' You have no free seats, so nothing can be sent right now.'
+                : ` You have ${seatsFree} free ${seatsFree === 1 ? 'seat' : 'seats'} — an invite holds one until it is accepted or revoked.`
+              : ''}
           </Typography>
 
           <View className="gap-3 mt-[18px]">
@@ -236,10 +275,21 @@ export default function DashTeam() {
             <GhostButton label="Add another" onPress={() => setRows((rs) => [...rs, { name: '', phone: '' }])} />
             <GoldButton
               label={createInvites.isPending ? 'Creating…' : `Create ${ready.length || ''} invite${ready.length === 1 ? '' : 's'}`.trim()}
-              disabled={!ready.length || createInvites.isPending}
+              disabled={!ready.length || createInvites.isPending || wouldExceed}
               onPress={send}
             />
           </View>
+
+          {/* The Create button is disabled while this is true, so the reason has
+              to be on screen without a click — a dimmed button that explains
+              nothing is the same dead end as a button that does nothing. */}
+          {wouldExceed && seatsFree != null ? (
+            <Typography className="text-[12.5px] font-semibold text-[#8A6100] mt-3 leading-[1.5]">
+              {seatsFree === 0
+                ? 'No free seats. Deactivate a member, revoke a pending invite, or add seats.'
+                : `That is ${ready.length} people for ${seatsFree} free ${seatsFree === 1 ? 'seat' : 'seats'}. Remove ${ready.length - seatsFree}, or add seats.`}
+            </Typography>
+          ) : null}
 
           {error ? (
             <Typography className="text-[12.5px] font-semibold text-[#C23B3B] mt-3">{error}</Typography>

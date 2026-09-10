@@ -51,6 +51,13 @@ function toInvite(row: InviteRow): Invite {
 export function describeInviteError(error: PostgrestError): string {
   if (error.code === '42501') return 'Only an admin can invite people.';
   if (error.code === '23514') return 'Each invite needs either a phone number or an email address.';
+  /**
+   * The seat limit (migration 20260910100000). `enforce_invite_seats()` writes
+   * a message meant for the admin reading it — it already names how many seats
+   * are in use and what to do about it — so pass it through rather than
+   * flattening it into the generic line below.
+   */
+  if (error.code === '54000') return error.message;
   if (__DEV__) console.warn('[invites]', error);
   return "Those invites didn't send. Check your connection and try again.";
 }

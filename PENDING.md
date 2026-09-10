@@ -64,7 +64,7 @@ act on it. Six gaps, all "the screen is there, the button is not".
 | 1 | 28 | Phone screens are reachable in a browser and look wrong there | `[x]` done 2026-09-09 |
 | 2 | 29 | No lead detail page on the web | `[x]` done 2026-09-09 |
 | 3 | 30 | Phone Follow-ups opens the wrong WhatsApp chat, records no send | `[x]` done 2026-09-09 |
-| 4 | 31 | Seats are not enforced anywhere | `[ ]` |
+| 4 | 31 | Seats are not enforced anywhere | `[x]` done 2026-09-10 |
 | 5 | 32 | Dashboard Settings is read-only — no way to edit anything | `[x]` done 2026-09-09 |
 
 ---
@@ -198,17 +198,74 @@ links to these same pages, and the Play data safety form has to match them word 
   dark-mode warning. `npx tsc --noEmit` clean, `npx expo export --platform web` succeeds.
 
 
-### 31. Seats are not enforced anywhere — reported 2026-09-08
+### 31. Seats are not enforced anywhere — reported 2026-09-08, DONE 2026-09-10
 
-- **Where:** nowhere, which is the point. No RPC check, no CHECK constraint, no trigger.
-  `app/(app)/settings/team.tsx` and [app/(dash)/team.tsx](app/(dash)/team.tsx) both compute
-  `seats_included + seats_purchased` client-side and render a warning string; `createInvites` and
-  `handle_new_user()` accept an invitee regardless.
-- **So an organisation can exceed its plan freely**, on either surface. Both screens say so honestly
-  rather than pretending to block.
-- **Decide before building:** whether the limit refuses the invite, refuses the signup, or is only
-  ever a billing conversation. It belongs in the database if it is meant to be real — a client-side
-  check is a suggestion.
+**DECISION (2026-09-10, yours): refuse the invite.** The admin is stopped at the moment they try
+to send it, on the screen they are already looking at. Two alternatives were put to you and
+rejected: refusing the *signup* instead (the wrong person hits the wall, inside
+`handle_new_user()` where GoTrue rewrites every exception into the opaque "Database error saving
+new user"), and not blocking at all (honest, but the number on both team screens would go on
+meaning nothing).
+
+**What was true before.** No RPC check, no CHECK constraint, no trigger. Both team screens
+computed `seats_included + seats_purchased` on the client and rendered a warning;
+`createInvites` and `handle_new_user()` accepted anyone regardless. A client-side check is a
+suggestion — the anon key plus curl walks straight past it.
+
+**What holds a seat** (`public.seats_in_use(uuid)`, migration 20260910100000):
+
+- **active profiles.** A deactivated member holds none, which is what makes "deactivate someone
+  to free a seat" a true instruction rather than a guess.
+- **pending, unexpired invites.** This is what lands the limit on the admin instead of on an
+  invitee weeks later. Without it, an admin with one free seat could send five invites that all
+  pass and four people would be refused at signup — the outcome the decision rejects.
+
+An accepted invite swaps one pending invite for one active profile, so the total does not move
+and `handle_new_user()` needs no check of its own. Deliberate: once an invite has legitimately
+gone out, the person holding it can always get in.
+
+**The one way to still exceed it** is a plan being reduced while invites are outstanding. Those
+invites stay good, and the organisation reads as over its seats until renewal. That is the only
+place a billing conversation is left.
+
+**The trap in the trigger.** A per-row `BEFORE INSERT` trigger cannot see the other rows of its
+own statement, so a five-row batch into a one-seat organisation would have passed five times.
+It is an `AFTER INSERT ... FOR EACH STATEMENT` trigger with a transition table instead. That
+case is asserted.
+
+**Verified twice.**
+
+- *Rehearsed* against the live database in a rolled-back transaction, 10 assertions: two invites
+  fill two seats; the third is refused; a revoked invite frees its seat; an expired one holds
+  none; a 3-row batch into 2 seats is refused; an active member occupies a seat; Free (1 seat)
+  refuses the first invite; deactivating frees it; `seats_in_use` matches a hand count on a real
+  organisation; `seats_purchased` is added to the allowance.
+- *End to end over the real API*, because the rehearsal cannot prove the SQLSTATE survives
+  PostgREST — and if it did not, `describeInviteError` would have fallen through to "check your
+  connection", a lie an admin could stare at forever. A throwaway account was created, refused,
+  and deleted. `code` came back as `54000` with the trigger's own message intact.
+
+**Rollout, 2026-09-10.** All four live organisations were Free with 1 seat and 1 active member,
+so every one of them was already at its cap the moment this landed. On your instruction the two
+**Growth Saga** organisations (`care@yieldd.co` and `mrshaikh.works@gmail.com`) were raised to
+`seats_included = 5` so the invite flow stays testable. The other two — **GS** and **Orange** —
+are at 1 seat and can invite nobody, which is the intended behaviour. That was a one-off data
+change, not a migration: it is about two specific rows.
+
+**Screens.** [app/(dash)/team.tsx](app/(dash)/team.tsx) now counts active + pending, shows free
+seats, explains the refusal *before* the button is pressed rather than dimming it silently, and
+its "Nothing is blocked — this is a note, not a limit" panel was replaced with what actually
+happens. [app/(app)/settings/team.tsx](app/(app)/settings/team.tsx) got the same count: leaving
+it on active-only would have shown a free seat the database refuses to fill, which is a defect
+this work would have introduced. Its invite screen already renders errors inline, so the
+refusal is visible there without further change.
+
+**Still not enforced, deliberately:** nothing stops an admin buying seats they have not paid
+for, because `seats_purchased` is only ever written by billing, which does not exist yet (#11).
+
+
+
+
 
 
 ### 27. Privacy policy / Terms review before Play submission — reported 2026-09-08
