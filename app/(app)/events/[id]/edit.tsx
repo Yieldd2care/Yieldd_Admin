@@ -8,8 +8,10 @@ import { Button } from '../../../../components/ui/Button';
 import { TextInput } from '../../../../components/ui/TextInput';
 import { DateField } from '../../../../components/app/DateField';
 import { ScreenHeader } from '../../../../components/app/ScreenHeader';
+import { ProBadge } from '../../../../components/app/ProLock';
 import { ChevronRightIcon } from '../../../../components/ui/icons';
 import { useEvent, useUpdateEvent } from '../../../../hooks/useEvents';
+import { useProGate } from '../../../../hooks/usePlan';
 import { formatPaise } from '../../../../lib/db';
 import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
 
@@ -31,20 +33,33 @@ function LinkRow({
   label,
   value,
   onPress,
+  locked,
 }: {
   label: string;
   value?: string;
   onPress: () => void;
+  locked?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
       className="flex-row items-center justify-between bg-white border border-hairline rounded-md px-4 py-[15px] mb-[10px]"
     >
-      <Typography className="text-[14px] font-semibold text-navy">{label}</Typography>
+      <Typography className={`text-[14px] font-semibold text-navy ${locked ? 'opacity-60' : ''}`}>
+        {label}
+      </Typography>
       <View className="flex-row items-center gap-2">
-        {value ? <Typography className="text-[12.5px] text-slate">{value}</Typography> : null}
-        <ChevronRightIcon />
+        {/* The chevron goes with the lock. It promises a screen this plan
+            cannot open, and leaving it beside the chip says both things at
+            once. */}
+        {locked ? (
+          <ProBadge />
+        ) : (
+          <>
+            {value ? <Typography className="text-[12.5px] text-slate">{value}</Typography> : null}
+            <ChevronRightIcon />
+          </>
+        )}
       </View>
     </Pressable>
   );
@@ -55,6 +70,7 @@ export default function EditEventScreen() {
   const eventId = id ?? '';
   const { data: event, isLoading } = useEvent(eventId || undefined);
   const updateEvent = useUpdateEvent();
+  const { locked, gate } = useProGate();
 
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
@@ -169,9 +185,17 @@ export default function EditEventScreen() {
                 value={event ? formatPaise(event.totalCost * 100, { fallback: 'Not added' }) : undefined}
                 onPress={() => router.push({ pathname: '/(app)/events/new/cost', params: { eventId } })}
               />
+              {/* Pro, both of them. The rows stay in place and carry the chip
+                  rather than vanishing on Free — see the note on Row in the
+                  Settings screen for why the chip takes the right slot. */}
               <LinkRow
                 label="Custom fields"
-                onPress={() => router.push({ pathname: '/(app)/events/[id]/fields', params: { id: eventId } })}
+                locked={locked}
+                onPress={() => {
+                  if (gate('custom-fields')) {
+                    router.push({ pathname: '/(app)/events/[id]/fields', params: { id: eventId } });
+                  }
+                }}
               />
               {/* A picker, not the wizard's editor. Reaching step 5 to change
                   an event's message wrote another template row every time, so
@@ -179,9 +203,12 @@ export default function EditEventScreen() {
                   templates and no way to reuse one already written. */}
               <LinkRow
                 label="Follow-up message"
-                onPress={() =>
-                  router.push({ pathname: '/(app)/events/[id]/templates', params: { id: eventId } })
-                }
+                locked={locked}
+                onPress={() => {
+                  if (gate('event-templates')) {
+                    router.push({ pathname: '/(app)/events/[id]/templates', params: { id: eventId } });
+                  }
+                }}
               />
               <LinkRow
                 label="Invite reps"

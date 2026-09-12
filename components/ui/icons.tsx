@@ -90,6 +90,16 @@ export function ImageIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: Ico
   );
 }
 
+/** Marks a feature the account has not paid for. */
+export function LockIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x="4.2" y="10.4" width="15.6" height="10.4" rx="2.6" />
+      <Path d="M8 10.4V7.6a4 4 0 018 0v2.8" />
+    </Svg>
+  );
+}
+
 /** Reveal what is typed in a password field. */
 export function EyeIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: IconProps) {
   return (

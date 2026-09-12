@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
-import { CheckIcon, ClockIcon, ContactsIcon, EditIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../../../components/ui/icons';
+import { CheckIcon, ClockIcon, ContactsIcon, EditIcon, LockIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { STATUS_CLASSES, STATUS_TEXT } from '../../../data/leads';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useTeam } from '../../../hooks/useTeam';
@@ -15,6 +15,8 @@ import { fetchEventFields } from '../../../lib/api/eventFields';
 import { fetchVoiceNotes, type VoiceNote } from '../../../lib/api/voiceNotes';
 import { useLeadActions } from '../../../hooks/useLeadActions';
 import { VoiceNoteCard } from '../../../components/app/VoiceNoteCard';
+import { ProBadge } from '../../../components/app/ProLock';
+import { useProGate } from '../../../hooks/usePlan';
 import type { CustomFieldDef } from '../../../stores/useEventFieldsStore';
 import { formatDateRange } from '../../../lib/dates';
 
@@ -40,6 +42,7 @@ export default function LeadDetailScreen() {
 
   const { data: members } = useTeam();
   const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
+  const { locked, gate } = useProGate();
   const { data: event } = useEvent(lead?.eventId || undefined);
 
   // The same four actions the lead rows on the home and Leads screens use.
@@ -308,22 +311,42 @@ export default function LeadDetailScreen() {
         */}
         <Pressable
           disabled={!isAdmin}
-          onPress={() => router.push(`/(app)/(modals)/reassign?leadId=${lead.id}`)}
+          onPress={() => {
+            if (gate('reassign')) router.push(`/(app)/(modals)/reassign?leadId=${lead.id}`);
+          }}
           className="flex-row items-center justify-between mt-[18px] bg-white border border-hairline rounded-md px-4 py-[14px]"
         >
           <Typography className="text-[13px] font-semibold text-navy">{assignedLabel}</Typography>
-          {isAdmin ? (
+          {/*
+            The lock replaces the "Reassign" affordance rather than joining it.
+            On Free there is only one person in the organisation, so the row is
+            still worth showing — it says who holds the lead — but nothing on it
+            should read as an action that will work.
+          */}
+          {!isAdmin ? null : locked ? (
+            <ProBadge />
+          ) : (
             <Typography className="text-[12px] font-bold text-gold">Reassign</Typography>
-          ) : null}
+          )}
         </Pressable>
       </ScrollView>
 
       <View className="bg-white border-t border-hairline flex-row gap-[10px] px-5 pt-[14px] pb-6">
+        {/*
+          Status stays in the footer at full size on Free. It is one of the two
+          things this screen is for, and shrinking or moving it would make the
+          plan rearrange the furniture rather than just mark what is paid.
+        */}
         <Pressable
-          onPress={() => router.push(`/(app)/(modals)/status-change?leadId=${lead.id}`)}
-          className="flex-1 h-[52px] rounded-md bg-white border border-hairline items-center justify-center"
+          onPress={() => {
+            if (gate('lead-status')) router.push(`/(app)/(modals)/status-change?leadId=${lead.id}`);
+          }}
+          className="flex-1 h-[52px] rounded-md bg-white border border-hairline items-center justify-center flex-row gap-[6px]"
         >
-          <Typography className="text-[14px] font-bold text-navy">Change status</Typography>
+          {locked ? <LockIcon size={13} color="#5A6B85" strokeWidth={2.2} /> : null}
+          <Typography className={`text-[14px] font-bold text-navy ${locked ? 'opacity-60' : ''}`}>
+            Change status
+          </Typography>
         </Pressable>
         <Pressable
           onPress={() => router.push('/(app)/(modals)/log-outcome')}

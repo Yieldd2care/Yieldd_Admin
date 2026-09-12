@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { LeadRow } from '../../../components/app/LeadRow';
+import { ProTileLock } from '../../../components/app/ProLock';
 import {
   BarChartIcon,
   BellIcon,
@@ -20,6 +21,7 @@ import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useCurrentEventStore } from '../../../stores/useCurrentEventStore';
 import { useCurrentEvent, useEvents } from '../../../hooks/useEvents';
 import { AttentionDot } from '../../../hooks/useAttention';
+import { useProGate } from '../../../hooks/usePlan';
 
 function timeGreeting() {
   const hour = new Date().getHours();
@@ -65,6 +67,7 @@ export default function HomeScreen() {
   ).length;
   const selectEvent = useCurrentEventStore((s) => s.selectEvent);
   const isAdmin = user?.role === 'admin';
+  const { locked, gate } = useProGate();
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top']}>
@@ -171,9 +174,24 @@ export default function HomeScreen() {
         </View>
 
         <View className="flex-row justify-between mx-5 mt-3">
-          <Pressable onPress={() => router.push('/(app)/follow-ups')} className="items-center gap-2 w-[80px]">
+          {/*
+            Follow-ups and Reports are Pro. Both tiles stay on screen for a Free
+            rep, greyed with a small lock, rather than disappearing — the agreed
+            rule, and the only version where someone can want what they cannot
+            see. Tapping opens the explanation instead of the screen.
+
+            `opacity-60` carries no CSS variable, so toggling it is safe where a
+            shadow or a transform would not be. See AGENTS.md.
+          */}
+          <Pressable
+            onPress={() => {
+              if (gate('follow-ups')) router.push('/(app)/follow-ups');
+            }}
+            className={`items-center gap-2 w-[80px] ${locked ? 'opacity-60' : ''}`}
+          >
             <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
               <ClockIcon size={19} />
+              {locked ? <ProTileLock ringColor="#F5F7FB" /> : null}
             </View>
             <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Follow-ups</Typography>
           </Pressable>
@@ -200,15 +218,22 @@ export default function HomeScreen() {
             <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Search</Typography>
           </Pressable>
           <Pressable
-            onPress={() =>
-              event
-                ? router.push({ pathname: '/(app)/events/[id]/roi', params: { id: event.id } })
-                : Alert.alert('No event yet', 'Reports appear once you have an event with leads in it.')
-            }
-            className="items-center gap-2 w-[80px]"
+            onPress={() => {
+              // The plan is checked before the "no event yet" notice, so a Free
+              // rep is told the honest reason. Telling them to go and make an
+              // event first would send them off to earn a lock.
+              if (!gate('roi')) return;
+              if (!event) {
+                Alert.alert('No event yet', 'Reports appear once you have an event with leads in it.');
+                return;
+              }
+              router.push({ pathname: '/(app)/events/[id]/roi', params: { id: event.id } });
+            }}
+            className={`items-center gap-2 w-[80px] ${locked ? 'opacity-60' : ''}`}
           >
             <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
               <BarChartIcon size={19} />
+              {locked ? <ProTileLock ringColor="#F5F7FB" /> : null}
             </View>
             <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Reports</Typography>
           </Pressable>

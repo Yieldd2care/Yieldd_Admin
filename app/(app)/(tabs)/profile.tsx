@@ -5,10 +5,12 @@ import { router } from 'expo-router';
 import Constants from 'expo-constants';
 
 import { Typography } from '../../../components/ui/Typography';
+import { ProBadge } from '../../../components/app/ProLock';
 import { Toggle } from '../../../components/ui/Toggle';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useTeam } from '../../../hooks/useTeam';
 import { useOrganization } from '../../../hooks/useOrganization';
+import { useProGate } from '../../../hooks/usePlan';
 import { useTemplates } from '../../../hooks/useMessageTemplates';
 import { SyncStatusRow } from '../../../components/shared/SyncIndicator';
 import { TAB_BAR_HEIGHT } from '../../../components/app/TabBar';
@@ -35,24 +37,34 @@ const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 /** The address already published on the website footer and the legal pages. */
 const SUPPORT_EMAIL = 'care@yieldd.co';
 
+/**
+ * `locked` replaces the row's own `right` slot rather than sitting beside it.
+ *
+ * The right slot is always a count or a chevron — "3 members", "2 templates" —
+ * and a count is a promise that the row will show you those things. On a plan
+ * that cannot open it, the lock is the more truthful thing to put there, and
+ * two marks competing for the same corner reads as clutter.
+ */
 function Row({
   icon,
   label,
   right,
   onPress,
   isLast,
+  locked,
 }: {
   icon: ReactNode;
   label: string;
   right?: ReactNode;
   onPress?: () => void;
   isLast?: boolean;
+  locked?: boolean;
 }) {
   return (
     <Pressable onPress={onPress} className={`flex-row items-center gap-3 py-[13px] ${isLast ? '' : 'border-b border-section'}`}>
-      <View className="w-8 h-8 rounded-[9px] bg-surface items-center justify-center">{icon}</View>
-      <Typography className="text-[13.5px] font-semibold text-navy flex-1">{label}</Typography>
-      {right}
+      <View className={`w-8 h-8 rounded-[9px] bg-surface items-center justify-center ${locked ? 'opacity-60' : ''}`}>{icon}</View>
+      <Typography className={`text-[13.5px] font-semibold text-navy flex-1 ${locked ? 'opacity-60' : ''}`}>{label}</Typography>
+      {locked ? <ProBadge /> : right}
     </Pressable>
   );
 }
@@ -68,7 +80,10 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
 
   const { data: organization } = useOrganization();
-  const isPro = (organization?.planTier ?? user?.planTier) === 'pro';
+  // Was spelled out here, and was the only copy of the rule. Now that locks on
+  // half a dozen screens ask the same question, it lives in one hook and this
+  // screen reads it like everywhere else.
+  const { isPro, locked, gate } = useProGate();
   const seats = organization?.seats ?? 1;
   const companyCategory = organization?.category;
 
@@ -161,7 +176,15 @@ export default function ProfileScreen() {
 
         <SectionLabel>Account</SectionLabel>
         <Card>
-          <Row icon={<UsersIcon size={15} />} label="Team" right={<Typography className="text-[12px] font-semibold text-slate">{activeMemberCount} members</Typography>} onPress={() => router.push('/(app)/settings/team')} />
+          <Row
+            icon={<UsersIcon size={15} />}
+            label="Team"
+            locked={locked}
+            right={<Typography className="text-[12px] font-semibold text-slate">{activeMemberCount} members</Typography>}
+            onPress={() => {
+              if (gate('team')) router.push('/(app)/settings/team');
+            }}
+          />
           <Row
             icon={<FileIcon color="#0B132B" />}
             label="Plan & billing"

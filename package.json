@@ -90,7 +90,8 @@
     "verify:privacy": "node scripts/verify-privacy-manifest.mjs",
     "verify:applinks": "node scripts/verify-app-links.mjs",
     "verify:card-photo": "node scripts/verify-card-photo.mjs",
-    "verify:lead-search": "node scripts/verify-lead-search.mjs"
+    "verify:lead-search": "node scripts/verify-lead-search.mjs",
+    "verify:plan": "node scripts/verify-plan.mjs"
   },
   "private": true
 }
