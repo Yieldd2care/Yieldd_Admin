@@ -117,6 +117,44 @@ export async function uploadVoiceNote(
  * a link saved months ago would be dead, and after the project moved region a
  * stored full URL would have pointed at a different database entirely.
  */
+/**
+ * The same thing for a list, in one request.
+ *
+ * The lead list needs a URL for every card it is about to draw, and asking for
+ * them one at a time is a round trip per row — a hundred leads at a stall on a
+ * hall's wifi is the case that matters, and it is exactly the case where doing
+ * it row by row is unusable.
+ *
+ * Returns a map keyed by the object path, so a caller holding leads can look
+ * each one up without keeping the order straight. Paths that fail are simply
+ * absent from the map rather than present as null: a missing card falls back
+ * to initials, and the two are the same outcome to a caller.
+ */
+export async function signedUrls(
+  bucket: string,
+  paths: string[],
+  expiresInSeconds = 3600
+): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(paths.filter(Boolean)));
+  if (unique.length === 0) return {};
+
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrls(unique, expiresInSeconds);
+  if (error) {
+    // Not thrown. Every caller draws a fallback when a URL is missing, so a
+    // failure here costs a placeholder rather than a broken screen.
+    if (__DEV__) console.warn('[storage] signedUrls', error.message);
+    return {};
+  }
+
+  const out: Record<string, string> = {};
+  for (const row of data ?? []) {
+    // `createSignedUrls` reports per-path failures inside the array rather
+    // than on `error`, so a single deleted object must not lose the batch.
+    if (row.path && row.signedUrl && !row.error) out[row.path] = row.signedUrl;
+  }
+  return out;
+}
+
 export async function signedUrl(
   bucket: string,
   path: string,

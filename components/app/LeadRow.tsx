@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { Typography } from '../ui/Typography';
+import { CardThumb } from './CardThumb';
 import { ContactsIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../ui/icons';
 import { STATUS_DOT, STATUS_TEXT } from '../../data/leads';
 import { useLeadActions } from '../../hooks/useLeadActions';
@@ -45,7 +46,16 @@ function RowAction({
   );
 }
 
-export function LeadRow({ lead }: { lead: StoredLead }) {
+/**
+ * `cardUri` is passed in rather than looked up here.
+ *
+ * Signing a card URL is a network call, and a row that made its own would make
+ * one per lead — a hundred round trips to draw one screen, on hall wifi. The
+ * list signs them all in a single request and hands each row its answer. A row
+ * rendered without the prop simply shows the initial, which is what a lead
+ * typed in by hand shows anyway.
+ */
+export function LeadRow({ lead, cardUri = null }: { lead: StoredLead; cardUri?: string | null }) {
   // The same four actions the lead detail screen uses, including the send
   // record. These four buttons used to raise "isn't wired up yet" alerts.
   const { call, whatsapp, email, saveToContacts, savedToContacts, canCall, canWhatsApp, canEmail } =
@@ -56,9 +66,7 @@ export function LeadRow({ lead }: { lead: StoredLead }) {
       onPress={() => router.push({ pathname: '/(app)/leads/[id]', params: { id: lead.id } })}
       className="flex-row items-center gap-3 bg-white border border-hairline rounded-2xl px-[14px] py-[13px]"
     >
-      <View className="w-9 h-9 rounded-[10px] bg-surface items-center justify-center">
-        <Typography className="text-[13px] font-extrabold text-navy">{lead.initial}</Typography>
-      </View>
+      <CardThumb uri={cardUri} initial={lead.initial} size={36} radius={10} />
       <View className="flex-1 min-w-0">
         <View className="flex-row items-center gap-[6px]">
           <View className={`w-[6px] h-[6px] rounded-full ${STATUS_DOT[lead.status]}`} />

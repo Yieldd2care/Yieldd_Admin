@@ -22,6 +22,7 @@ import { useCurrentEventStore } from '../../../stores/useCurrentEventStore';
 import { useCurrentEvent, useEvents } from '../../../hooks/useEvents';
 import { AttentionDot } from '../../../hooks/useAttention';
 import { useProGate } from '../../../hooks/usePlan';
+import { useCardImages } from '../../../hooks/useCardImages';
 
 function timeGreeting() {
   const hour = new Date().getHours();
@@ -38,6 +39,9 @@ export default function HomeScreen() {
   const syncedLeads = allLeads.filter((l) => l.syncStatus === 'synced');
   const draftCount = allLeads.filter((l) => l.syncStatus === 'draft').length;
   const RECENT_LEADS = syncedLeads.slice(0, 3);
+  // Only the three on screen. Home shows a preview, so signing the whole
+  // event's cards here would pay for a hundred links to draw three rows.
+  const cardImageUri = useCardImages(RECENT_LEADS);
   const NEEDS_NOTE_COUNT = syncedLeads.filter((l) => l.needsNote).length;
   const WHATSAPP_PENDING_COUNT = syncedLeads.filter((l) => l.status === 'New').length;
 
@@ -294,7 +298,7 @@ export default function HomeScreen() {
           </View>
           <View className="mt-3 gap-[10px]">
             {RECENT_LEADS.map((lead) => (
-              <LeadRow key={lead.id} lead={lead} />
+              <LeadRow key={lead.id} lead={lead} cardUri={cardImageUri(lead)} />
             ))}
           </View>
         </View>

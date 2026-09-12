@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -17,6 +17,7 @@ import { useLeadActions } from '../../../hooks/useLeadActions';
 import { VoiceNoteCard } from '../../../components/app/VoiceNoteCard';
 import { ProBadge } from '../../../components/app/ProLock';
 import { useProGate } from '../../../hooks/usePlan';
+import { useCardImages } from '../../../hooks/useCardImages';
 import type { CustomFieldDef } from '../../../stores/useEventFieldsStore';
 import { formatDateRange } from '../../../lib/dates';
 
@@ -43,6 +44,15 @@ export default function LeadDetailScreen() {
   const { data: members } = useTeam();
   const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
   const { locked, gate } = useProGate();
+
+  /**
+   * One lead, so the batch helper is handed a one-item list. Worth the small
+   * awkwardness to keep a single path through signing: the list screen and
+   * this screen then cache under the same key, so arriving here from a list
+   * that has already drawn the thumbnail costs no request at all.
+   */
+  const cardImageUri = useCardImages(lead ? [lead] : []);
+  const cardUri = lead ? cardImageUri(lead) : null;
   const { data: event } = useEvent(lead?.eventId || undefined);
 
   // The same four actions the lead rows on the home and Leads screens use.
@@ -142,7 +152,14 @@ export default function LeadDetailScreen() {
       <ScreenHeader
         title="Lead detail"
         right={
-          <Pressable className="w-[34px] h-[34px] rounded-md bg-surface items-center justify-center">
+          // Was a Pressable with no onPress — drawn, tappable, and doing
+          // nothing since the screen was built. It opens the edit form now.
+          <Pressable
+            onPress={() => router.push({ pathname: '/(app)/leads/edit', params: { leadId: lead.id } })}
+            accessibilityRole="button"
+            accessibilityLabel="Edit this lead"
+            className="w-[34px] h-[34px] rounded-md bg-surface items-center justify-center"
+          >
             <EditIcon />
           </Pressable>
         }
@@ -158,6 +175,26 @@ export default function LeadDetailScreen() {
             <Typography className="text-[12.5px] text-slate mt-[2px]">{lead.company || 'No company'}</Typography>
           </View>
         </View>
+
+        {/*
+          The card itself, in its own shape rather than cropped into the
+          avatar. It was captured, uploaded and then never shown anywhere —
+          the rep had no way to check what the reader had read from, which is
+          the whole point of keeping the photo.
+
+          8:5 is roughly a business card, and `contain` means an odd crop shows
+          letterboxed instead of losing the edges where a phone number sits.
+        */}
+        {cardUri ? (
+          <View className="mt-4 rounded-2xl overflow-hidden bg-surface" style={{ aspectRatio: 8 / 5 }}>
+            <Image
+              key={cardUri}
+              source={{ uri: cardUri }}
+              className="w-full h-full"
+              resizeMode="contain"
+            />
+          </View>
+        ) : null}
 
         <View className="flex-row items-center gap-[10px] mt-4">
           <View className={`rounded-full px-3 py-[6px] ${STATUS_CLASSES[lead.status]}`}>

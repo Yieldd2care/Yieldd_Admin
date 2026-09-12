@@ -9,6 +9,7 @@ import { ChevronRightIcon, SearchIcon, WhatsAppIcon } from '../../../components/
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useCurrentEvent } from '../../../hooks/useEvents';
 import { leadMatchesQuery } from '../../../lib/leadSearch';
+import { useCardImages } from '../../../hooks/useCardImages';
 
 // `Lost` belongs here: the status sheet offers it, so without a filter a lost
 // lead can be set and then never found again.
@@ -60,6 +61,14 @@ export default function LeadListScreen() {
   const followUpsDue = leads.filter(
     (l) => l.followUpDate && new Date(l.followUpDate).getTime() <= today.getTime()
   ).length;
+
+  /*
+    Signed against the event's whole list, not the filtered one.
+    `filtered` changes on every keystroke in the search box, and keying the
+    request on the visible subset would re-sign every card as the rep types.
+    The full list is stable, and one request covers every row they can reach.
+  */
+  const cardImageUri = useCardImages(leads);
 
   const filtered = leads.filter((l) => {
     if (!leadMatchesQuery(l, query)) return false;
@@ -195,7 +204,7 @@ export default function LeadListScreen() {
         ) : null}
 
         {filtered.map((lead) => (
-          <LeadRow key={lead.id} lead={lead} />
+          <LeadRow key={lead.id} lead={lead} cardUri={cardImageUri(lead)} />
         ))}
         <View className="h-24" />
       </ScrollView>

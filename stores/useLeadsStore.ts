@@ -130,6 +130,8 @@ type LeadsState = {
   addLead: (input: NewLeadInput) => Promise<StoredLead>;
   /** Applies an edit locally and queues it. */
   editLead: (leadId: string, patch: LeadPatch) => void;
+  /** Corrections from the edit screen: applied locally, then pushed. */
+  saveLeadEdits: (leadId: string, patch: LeadPatch) => void;
   /** Hand a lead to another team member. `null` gives it back to the person who captured it. */
   reassignLead: (leadId: string, memberId: string | null) => void;
   /** Records that this lead was put into the phone's contacts, and pushes it. */
@@ -299,6 +301,21 @@ export const useLeadsStore = create<LeadsState>()(
             return applyPatch({ ...lead, pendingPatch: merged, syncError: undefined }, patch);
           }),
         })),
+
+      /**
+       * What the edit screen calls.
+       *
+       * A named action for the same reason reassignLead and
+       * markSavedToContacts are: editLead only queues into `pendingPatch`, so
+       * on its own a correction would look right on the phone and never reach
+       * the server. Calling it with nothing to change is a no-op rather than
+       * an error, so the screen does not have to guard the case twice.
+       */
+      saveLeadEdits: (leadId, patch) => {
+        if (Object.keys(patch).length === 0) return;
+        get().editLead(leadId, patch);
+        void get().syncDrafts();
+      },
 
       reassignLead: (leadId, memberId) => {
         get().editLead(leadId, { assignedToId: memberId });
