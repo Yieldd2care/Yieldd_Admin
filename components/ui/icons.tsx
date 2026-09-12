@@ -78,6 +78,18 @@ export function CameraIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: Ic
   );
 }
 
+/** A saved photo, for picking a card out of the gallery rather than shooting one. */
+export function ImageIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <Circle cx="8.5" cy="9.5" r="1.6" />
+      <Path d="M3.5 16.5l4.4-4.1a1.8 1.8 0 012.5.05L15 17" />
+      <Path d="M14 14.2l1.9-1.8a1.8 1.8 0 012.5.05l2.1 2" />
+    </Svg>
+  );
+}
+
 export function HomeIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">

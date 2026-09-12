@@ -1,18 +1,35 @@
 import { useRef, useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 
 import { Typography } from '../../../components/ui/Typography';
-import { CloseIcon, FlashIcon } from '../../../components/ui/icons';
+import { CloseIcon, FlashIcon, ImageIcon } from '../../../components/ui/icons';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
+import { normaliseCardPhoto } from '../../../lib/cardPhoto';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 
 export default function CameraScreen() {
   const [flashOn, setFlashOn] = useState(false);
   const [capturing, setCapturing] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isProfileScan = mode === 'profile';
+
+  /**
+   * One flag for both sources, and it has to cover every control.
+   *
+   * The picker runs in another process, so without this the rep can tap "Skip
+   * the back" while it is open: that navigates to the confirm screen, the
+   * extraction starts on the front alone, and then the picker resolves and
+   * writes `backImageUri` into the store from a screen that has already gone.
+   * The confirm screen's effect is keyed on that value, so it re-runs — a second
+   * billed read of the same card, racing the first over fields the rep may
+   * already be correcting by hand.
+   */
+  const busy = capturing || picking;
 
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -32,9 +49,82 @@ export default function CameraScreen() {
   const goToConfirm = () =>
     router.push(isProfileScan ? '/(app)/card/scan-confirm' : '/(app)/capture/confirm');
 
+  /**
+   * The same card, from a photo the rep already had.
+   *
+   * Deliberately drives the same `side` machine as the shutter instead of a
+   * parallel one, which is what makes front-and-back work here for free — and
+   * lets the two sides come from different places, a gallery front with a
+   * photographed back or the other way round.
+   *
+   * NO PERMISSION REQUEST, and that is not an oversight — `card/edit.tsx` does
+   * ask, so this reads like one. `launchImageLibraryAsync` needs no permission on
+   * either platform: Android goes straight to the system picker with no check at
+   * any API level, and on iOS the picker runs outside the app. Calling
+   * `requestMediaLibraryPermissionsAsync` is what *creates* a full-library
+   * prompt, which is the gratuitous ask this project already went out of its way
+   * to remove from the save-to-gallery paths.
+   */
+  const pickFromLibrary = async () => {
+    if (busy) return;
+    setPicking(true);
+    setPickError(null);
+    try {
+      const picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        /**
+         * Android only, and `aspect` is Android-only too.
+         *
+         * Apple's crop box is locked square and cannot zoom out past the photo's
+         * own height, so on a photo where the card already fills the width the
+         * rep physically cannot fit the whole card inside it — it clips the
+         * sides, which is where the phone number usually sits. A clipped number
+         * reads as a *wrong* number, and a wrong value is worse than a blank one:
+         * a rep proof-reads an empty field and trusts a filled one. So iPhone
+         * sends the photo whole and lets the reader cope.
+         */
+        allowsEditing: Platform.OS === 'android',
+        aspect: [8, 5],
+        quality: 0.8,
+      });
+
+      // Nothing is written to the store on a cancel. Clearing the back here
+      // would lose it for a rep who came back to re-pick the front and then
+      // thought better of it.
+      if (picked.canceled || !picked.assets[0]) return;
+
+      const asset = picked.assets[0];
+      const photo = await normaliseCardPhoto(asset.uri, asset.width, asset.height);
+      if (!photo.ok) {
+        setPickError(photo.message);
+        return;
+      }
+
+      if (side === 'front') {
+        // Same reasoning as the shutter: a fresh front orphans any previous back.
+        setImageUri(photo.uri);
+        setBackImageUri(null);
+        setSide('back');
+        return;
+      }
+
+      setBackImageUri(photo.uri);
+      goToConfirm();
+    } catch (err) {
+      // Unlike `capture()` below, this catches. The picker throws for real
+      // reasons — no gallery app resolves the intent on some stripped Android
+      // builds — and a button that silently does nothing is the worst outcome.
+      if (__DEV__) console.warn('[camera] pickFromLibrary', err);
+      setPickError("Couldn't open your photos. Try again.");
+    } finally {
+      setPicking(false);
+    }
+  };
+
   const capture = async () => {
-    if (capturing || !cameraRef.current) return;
+    if (busy || !cameraRef.current) return;
     setCapturing(true);
+    setPickError(null);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
 
@@ -91,6 +181,35 @@ export default function CameraScreen() {
             {canAsk ? 'Grant permission' : 'Open settings'}
           </Typography>
         </Pressable>
+
+        {/*
+          Reading a saved photo needs no camera, so this route stays open to
+          someone who has turned the camera off — and they are the likeliest
+          people to be working from photos in the first place.
+
+          It carries its own skip link and its own error line because this branch
+          returns before the bottom bar renders, so there is nowhere else for
+          either to appear. Without the skip, a rep who picks a front here would
+          be stranded on the back step with no way forward but manual entry.
+        */}
+        <Pressable onPress={pickFromLibrary} disabled={busy}>
+          <Typography className="text-[13px] font-bold text-gold">
+            {side === 'front' ? 'Choose a saved photo instead' : 'Choose the back from your photos'}
+          </Typography>
+        </Pressable>
+        {side === 'back' ? (
+          <Pressable onPress={skipBack} disabled={busy}>
+            <Typography className="text-[13px] font-semibold text-white/[0.80]">
+              Skip the back &mdash; read the front
+            </Typography>
+          </Pressable>
+        ) : null}
+        {pickError ? (
+          <Typography className="text-[12px] text-[#FF9B9B] text-center max-w-[280px] leading-[1.45]">
+            {pickError}
+          </Typography>
+        ) : null}
+
         <Pressable onPress={() => router.replace(isProfileScan ? '/(app)/card/edit' : '/(app)/capture/manual')}>
           <Typography className="text-[13px] font-semibold text-white/[0.80]">Enter manually instead</Typography>
         </Pressable>
@@ -149,19 +268,49 @@ export default function CameraScreen() {
       </View>
 
       <View className="absolute left-0 right-0 bottom-0 items-center gap-[22px] pb-11">
+        {pickError ? (
+          <View className="bg-navy/[0.72] border border-[#FF9B9B]/[0.45] rounded-full px-[18px] py-[9px] mx-8">
+            <Typography className="text-[12.5px] font-semibold text-[#FF9B9B] text-center">
+              {pickError}
+            </Typography>
+          </View>
+        ) : null}
         <View className="flex-row items-center justify-center gap-[52px] w-full">
-          <View className="w-11 h-11" />
+          {/*
+            The left spacer was always a placeholder holding the shutter centred.
+            The right one stays a spacer at the same 44x44 so it still is.
+
+            `active:scale-95` sits on the Pressable unconditionally, present from
+            the first render, and only a plain background alpha varies with
+            `picking`. A class list that gains its first transform or shadow later
+            makes NativeWind upgrade the component mid-life and throw a red screen
+            about a missing navigation context — see AGENTS.md.
+          */}
+          <Pressable
+            onPress={pickFromLibrary}
+            disabled={busy}
+            accessibilityLabel="Choose a saved photo"
+            className="w-11 h-11 items-center justify-center active:scale-95"
+          >
+            <View
+              className={`w-[38px] h-[38px] rounded-full border border-white/[0.14] items-center justify-center ${
+                picking ? 'bg-navy/[0.30]' : 'bg-navy/[0.55]'
+              }`}
+            >
+              <ImageIcon size={17} color="#fff" strokeWidth={1.75} />
+            </View>
+          </Pressable>
           <Pressable
             onPress={capture}
-            disabled={capturing}
+            disabled={busy}
             className="w-[76px] h-[76px] rounded-full bg-white/[0.10] border-[3px] border-white items-center justify-center active:scale-95"
           >
-            <View className={`w-[60px] h-[60px] rounded-full ${capturing ? 'bg-gold/[0.5]' : 'bg-gold'}`} />
+            <View className={`w-[60px] h-[60px] rounded-full ${busy ? 'bg-gold/[0.5]' : 'bg-gold'}`} />
           </Pressable>
           <View className="w-11 h-11" />
         </View>
         {side === 'back' ? (
-          <Pressable onPress={skipBack} disabled={capturing}>
+          <Pressable onPress={skipBack} disabled={busy}>
             <Typography className="text-[13px] font-bold text-gold">
               Skip the back &mdash; read the front
             </Typography>
