@@ -1,12 +1,14 @@
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, TextInput as RNTextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, InteractionManager, Pressable, RefreshControl, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { LeadRow } from '../../../components/app/LeadRow';
 import { ChevronRightIcon, SearchIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useCurrentEvent } from '../../../hooks/useEvents';
+import { leadMatchesQuery } from '../../../lib/leadSearch';
 
 // `Lost` belongs here: the status sheet offers it, so without a filter a lost
 // lead can be set and then never found again.
@@ -21,6 +23,24 @@ const FILTERS: { key: string; label: string; dot?: string }[] = [
 export default function LeadListScreen() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('All');
   const [query, setQuery] = useState('');
+
+  /**
+   * Home's Search tile lands here rather than on a search screen of its own,
+   * because this is where searching already happens.
+   *
+   * The focus is deferred until the push animation has settled. Asking for it
+   * during the transition is dropped on Android, which leaves the rep looking at
+   * a list they asked to search with no keyboard and no idea why.
+   */
+  const searchRef = useRef<RNTextInput>(null);
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
+
+  useEffect(() => {
+    if (focus !== 'search') return;
+    const handle = InteractionManager.runAfterInteractions(() => searchRef.current?.focus());
+    return () => handle.cancel();
+  }, [focus]);
+
   const allLeads = useLeadsStore((s) => s.leads);
   const isRefreshing = useLeadsStore((s) => s.isRefreshing);
   const loadError = useLeadsStore((s) => s.loadError);
@@ -42,7 +62,7 @@ export default function LeadListScreen() {
   ).length;
 
   const filtered = leads.filter((l) => {
-    if (query && !l.name.toLowerCase().includes(query.toLowerCase()) && !l.company.toLowerCase().includes(query.toLowerCase())) return false;
+    if (!leadMatchesQuery(l, query)) return false;
     if (filter === 'Needs a note') return l.needsNote;
     if (filter === 'Qualified') return l.status === 'Qualified';
     if (filter === 'Won') return l.status === 'Won';
@@ -112,10 +132,13 @@ export default function LeadListScreen() {
         <View className="flex-row items-center gap-2 bg-surface rounded-full px-[18px] py-3 mt-4">
           <SearchIcon />
           <RNTextInput
+            ref={searchRef}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search leads"
+            placeholder="Name, company, number or email"
             placeholderTextColor="#97A3B8"
+            returnKeyType="search"
+            clearButtonMode="while-editing"
             className="flex-1 text-[14px] text-navy"
           />
         </View>

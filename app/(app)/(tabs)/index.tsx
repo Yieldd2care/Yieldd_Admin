@@ -21,10 +21,6 @@ import { useCurrentEventStore } from '../../../stores/useCurrentEventStore';
 import { useCurrentEvent, useEvents } from '../../../hooks/useEvents';
 import { AttentionDot } from '../../../hooks/useAttention';
 
-function stubComingSoon(what: string) {
-  Alert.alert('Coming soon', `${what} isn't designed yet.`);
-}
-
 function timeGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -187,7 +183,17 @@ export default function HomeScreen() {
             </View>
             <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>All leads</Typography>
           </Pressable>
-          <Pressable onPress={() => stubComingSoon('Search')} className="items-center gap-2 w-[80px]">
+          {/*
+            Search is the lead list's own search box, not a screen of its own.
+            That list already filters on name and company, so the tile carries
+            the rep there with the field focused rather than duplicating it.
+          */}
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/(app)/(tabs)/leads', params: { focus: 'search' } })
+            }
+            className="items-center gap-2 w-[80px]"
+          >
             <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
               <SearchIcon size={19} color="#0B132B" strokeWidth={1.75} />
             </View>
