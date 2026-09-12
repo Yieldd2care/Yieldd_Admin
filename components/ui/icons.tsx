@@ -90,6 +90,32 @@ export function ImageIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: Ico
   );
 }
 
+/** Reveal what is typed in a password field. */
+export function EyeIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <Circle cx="12" cy="12" r="3.1" />
+    </Svg>
+  );
+}
+
+/**
+ * Hide it again. The slash runs corner to corner rather than being a separate
+ * shorter stroke, so the two icons stay the same optical weight and the field
+ * does not appear to twitch as the rep toggles.
+ */
+export function EyeOffIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M9.9 5.8A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-3.2 4.1" />
+      <Path d="M6.6 7.4A17.2 17.2 0 002.5 12S6 18.5 12 18.5a9.4 9.4 0 004.2-1" />
+      <Path d="M9.9 9.95a3.1 3.1 0 004.3 4.3" />
+      <Path d="M4 3.6l16.4 16.8" />
+    </Svg>
+  );
+}
+
 export function HomeIcon({ size = 20, color = '#0B132B', strokeWidth = 2 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">

@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
-import { Linking, Platform, Pressable, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 
 import { Typography } from '../../../components/ui/Typography';
-import { CloseIcon, FlashIcon, ImageIcon } from '../../../components/ui/icons';
+import { CheckIcon, CloseIcon, FlashIcon, ImageIcon } from '../../../components/ui/icons';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
 import { normaliseCardPhoto } from '../../../lib/cardPhoto';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
@@ -14,7 +14,13 @@ export default function CameraScreen() {
   const [flashOn, setFlashOn] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [pickError, setPickError] = useState<string | null>(null);
+  /**
+   * One error line for both ways a photo can fail to arrive — the picker
+   * refusing to open, and the shutter handing back nothing. They are shown in
+   * the same place and cleared by the same actions, so splitting them would
+   * only make it possible to display two contradictory lines at once.
+   */
+  const [captureError, setCaptureError] = useState<string | null>(null);
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isProfileScan = mode === 'profile';
 
@@ -34,6 +40,12 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const setImageUri = useCaptureDraftStore((s) => s.setImageUri);
+  /**
+   * Read back, not just written. The rep photographs the front and the screen
+   * silently moves on to the back, so nothing on screen said the first shot
+   * had been taken or kept. This is what the thumbnail below is drawn from.
+   */
+  const frontImageUri = useCaptureDraftStore((s) => s.imageUri);
   const setBackImageUri = useCaptureDraftStore((s) => s.setBackImageUri);
 
   /**
@@ -45,6 +57,14 @@ export default function CameraScreen() {
    * often print it on the back, and that is exactly what was being lost.
    */
   const [side, setSide] = useState<'front' | 'back'>('front');
+
+  /**
+   * Is there a front photo to confirm, and is confirming it the useful thing
+   * to do right now? Both halves matter. Tied to the stored photo rather than
+   * to the step, so the tick and the thumbnail can never claim a front the
+   * store is not actually holding.
+   */
+  const hasFront = side === 'back' && !!frontImageUri;
 
   const goToConfirm = () =>
     router.push(isProfileScan ? '/(app)/card/scan-confirm' : '/(app)/capture/confirm');
@@ -68,7 +88,7 @@ export default function CameraScreen() {
   const pickFromLibrary = async () => {
     if (busy) return;
     setPicking(true);
-    setPickError(null);
+    setCaptureError(null);
     try {
       const picked = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -96,7 +116,7 @@ export default function CameraScreen() {
       const asset = picked.assets[0];
       const photo = await normaliseCardPhoto(asset.uri, asset.width, asset.height);
       if (!photo.ok) {
-        setPickError(photo.message);
+        setCaptureError(photo.message);
         return;
       }
 
@@ -115,7 +135,7 @@ export default function CameraScreen() {
       // reasons — no gallery app resolves the intent on some stripped Android
       // builds — and a button that silently does nothing is the worst outcome.
       if (__DEV__) console.warn('[camera] pickFromLibrary', err);
-      setPickError("Couldn't open your photos. Try again.");
+      setCaptureError("Couldn't open your photos. Try again.");
     } finally {
       setPicking(false);
     }
@@ -124,14 +144,24 @@ export default function CameraScreen() {
   const capture = async () => {
     if (busy || !cameraRef.current) return;
     setCapturing(true);
-    setPickError(null);
+    setCaptureError(null);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
 
       if (side === 'front') {
+        // Nothing came back, so there is nothing to confirm. Advancing here
+        // used to be harmless-looking — the rep simply found themselves on the
+        // back step — but the screen now says "Front captured", and a screen
+        // that says so when it holds no front is worse than one that says
+        // nothing. Stay put and let them press again.
+        if (!photo) {
+          setCaptureError('That shot did not save. Try again.');
+          return;
+        }
+
         // A fresh front means any back left from a previous card is not this
         // card's back, and sending it would put a stranger's address on a lead.
-        if (photo) setImageUri(photo.uri);
+        setImageUri(photo.uri);
         setBackImageUri(null);
         setSide('back');
         return;
@@ -147,6 +177,26 @@ export default function CameraScreen() {
   const skipBack = () => {
     setBackImageUri(null);
     goToConfirm();
+  };
+
+  /**
+   * Retake the front.
+   *
+   * The thumbnail is the only thing on screen that looks like the photo just
+   * taken, so it is the first thing a rep prods when the shot came out blurred.
+   * A picture that looks tappable and is not would be worse than no picture, so
+   * it goes back to the front step rather than being decoration.
+   *
+   * The stored front is cleared on the way, which keeps the confirmation
+   * honest: the badge says a front is held, so it must not survive the decision
+   * to replace it.
+   */
+  const retakeFront = () => {
+    if (busy) return;
+    setCaptureError(null);
+    setImageUri(null);
+    setBackImageUri(null);
+    setSide('front');
   };
 
   if (!permission) {
@@ -204,9 +254,9 @@ export default function CameraScreen() {
             </Typography>
           </Pressable>
         ) : null}
-        {pickError ? (
+        {captureError ? (
           <Typography className="text-[12px] text-[#FF9B9B] text-center max-w-[280px] leading-[1.45]">
-            {pickError}
+            {captureError}
           </Typography>
         ) : null}
 
@@ -241,11 +291,20 @@ export default function CameraScreen() {
             />
           ))}
         </View>
-        <View className="mt-8 bg-navy/[0.55] border border-white/[0.12] rounded-full px-[18px] py-[9px]">
+        {/*
+          The pill carries the confirmation as well as the instruction, because
+          it is already where the rep is looking. A tick and the words "Front
+          captured" answer the question the old copy left open — the back step
+          announced itself but never said the front had been kept.
+        */}
+        <View className="mt-8 flex-row items-center gap-[7px] bg-navy/[0.55] border border-white/[0.12] rounded-full px-[18px] py-[9px]">
+          {hasFront ? <CheckIcon size={13} color="#4ED17F" strokeWidth={2.8} /> : null}
           <Typography className="text-[12.5px] font-semibold text-white">
             {side === 'front'
               ? 'Align the card within the frame'
-              : 'Now the back — or skip if it is blank'}
+              : hasFront
+                ? 'Front captured — now the back, or skip'
+                : 'Now the back — or skip if it is blank'}
           </Typography>
         </View>
         {side === 'back' ? (
@@ -268,10 +327,10 @@ export default function CameraScreen() {
       </View>
 
       <View className="absolute left-0 right-0 bottom-0 items-center gap-[22px] pb-11">
-        {pickError ? (
+        {captureError ? (
           <View className="bg-navy/[0.72] border border-[#FF9B9B]/[0.45] rounded-full px-[18px] py-[9px] mx-8">
             <Typography className="text-[12.5px] font-semibold text-[#FF9B9B] text-center">
-              {pickError}
+              {captureError}
             </Typography>
           </View>
         ) : null}
@@ -307,7 +366,35 @@ export default function CameraScreen() {
           >
             <View className={`w-[60px] h-[60px] rounded-full ${busy ? 'bg-gold/[0.5]' : 'bg-gold'}`} />
           </Pressable>
-          <View className="w-11 h-11" />
+          {/*
+            Mirrors the gallery button on the left, so the shutter stays centred
+            either way: 44x44 empty on the front step, the front photo itself
+            once there is one.
+
+            Every class here is fixed from the moment this mounts — the tick
+            badge and the border do not appear later on an element that was
+            already on screen. A className that gains its first transform or
+            shadow mid-life is what makes NativeWind throw the bogus navigation
+            error described in AGENTS.md.
+          */}
+          {hasFront ? (
+            <Pressable
+              onPress={retakeFront}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Front of the card captured. Tap to retake it."
+              className="w-11 h-11 items-center justify-center active:scale-95"
+            >
+              <View className="w-[38px] h-[38px] rounded-[10px] overflow-hidden border border-white/[0.45]">
+                <Image source={{ uri: frontImageUri }} className="w-full h-full" resizeMode="cover" />
+              </View>
+              <View className="absolute -top-[3px] -right-[3px] w-[17px] h-[17px] rounded-full bg-[#4ED17F] border-2 border-[#05070d] items-center justify-center">
+                <CheckIcon size={9} color="#05070d" strokeWidth={3.4} />
+              </View>
+            </Pressable>
+          ) : (
+            <View className="w-11 h-11" />
+          )}
         </View>
         {side === 'back' ? (
           <Pressable onPress={skipBack} disabled={busy}>

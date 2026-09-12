@@ -1,13 +1,28 @@
-import { TextInput as RNTextInput, View, type TextInputProps } from 'react-native';
+import { useState } from 'react';
+import { Pressable, TextInput as RNTextInput, View, type TextInputProps } from 'react-native';
 
 import { Typography } from './Typography';
+import { EyeIcon, EyeOffIcon } from './icons';
 
 interface Props extends TextInputProps {
   label?: string;
   className?: string;
 }
 
-export function TextInput({ label, className = '', ...rest }: Props) {
+/**
+ * The browser's own reveal control is not dependable here — Safari shows none
+ * at all and Chrome's appears only once the field has content and sits where
+ * the focus ring is drawn — so the toggle is drawn rather than inherited. The
+ * pill input on the phone screens carries its own copy of this for the same
+ * reason the two auth forms are separate files: the layouts differ, the
+ * behaviour does not.
+ */
+export function TextInput({ label, className = '', secureTextEntry, ...rest }: Props) {
+  const [revealed, setRevealed] = useState(false);
+
+  // Constant per call site, which is what lets the tree branch on it safely.
+  const isPassword = secureTextEntry === true;
+
   return (
     <View className="gap-[7px]">
       {label ? (
@@ -15,11 +30,32 @@ export function TextInput({ label, className = '', ...rest }: Props) {
           {label}
         </Typography>
       ) : null}
-      <RNTextInput
-        className={`h-[52px] bg-white rounded-md px-4 text-[15.5px] font-regular text-navy border border-hairline focus:border-transparent focus:outline focus:outline-2 focus:outline-gold focus:outline-offset-2 ${className}`}
-        placeholderTextColor="#97A3B8"
-        {...rest}
-      />
+      <View className="relative">
+        <RNTextInput
+          className={`h-[52px] bg-white rounded-md px-4 text-[15.5px] font-regular text-navy border border-hairline focus:border-transparent focus:outline focus:outline-2 focus:outline-gold focus:outline-offset-2 ${
+            isPassword ? 'pr-[46px]' : ''
+          } ${className}`}
+          placeholderTextColor="#97A3B8"
+          secureTextEntry={isPassword && !revealed}
+          {...rest}
+        />
+        {isPassword ? (
+          <Pressable
+            onPress={() => setRevealed((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+            // Inset by a pixel so the control never overlaps the focus outline
+            // the field draws on itself.
+            className="absolute right-px top-px h-[50px] w-11 items-center justify-center rounded-r-md"
+          >
+            {revealed ? (
+              <EyeOffIcon size={19} color="#5A6B85" strokeWidth={1.75} />
+            ) : (
+              <EyeIcon size={19} color="#5A6B85" strokeWidth={1.75} />
+            )}
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
