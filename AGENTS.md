@@ -1,6 +1,16 @@
-# Expo SDK 54 — read the versioned docs
+# Expo SDK 57 — read the versioned docs
 
-Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before writing any code.
+Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before writing any code.
+
+Two things changed in the 54 → 57 jump that are easy to trip over again:
+
+- **`@react-navigation/*` is not installable.** SDK 56 forked React Navigation into
+  Expo Router, and the packages are no longer in `node_modules` at all. Take tab and
+  stack types from the matching Expo Router entry point instead — `expo-router/tabs`
+  re-exports the bottom-tabs types, which is where `BottomTabBarProps` now lives.
+- **`expo-contacts` has two APIs.** The root import is the new Contact-class API; the
+  old top-level functions are still declared there but **throw at runtime**. Anything
+  using the old shape must import from `expo-contacts/legacy`.
 
 # Horizontal ScrollView styling rule
 

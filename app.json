@@ -119,7 +119,9 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to use your microphone to record a voice note about a lead you just met."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-sharing",
+      "expo-status-bar"
     ]
   }
 }

@@ -20,6 +20,10 @@ try {
     process.execPath,
     [
       'node_modules/typescript/bin/tsc',
+      // TypeScript 6 makes it an error to have a tsconfig.json present while
+      // naming files on the command line. This compile is deliberately
+      // standalone — the flag says so instead of letting tsc refuse.
+      '--ignoreConfig',
       'lib/csv.ts',
       '--outDir', out,
       '--module', 'esnext',

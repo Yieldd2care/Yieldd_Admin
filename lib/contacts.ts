@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 // Type-only, so it is erased at compile time and never becomes a web import.
-import type { Contact } from 'expo-contacts';
+import type { Contact } from 'expo-contacts/legacy';
 
 import { contactFilename, leadVCard, toExpoContact, type ContactInput } from './contactCard';
 
@@ -14,6 +14,13 @@ import { contactFilename, leadVCard, toExpoContact, type ContactInput } from './
  * branch, and must stay that way. The package has no web implementation at all,
  * and this module is reachable from a web route — a top-level import would break
  * the yieldd.co export.
+ *
+ * AND NOTE THE `/legacy` SUBPATH: SDK 56 redesigned expo-contacts around a
+ * Contact class. The old top-level functions still exist on the root import but
+ * now THROW when called — `presentFormAsync` among them. Because the call below
+ * sits in a try/catch, importing from the root would not crash the app; it would
+ * quietly fall through to the 'That didn't open your contacts' message forever.
+ * The legacy entry point keeps the real implementation.
  */
 
 export type { ContactInput } from './contactCard';
@@ -69,7 +76,7 @@ export async function saveLeadToContacts(input: ContactInput): Promise<SaveConta
   }
 
   try {
-    const Contacts = await import('expo-contacts');
+    const Contacts = await import('expo-contacts/legacy');
 
     // No permission request, deliberately.
     //

@@ -23,11 +23,16 @@ try {
     process.execPath,
     [
       'node_modules/typescript/bin/tsc',
+      // TypeScript 6 makes it an error to have a tsconfig.json present while
+      // naming files on the command line. This compile is deliberately
+      // standalone — the flag says so instead of letting tsc refuse.
+      '--ignoreConfig',
       'lib/webRoutes.ts',
       '--outDir', out,
       '--module', 'commonjs',
       '--target', 'es2022',
-      '--moduleResolution', 'node',
+      // No `--moduleResolution`: node10 is already the default for
+      // `--module commonjs`, and naming it is a TypeScript 6 error.
       '--skipLibCheck',
       '--rootDir', '.',
     ],
