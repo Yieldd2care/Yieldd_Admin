@@ -45,6 +45,41 @@ type FunctionFields = {
 };
 
 /**
+ * The Edge Function's own message, recovered from a thrown transport error.
+ *
+ * supabase-js wraps every non-2xx in a FunctionsHttpError and hangs the original
+ * `Response` off `.context`, so the body has to be read back out by hand. Typed
+ * loosely on purpose: this runs on the failure path, and a helper that can itself
+ * throw while explaining a failure is worse than no helper.
+ *
+ * Returns null when there is nothing useful to show, which leaves the caller's
+ * generic message in place — a gateway's HTML error page, for instance.
+ */
+async function messageFromResponse(error: unknown): Promise<ScanResult | null> {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (!context || typeof (context as Response).json !== 'function') return null;
+
+  const response = context as Response;
+  try {
+    const body = (await response.json()) as { error?: unknown; retryable?: unknown };
+    if (typeof body.error !== 'string' || !body.error.trim()) return null;
+
+    return {
+      ok: false,
+      message: body.error,
+      // The function sets this itself on the replies that have an opinion. For
+      // the rest, a 429 or a 5xx is worth another go and a 4xx is not.
+      retryable:
+        typeof body.retryable === 'boolean'
+          ? body.retryable
+          : response.status === 429 || response.status >= 500,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * `backImageUri` is optional and stays that way.
  *
  * Most cards have nothing useful on the back, so requiring a second photo would
@@ -90,6 +125,18 @@ export async function scanCard(imageUri: string, backImageUri?: string): Promise
     // A network failure at a stall is the normal case, not an exception. The
     // rep types the details in and the lead still saves — nothing is lost.
     if (__DEV__) console.warn('[cardScan]', error);
+
+    // But not every `error` here is a network failure, and this is where the
+    // function's own messages were being swallowed.
+    //
+    // supabase-js throws FunctionsHttpError for ANY non-2xx and leaves `data`
+    // null, so every deliberate reply the function writes — "That photo is too
+    // large.", "Unsupported image type.", "Card reading is busy." — used to land
+    // here and be replaced with the generic line below, while the `data?.error`
+    // branch underneath could never run. The response is on `error.context`.
+    const fromFunction = await messageFromResponse(error);
+    if (fromFunction) return fromFunction;
+
     return {
       ok: false,
       message: "Couldn't read the card. Type the details in instead.",
