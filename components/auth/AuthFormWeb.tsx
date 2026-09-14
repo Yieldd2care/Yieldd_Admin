@@ -24,7 +24,7 @@ import { MIN_PASSWORD, type AuthFormState } from './useAuthForm';
 const COPY = {
   create: {
     heading: 'Create your account',
-    subheading: 'Just your email to start — we’ll send you a code.',
+    subheading: 'Just your email to start. We’ll send you a code.',
     submit: 'Send me a code',
     pending: 'Sending code…',
     footnote: 'By creating an account you agree to our Terms and Privacy Policy.',

@@ -165,8 +165,8 @@ export default function CompleteProfileScreen() {
                 ? 'Your name, your company, a number people can reach you on, and a password for next time.'
                 : 'Your name, a number people can reach you on, and a password for next time.'
               : isAdmin
-                ? 'A few details Google doesn’t hand over — your company, and a number people can reach you on.'
-                : 'One detail Google doesn’t hand over — a number people can reach you on.'}
+                ? 'A few details Google doesn’t hand over: your company, and a number people can reach you on.'
+                : 'One detail Google doesn’t hand over: a number people can reach you on.'}
           </Typography>
 
           <View className="gap-3 mt-8">
@@ -206,7 +206,7 @@ export default function CompleteProfileScreen() {
             <>
               <View className="gap-3 mt-6">
                 <AuthPillInput
-                  placeholder={`Password — at least ${MIN_PASSWORD} characters`}
+                  placeholder={`Password (at least ${MIN_PASSWORD} characters)`}
                   value={password}
                   onChangeText={edit(setPasswordValue)}
                   secureTextEntry

@@ -31,7 +31,7 @@ import { MIN_PASSWORD, type AuthFormState } from './useAuthForm';
 const COPY: Record<AuthMode, { headline: string; subhead: string }> = {
   create: {
     headline: 'Your next event starts here.',
-    subhead: 'Capture leads in seconds — even with zero signal.',
+    subhead: 'Capture leads in seconds, even with zero signal.',
   },
   signin: {
     headline: 'Welcome back.',
@@ -51,12 +51,24 @@ export function AuthFormNative(form: AuthFormState) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/*
+            Everything above the footer is centred in the space that is left,
+            rather than stacked from the top.
+
+            Since #33a the create tab is a single email box, so a top-aligned
+            stack left a large empty band above the footer and the lockup sat
+            high and lonely. `flex-1 justify-center` inside the flex-grow
+            content container spreads that space evenly above and below, which
+            is what drops the logo down. The footer keeps its own `mt-auto` and
+            stays pinned to the bottom.
+          */}
+          <View className="flex-1 justify-center">
           <MotiView
             from={{ opacity: 0, translateY: -10 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ type: 'timing', duration: 520 }}
             style={{ alignItems: 'center' }}
-            className="pt-8 px-8"
+            className="pt-2 px-8"
           >
             {/*
               The horizontal lockup, keyed off the dark background baked into
@@ -189,13 +201,14 @@ export function AuthFormNative(form: AuthFormState) {
             {form.isCreate ? (
               <View className="flex-row items-center justify-center gap-[6px] mt-4">
                 <Typography className="text-[12px] font-semibold text-white/[0.72]">
-                  Free to start &mdash; no credit card needed
+                  Free to start. No credit card needed.
                 </Typography>
               </View>
             ) : null}
           </MotiView>
+          </View>
 
-          <View className="flex-row items-center justify-center gap-[10px] py-8 mt-auto">
+          <View className="flex-row items-center justify-center gap-[10px] py-6 mt-auto">
             {/*
               These were underlined like links and did nothing. Someone is
               being asked to hand over their details on this very screen, so
