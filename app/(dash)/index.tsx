@@ -211,6 +211,22 @@ export default function DashHome() {
     return `${priced} of ${total} events have a cost entered`;
   }, [setStats]);
 
+  /**
+   * Where pressing that note goes.
+   *
+   * Naming the gap without offering a way to close it just moves the work: the
+   * only alternative is opening each event in turn to find the empty one. With
+   * exactly one missing, go straight to its cost form; with several, the events
+   * list is the only honest destination.
+   */
+  const fixCostHref = useMemo(() => {
+    const missing = setStats?.unpricedEventIds ?? [];
+    if (missing.length === 0) return null;
+    return missing.length === 1
+      ? `/(dash)/events/${missing[0]}/edit`
+      : '/(dash)/events';
+  }, [setStats?.unpricedEventIds]);
+
   const tasks = [
     stats?.needsNote
       ? {
@@ -326,6 +342,23 @@ export default function DashHome() {
                 />
               )}
             </View>
+
+            {/* The warning above says a cost is missing; this is the way to go
+                and enter it. Without it the only route is opening each event in
+                turn until the empty one turns up. */}
+            {pricedNote && fixCostHref ? (
+              <Pressable
+                onPress={() => router.push(fixCostHref as never)}
+                className="flex-row items-center gap-[6px] mt-[10px] self-start"
+              >
+                <Typography className="text-[12.5px] font-semibold text-blue">
+                  {setStats?.unpricedEventIds.length === 1
+                    ? 'Add the missing event cost'
+                    : `Add the missing cost for ${setStats?.unpricedEventIds.length} events`}
+                </Typography>
+                <Icon d={ICON.chevronRight} size={13} color="#1D3F8A" width={2.2} />
+              </Pressable>
+            ) : null}
           </View>
 
           <View className="mb-3">

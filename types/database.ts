@@ -1147,6 +1147,7 @@ export type Database = {
           priced_won_value_paisa: number
           spend_paisa: number
           total_leads: number
+          unpriced_event_ids: string[]
           with_voice_note: number
           won_value_paisa: number
         }[]
