@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { DashShell } from '../../components/dash/DashShell';
 import { ConfirmDialog } from '../../components/dash/ConfirmDialog';
 import { Cap, Empty, GhostButton, GoldButton, Panel, Row, Stat, StatusChip } from '../../components/dash/primitives';
+import { Avatar, Icon, ICON, ProgressBar } from '../../components/dash/controls';
 import { Typography } from '../../components/ui/Typography';
 import { TextInput } from '../../components/ui/TextInput';
 import { useCreateInvites, usePendingInvites, useRevokeInvite, useSetMemberStatus, useTeam } from '../../hooks/useTeam';
@@ -181,34 +182,46 @@ export default function DashTeam() {
         ) : undefined
       }
     >
-      <View className="flex-row gap-4 mb-4">
-        <Panel className="flex-1 px-[22px] py-[18px] flex-row items-center justify-between">
-          <View>
-            <Cap>Seats used</Cap>
-            <Typography className="text-[26px] font-extrabold text-navy mt-[5px]">
-              {seatsUsed}
-              {seatsTotal != null ? <Typography className="text-[16px] text-label font-semibold"> of {seatsTotal}</Typography> : null}
+      {/* Seats across the full width, above everything.
+          Two reasons it is a banner rather than one tile in a row of three.
+          It is the only figure on this screen with a ceiling, so it is the
+          only one that can stop you doing something — and the sentence that
+          says how many are left is also the sentence that offers the invite,
+          which is the whole point of putting it here. */}
+      {seatsTotal != null ? (
+        <Panel className="px-[22px] py-[18px] mb-4 flex-row items-center gap-6">
+          <View className="w-[42px] h-[42px] rounded-md bg-surface items-center justify-center shrink-0">
+            <Icon d={ICON.user} size={19} color="#1D3F8A" />
+          </View>
+
+          <View className="flex-1 min-w-0">
+            <Typography className="text-[15px] font-bold text-navy">
+              {seatsUsed} of {seatsTotal} seats used
+            </Typography>
+            <Typography className="text-[12.5px] text-slate mt-[2px]">
+              {overSeats
+                ? `${seatsUsed - seatsTotal} over the plan — nobody new can be invited`
+                : seatsFree === 0
+                  ? 'Every seat is taken — free one up before inviting anyone else'
+                  : `${seatsFree} ${seatsFree === 1 ? 'seat' : 'seats'} free`}
+              {pendingInvites ? ` · ${activeMembers} joined, ${pendingInvites} invited` : ''}
             </Typography>
           </View>
-          {seatsTotal != null ? (
-            <View className="w-[160px]">
-              <View className="h-[8px] bg-surface rounded-full overflow-hidden">
-                <View
-                  className="h-full bg-gold rounded-full"
-                  style={{ width: `${Math.min(100, (seatsUsed / Math.max(seatsTotal, 1)) * 100)}%` }}
-                />
-              </View>
-              <Typography className="text-[11.5px] text-label mt-[7px] text-right">
-                {overSeats ? `${seatsUsed - seatsTotal} over` : `${seatsFree} free`}
-              </Typography>
-              {pendingInvites ? (
-                <Typography className="text-[11px] text-label mt-[3px] text-right">
-                  {activeMembers} joined · {pendingInvites} invited
-                </Typography>
-              ) : null}
-            </View>
-          ) : null}
+
+          <View className="w-[220px] shrink-0">
+            <ProgressBar
+              pct={(seatsUsed / Math.max(seatsTotal, 1)) * 100}
+              color={overSeats || seatsFree === 0 ? '#C4392E' : '#F4B000'}
+            />
+            <Typography className="text-[11.5px] text-label mt-[7px] text-right">
+              {Math.round((seatsUsed / Math.max(seatsTotal, 1)) * 100)}%
+            </Typography>
+          </View>
         </Panel>
+      ) : null}
+
+      <View className="flex-row gap-4 mb-4">
+        <Stat label="Active members" value={String(activeMembers)} sub="Signed in and capturing" />
         <Stat label="Pending invites" value={String(invites?.length ?? 0)} sub="Not signed in yet" />
         <Stat
           label="Deactivated"
@@ -317,9 +330,7 @@ export default function DashTeam() {
                 last={i === members.length - 1}
                 cells={[
                   <View className="flex-row items-center gap-[11px]">
-                    <View className="w-[34px] h-[34px] rounded-full bg-navy items-center justify-center">
-                      <Typography className="text-[12px] font-bold text-white">{m.initial}</Typography>
-                    </View>
+                    <Avatar name={m.name} size={34} tone={m.status === 'deactivated' ? 'surface' : 'navy'} />
                     <View className="flex-1 min-w-0">
                       <Typography className="text-[13.5px] font-semibold text-navy" numberOfLines={1}>
                         {m.name}

@@ -24,6 +24,11 @@ const EXACT: Record<string, string> = {
   '/leads': '/(dash)/leads',
   '/events': '/(dash)/events',
   '/profile': '/(dash)/settings',
+  // The phone's Your QR tab is a code held up at a stall. The dashboard's
+  // version is the same card with the link, the published switch and what a
+  // visitor actually sees — which is the half you cannot check on a phone
+  // while someone is scanning it.
+  '/qr': '/(dash)/card',
   '/follow-ups': '/(dash)/follow-ups',
   '/settings/team': '/(dash)/team',
   '/settings/export': '/(dash)/export',
