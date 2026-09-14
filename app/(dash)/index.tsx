@@ -529,11 +529,24 @@ export default function DashHome() {
 
           <View className="flex-row gap-4 mt-4 items-start">
             <Panel className="flex-[1.5] px-[22px] py-5">
-              {/* Wraps rather than overlapping: at a narrow window the event
-                  name drops under the heading instead of running into it. */}
-              <View className="flex-row items-center justify-between gap-3 flex-wrap">
-                <Typography className="text-[17px] font-bold text-navy">Capture by hour</Typography>
-                <Typography className="text-[12px] text-slate font-medium shrink min-w-0" numberOfLines={1}>
+              {/*
+                The heading holds its width and the event name gives way.
+
+                `flex-wrap` was the wrong tool: a wrapped name dropped onto a
+                second line and pushed the bars down into the panel's padding.
+                Both children being auto-width was the actual fault — neither
+                would yield, so they ran into each other before either shrank.
+                Now the title is `shrink-0` and the name takes what is left and
+                ellipsises inside it.
+              */}
+              <View className="flex-row items-center justify-between gap-3">
+                <Typography className="text-[17px] font-bold text-navy shrink-0">
+                  Capture by hour
+                </Typography>
+                <Typography
+                  className="text-[12px] text-slate font-medium flex-1 min-w-0 text-right"
+                  numberOfLines={1}
+                >
                   {event.name} · today
                 </Typography>
               </View>
@@ -568,7 +581,7 @@ export default function DashHome() {
               <View className="mt-4 pt-[14px] border-t border-hairline">
                 <Typography className="text-[12.5px] text-slate">
                   {busiest.count > 0
-                    ? `Busiest hour was ${hourLabel(busiest.hour)}${busiest.hour < 12 ? 'am' : 'pm'} with ${busiest.count} leads. Tap an hour to see them.`
+                    ? `Busiest hour was ${hourLabel(busiest.hour)}${busiest.hour < 12 ? 'am' : 'pm'} with ${busiest.count} ${busiest.count === 1 ? 'lead' : 'leads'}. Tap an hour to see them.`
                     : 'Nothing captured yet today.'}
                 </Typography>
               </View>
