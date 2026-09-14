@@ -164,21 +164,6 @@ export function AuthFormWeb(form: AuthFormState) {
                 }`}
               />
 
-              {/* The way back in for an account with no password yet — see the
-                  same block in AuthFormNative and PENDING #33a. */}
-              {form.isCreate ? null : (
-                <Pressable
-                  onPress={form.handleCodeSignIn}
-                  disabled={form.sendingCode || form.isSubmitting}
-                  accessibilityRole="button"
-                  className="self-center mt-4 px-6 py-2 active:opacity-70"
-                >
-                  <Typography className="text-[13px] font-semibold text-blue text-center">
-                    {form.sendingCode ? 'Sending…' : 'Email me a code instead'}
-                  </Typography>
-                </Pressable>
-              )}
-
               <Typography className="text-[13.5px] text-slate mt-4 text-center">
                 {copy.footnote}
               </Typography>

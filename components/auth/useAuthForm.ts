@@ -91,14 +91,23 @@ export function useAuthForm() {
     );
   };
 
-  /** Sign in without a password, for an account that has not set one yet. */
-  const handleCodeSignIn = async () => {
-    if (!email.trim()) {
-      setError('Enter your email address first.');
-      return;
-    }
-    await goToCode('signin');
-  };
+  /*
+   * THERE IS NO "sign in with a code" ON THIS SCREEN, by decision 2026-09-14.
+   *
+   * One briefly existed, for the account that verifies a code and then closes
+   * the app before choosing a password on complete-profile: it has no password
+   * at all, so the box below would refuse it. Two things cover that case
+   * already, both checked against the live project rather than assumed:
+   *
+   *   1. Signing up again with the same address simply sends a new code and
+   *      carries on where they left off. Nothing has to be undone first.
+   *   2. Forgot password works on an account that has never had one. Verified
+   *      end to end — the recovery link issues, verifies, sets a password, and
+   *      that password then signs in.
+   *
+   * So the extra link was a third route to somewhere two routes already went,
+   * on the screen where a stranger has the least patience for choices.
+   */
 
   const handleSubmit = async () => {
     if (!canSubmit || isSubmitting || sendingCode) return;
@@ -166,7 +175,6 @@ export function useAuthForm() {
     canSubmit,
     inviteBlocksGoogle,
     handleSubmit,
-    handleCodeSignIn,
     handleGoogle,
     devEmail,
     fillDevCredentials,

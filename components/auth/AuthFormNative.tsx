@@ -176,28 +176,6 @@ export function AuthFormNative(form: AuthFormState) {
               }`}
             />
 
-            {/*
-              The way back in for an account that has no password yet.
-
-              Someone who signs up with a code and closes the app before
-              choosing a password on complete-profile has no password at all.
-              Without this they could not sign in from a second device — the
-              password box would refuse them and there would be nothing else to
-              try. See PENDING #33a.
-            */}
-            {form.isCreate ? null : (
-              <Pressable
-                onPress={form.handleCodeSignIn}
-                disabled={form.sendingCode || form.isSubmitting}
-                accessibilityRole="button"
-                className="self-center mt-4 px-6 py-2 active:opacity-60"
-              >
-                <Typography className="text-[12.5px] font-bold text-gold text-center">
-                  {form.sendingCode ? 'Sending…' : 'Email me a code instead'}
-                </Typography>
-              </Pressable>
-            )}
-
             {form.isCreate ? (
               <View className="flex-row items-center justify-center gap-[6px] mt-4">
                 <Typography className="text-[12px] font-semibold text-white/[0.72]">
