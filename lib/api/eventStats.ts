@@ -142,6 +142,13 @@ export type EventSetStats = {
    */
   pricedEvents: number | null;
   /**
+   * Which of the selected events have no cost recorded, so the screen can send
+   * the admin to the one that needs filling in rather than only warning them
+   * that something does. Comes from the server because the rule is not
+   * reproducible here — see `event_set_stats`.
+   */
+  unpricedEventIds: string[];
+  /**
    * Return across the events that have a cost recorded, computed once over the
    * whole set — never an average of per-event ROIs.
    */
@@ -167,6 +174,7 @@ type SetStatsRow = {
   spend_paisa: number | null;
   priced_events: number | null;
   priced_won_value_paisa: number | null;
+  unpriced_event_ids: string[] | null;
 };
 
 /**
@@ -211,6 +219,8 @@ export async function fetchEventSetStats(eventIds: string[]): Promise<EventSetSt
     expectedValuePaise: row.expected_value_paisa == null ? null : Number(row.expected_value_paisa),
     spendPaise: spend,
     pricedEvents: row.priced_events == null ? null : Number(row.priced_events),
+    // Null for a rep, who has no cost to fill in and no card to fill it from.
+    unpricedEventIds: row.unpriced_event_ids ?? [],
     // Won value from priced events over spend, which is the same number whether
     // summed over the priced events or all of them — an unpriced event
     // contributes 0. `roiPercent` returns null at zero spend, so a selection

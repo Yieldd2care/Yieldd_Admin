@@ -58,6 +58,8 @@ Full diagnosis for each is in its numbered section below.
 | 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
 | 52 | An invite counts as ready with a number that is not one | `[ ]` surfaced by 38; changes typed invites too, so needs a decision |
 | 53 | iOS ships a contacts permission string it never uses | `[ ]` surfaced by 38; App Store Review reads it, no user ever sees it |
+| 54 | Ask for the event cost when the show ends | `[ ]` surfaced by 50; the cost is not known at creation time |
+| 55 | "This event cost nothing" is not something you can say | `[ ]` surfaced by 50; unset and zero are the same row today |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -735,6 +737,13 @@ the `cost_*_paisa` components, which are NULL-permissive on purpose — computes
 events only, and returns `priced_events` so the card can say "4 of 6 events have a cost entered".
 In the test fixture this is the difference between a truthful **+100%** and a flattering **+767%**.
 
+The warning is also the fix: `event_set_stats` returns the ids of the events whose cost is missing
+(admin-only, like the money it annotates), and the note on Home is a link — straight to that event's
+cost form when there is one, to the events list when there are several. Naming a gap without a way
+to close it just moves the work, since the only alternative is opening each event in turn. The two
+larger versions of this are logged separately as **54** (ask for the cost when the show ends, which
+is when it is actually known) and **55** (let "this event cost nothing" be a thing you can say).
+
 **Left alone deliberately:** `EventSwitcher` and the Leads screen. Merging the two controls would
 have made picking a show to work in silently change what the yearly totals covered, and would have
 required a mixed-event leads list that nobody asked for. Both sections now state their scope in
@@ -806,6 +815,46 @@ the `"expo-contacts"` plugin entry entirely — the native module autolinks from
 the plugin *only* writes permissions, so dropping it would also make the Android
 `blockedPermissions` entries redundant. [scripts/verify-privacy-manifest.mjs](scripts/verify-privacy-manifest.mjs)
 is the natural place to assert whichever is chosen.
+
+---
+
+### 54. Ask for the event cost when the show ends — surfaced 2026-09-14 `[ ]`
+
+**Surfaced by 50, not caused by it.** The event wizard asks for seven cost lines while the event is
+being *created*, which is the one moment an exhibitor genuinely does not know them — stall invoices,
+travel and staff are settled afterwards. So the fields get skipped, and nothing ever asks again.
+
+50 made the consequence visible: an event with no cost recorded is excluded from the across-events
+return, and Home now says so and links to the form. That closes the loop only for someone who
+looks at Home. The cost is still never *asked for* a second time.
+
+The natural prompt is the event closing — `reconcileEventStatuses` already runs when a show's dates
+pass ([hooks/useEvents.ts](hooks/useEvents.ts)) and is the one moment the app knows the spending is
+final. Wherever it lands, it must be a prompt and not a block: an event that ends without its costs
+recorded is normal, and refusing to close it would be worse than the gap.
+
+---
+
+### 55. "This event cost nothing" is not something you can say — surfaced 2026-09-14 `[ ]`
+
+`events.total_cost_paisa` is generated as `coalesce(cost_stall_paisa, 0) + ...` over the seven
+components ([20260827130200](supabase/migrations/20260827130200_event_costs_stall_timezone.sql)), so
+an event nobody costed and an event that genuinely cost nothing are the same row: ₹0.
+
+The components themselves are NULL-permissive on purpose — the migration says so in as many words,
+"an unset cost is not the same as a cost of zero" — so the distinction survives one level down, and
+`event_set_stats` reads it from there rather than from the total. That is why `is_priced` checks the
+components and not `total_cost_paisa`, and it is the only reason 50's ROI figure can be honest.
+
+What is still missing is a way for the user to *state* it. A sponsored stall, a stand someone else
+paid for, a show attended as a guest — all cost nothing, and today the only way to record that is to
+type 0 into a line, which is indistinguishable from a stray keystroke and reads as "not filled in"
+on every screen that inspects the components.
+
+Worth doing only if free events actually happen. If they do, a single "this event cost nothing" tick
+that writes explicit zeros across the seven components is enough — no schema change, because the
+components already carry the distinction. If they do not, leave it: an extra control for a case that
+never arises is worse than the gap.
 
 ---
 

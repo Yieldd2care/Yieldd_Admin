@@ -354,6 +354,9 @@ try {
   eq('only one of the two events has a cost recorded', Number(ss.priced_events), 1);
   eq('won value used for ROI covers the priced event only',
     Number(ss.priced_won_value_paisa), 30000000);
+  // Naming the gap, not just counting it — the card sends the admin here.
+  eq('and it names WHICH event has no cost, so the warning can be acted on',
+    ss.unpriced_event_ids, [event2.id]);
   const blendedRoi =
     ((Number(ss.priced_won_value_paisa) - Number(ss.spend_paisa)) / Number(ss.spend_paisa)) * 100;
   eq('blended ROI is +100%, from the priced event alone', blendedRoi, 100);
@@ -403,6 +406,7 @@ try {
   eq('money is withheld from the rep: expected value', rss.expected_value_paisa, null);
   eq('money is withheld from the rep: ROI numerator', rss.priced_won_value_paisa, null);
   eq('and the priced-event count that annotates it', rss.priced_events, null);
+  eq('and the ids of the events missing a cost', rss.unpriced_event_ids, null);
 
   // An id that is not this organisation's raises rather than being dropped from
   // the total — a short answer nobody could see would be worse than an error.
