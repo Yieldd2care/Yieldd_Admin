@@ -30,7 +30,7 @@ Full diagnosis for each is in its numbered section below.
 
 | # | Item | Status |
 |---|---|---|
-| 33a | Sign-up becomes email → OTP → name + password | `[ ]` needs a decision on company/phone |
+| 33a | Sign-up becomes email → code → name + password | `[x]` done 2026-09-14 |
 | 33b | Referral — "where did you hear about us" + sub-lists | `[x]` done 2026-09-14 |
 | 33c | Skip on every onboarding screen | `[~]` 2026-09-14 — 33b now uses SkipLink; the two older screens take none by decision, waits on 33d |
 | 33d | First-run tutorial on Home (collage + Next) | `[ ]` |
@@ -60,6 +60,7 @@ Full diagnosis for each is in its numbered section below.
 | 53 | iOS ships a contacts permission string it never uses | `[ ]` surfaced by 38; App Store Review reads it, no user ever sees it |
 | 54 | Ask for the event cost when the show ends | `[ ]` surfaced by 50; the cost is not known at creation time |
 | 55 | "This event cost nothing" is not something you can say | `[ ]` surfaced by 50; unset and zero are the same row today |
+| 56 | Abandoned signups leave an empty organisation behind | `[ ]` surfaced by 33a; the account is made when the code is sent |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -144,28 +145,65 @@ was described, so none of it gets merged into one screen by mistake.
 
 ---
 
-#### 33a. Sign-up becomes email → OTP → name + password `[ ]`
+#### 33a. Sign-up becomes email → code → name + password — DONE 2026-09-14
 
-**Today:** one screen collects **name, company, phone, email and password** together
-([stores/useSessionStore.ts:246](stores/useSessionStore.ts#L246) —
-`signUp({ name, company, phone, email, password })`).
+Creating an account is now **one email field**. A 6-digit code is emailed, entered on
+[app/verify-code.tsx](app/verify-code.tsx), and everything else is collected afterwards on
+[complete-profile](app/(app)/onboarding/complete-profile.tsx):
 
-**Wanted:** three steps.
+```
+email → code → complete-profile (name + password + number + company) → referral (#33b) → fork → home
+```
 
-1. **Email only.** The first screen asks for the email address and nothing else.
-2. **OTP.** A verification code is emailed to that address. The user types it in to verify.
-3. **Name + password, on one screen.** Once the OTP is accepted, ask for the user's name, and on
-   that same screen take **password** and **confirm password**. The account is created here.
+**Both open questions are answered:**
 
-**Open questions:**
+- **`company` and `phone` move to complete-profile**, which already asked for both. No metadata
+  is sent at signup at all, so `handle_new_user()` falls back to its own defaults — the account
+  starts as **"New user"** at **"My workspace"** and that screen replaces them.
+- **Auto-confirm did NOT need turning off.** The plan assumed it did, and that would have broken
+  signup on the live site. Probed against the live project instead:
+  `signInWithOtp({shouldCreateUser:true})` returns **no session** even with `mailer_autoconfirm`
+  on, so the code genuinely gates entry. The setting is untouched.
 
-- **What happens to `company` and `phone`?** They are collected today and are not in the new
-  flow. Company is not cosmetic — signup metadata feeds the `handle_new_user()` trigger, which
-  names the organisation. Dropping it without a replacement leaves organisations unnamed. Decide:
-  drop, move to a later onboarding step, or keep.
-- **Supabase auto-confirm is currently ON** (no verification email is sent at all). An OTP step
-  means turning that off and moving to `signInWithOtp` / `verifyOtp`. That is a console change as
-  well as a code change.
+**Live config that did change (2026-09-14):** `mailer_otp_length` 8 → **6** (Supabase's minimum
+— the user asked for 4, which it refuses), and **both** the magic-link and confirmation email
+templates now contain `{{ .Token }}`.
+
+**Worth keeping — the templates had no code in them.** Both contained only
+`{{ .ConfirmationURL }}`, so the email would have arrived with a link and *nothing to type*,
+and the code screen would have waited forever for a code nobody was sent. Nothing in the
+codebase could have caught it. `npm run verify:otp` now asserts it on every run.
+
+**Three traps, all found before they shipped:**
+
+- **[verify-code.tsx](app/verify-code.tsx) is at the route root, not in `(auth)` — do not move
+  it.** That group redirects anyone signed in straight to the app, and this screen signs the
+  person in halfway through its own lifetime, so inside it the guard tears the screen away
+  mid-verify. [app/invite.tsx](app/invite.tsx) sits at the root for exactly the same reason.
+- **A half-finished signup has no password at all.** Verify the code, close the app before
+  finishing the profile, and there is no password and no Google identity — unreachable from any
+  second device. Hence **"Email me a code instead"** on the sign-in tab. It is not a nicety.
+- **Google accounts must never be asked to set a password.** Whether to ask is derived from the
+  placeholder name, not from the identity list: `email` is an identity for code and password
+  accounts alike, so that test would also have caught older accounts that already have one.
+
+**The account is created when the code is SENT, not when it is entered.** That is GoTrue's
+behaviour, and two things follow. The invite token has to ride on the *send* call
+([lib/auth/emailCode.ts](lib/auth/emailCode.ts)) or every invited rep silently lands in a brand
+new organisation of their own. And **every abandoned signup leaves an empty "My workspace"
+organisation behind forever** — see #56 below.
+
+**No database migration was needed.** `handle_new_user()` already defaults a missing name and
+company, and `profiles.phone` is nullable.
+
+**Not built in the store.** `lib/auth/emailCode.ts` is a standalone module like
+[passwordReset.ts](lib/auth/passwordReset.ts) and [google.ts](lib/auth/google.ts).
+`stores/useSessionStore.ts` was untouched — another session had 62 uncommitted lines in it, and
+`updateProfile` already accepted name, phone and company.
+
+- **New suite:** `npm run verify:otp` — 20 assertions against the live project, creating and
+  deleting throwaway accounts. The one that earns it is the invite token surviving
+  `signInWithOtp`'s `options.data`.
 
 ---
 
@@ -855,6 +893,24 @@ Worth doing only if free events actually happen. If they do, a single "this even
 that writes explicit zeros across the seven components is enough — no schema change, because the
 components already carry the distinction. If they do not, leave it: an extra control for a case that
 never arises is worse than the gap.
+
+---
+
+### 56. Abandoned signups leave an empty organisation behind — found 2026-09-14 `[ ]`
+
+A consequence of #33a, found while testing it. `signInWithOtp` creates the user the moment the
+code is **sent**, not when it is entered, so `handle_new_user()` fires then — creating an
+organisation and a profile for someone who may never type the code. Five such orgs were created
+and cleaned up by hand during testing on 2026-09-14.
+
+Nothing breaks today: the rows are invisible to everyone, RLS scopes them to a user who never
+comes back, and `npm run verify:otp` now cleans up the ones it creates. But they accumulate
+with every abandoned signup, and an org count is the obvious thing someone will later reach for
+to answer "how many customers do we have?".
+
+Options, none urgent: a periodic sweep of organisations with no members and no events; a
+`provisional` flag cleared when complete-profile finishes; or simply excluding zero-member orgs
+wherever orgs get counted. Worth deciding before anyone builds a metrics screen, not before.
 
 ---
 

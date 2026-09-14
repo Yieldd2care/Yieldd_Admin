@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 
 import { useSessionStore } from '../../stores/useSessionStore';
 import { nextRouteAfterAuth } from '../../lib/auth/nextRoute';
-import { isValidPhone } from '../../lib/phone';
+import { sendEmailCode, type CodePurpose } from '../../lib/auth/emailCode';
 import type { AuthMode } from './AuthTabs';
 
 /**
@@ -22,18 +22,21 @@ export const MIN_PASSWORD = 8;
 
 export function useAuthForm() {
   const [mode, setMode] = useState<AuthMode>('create');
-  const [name, setName] = useState('');
-  const [company, setCompany] = useState('');
-  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const signUp = useSessionStore((s) => s.signUp);
+  // No name/company/phone here any more. They are not collected until
+  // complete-profile, which is also why the store's signUp() is no longer
+  // called from anywhere — it is left in place rather than deleted because it
+  // carries duplicate-detection work that belongs to the phone field, and that
+  // has to be relocated deliberately rather than dropped. See PENDING #33a.
   const signIn = useSessionStore((s) => s.signIn);
   const signInWithGoogle = useSessionStore((s) => s.signInWithGoogle);
   const isSubmitting = useSessionStore((s) => s.isSubmitting);
   const pendingInviteToken = useSessionStore((s) => s.pendingInviteToken);
+
+  const [sendingCode, setSendingCode] = useState(false);
 
   const isCreate = mode === 'create';
 
@@ -43,11 +46,10 @@ export function useAuthForm() {
   // one that invited them, so the door is closed rather than left ajar.
   const inviteBlocksGoogle = Boolean(pendingInviteToken);
 
-  const canSubmit = Boolean(
-    isCreate
-      ? name.trim() && company.trim() && phone.trim() && email.trim() && password.trim()
-      : email.trim() && password.trim()
-  );
+  // Creating an account is one field now (#33a). Name, company, contact number
+  // and password all moved to complete-profile, which already asked for two of
+  // them — so the first thing a stranger sees is a single box, not five.
+  const canSubmit = Boolean(isCreate ? email.trim() : email.trim() && password.trim());
 
   // Any edit invalidates the last error — leaving it on screen while the user
   // fixes the thing it complained about reads as broken.
@@ -61,24 +63,54 @@ export function useAuthForm() {
     setMode(next);
   };
 
-  const handleSubmit = async () => {
-    if (!canSubmit || isSubmitting) return;
+  /**
+   * Emails a code and moves to the screen that asks for it.
+   *
+   * `push`, not `replace` — a typo in the address is the likeliest reason to
+   * want to come back, and onboarding's "never sit in the back stack" rule does
+   * not apply to a screen the person may need to escape.
+   *
+   * Note the account is created when the code is SENT, not when it is entered.
+   * That is GoTrue's behaviour, not a choice here, and it is why the invite
+   * token has to be attached at this point — see lib/auth/emailCode.ts.
+   */
+  const goToCode = async (purpose: CodePurpose) => {
+    if (sendingCode) return;
+    setSendingCode(true);
     setError(null);
 
-    if (isCreate && !isValidPhone(phone)) {
-      setError('Enter a contact number with at least 10 digits.');
+    const result = await sendEmailCode(email, purpose);
+    setSendingCode(false);
+
+    if (result.error) {
+      setError(result.error);
       return;
     }
+    router.push(
+      `/verify-code?email=${encodeURIComponent(email.trim().toLowerCase())}&purpose=${purpose}`
+    );
+  };
 
-    if (isCreate && password.length < MIN_PASSWORD) {
-      setError(`Use at least ${MIN_PASSWORD} characters for your password.`);
+  /** Sign in without a password, for an account that has not set one yet. */
+  const handleCodeSignIn = async () => {
+    if (!email.trim()) {
+      setError('Enter your email address first.');
+      return;
+    }
+    await goToCode('signin');
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting || sendingCode) return;
+    setError(null);
+
+    if (isCreate) {
+      await goToCode('signup');
       return;
     }
 
     const usedInvite = Boolean(pendingInviteToken);
-    const result = isCreate
-      ? await signUp({ name, company, phone, email, password })
-      : await signIn({ email, password });
+    const result = await signIn({ email, password });
 
     if (result.error) {
       setError(result.error);
@@ -124,21 +156,17 @@ export function useAuthForm() {
     mode,
     isCreate,
     changeMode,
-    name,
-    setName: edit(setName),
-    company,
-    setCompany: edit(setCompany),
-    phone,
-    setPhone: edit(setPhone),
     email,
     setEmail: edit(setEmail),
     password,
     setPassword: edit(setPassword),
     error,
     isSubmitting,
+    sendingCode,
     canSubmit,
     inviteBlocksGoogle,
     handleSubmit,
+    handleCodeSignIn,
     handleGoogle,
     devEmail,
     fillDevCredentials,

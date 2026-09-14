@@ -12,21 +12,29 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { nextRouteAfterAuth } from '../../../lib/auth/nextRoute';
 import { isValidPhone } from '../../../lib/phone';
 import { CenterColumn } from '../../../components/shared/CenterColumn';
-
-/** The name handle_new_user() falls back to when no company was supplied. */
-const PLACEHOLDER_ORG = 'My workspace';
+import { MIN_PASSWORD } from '../../../components/auth/useAuthForm';
+import { needsPasswordSetup, setPassword } from '../../../lib/auth/emailCode';
+import { PLACEHOLDER_NAME, PLACEHOLDER_ORG } from '../../../types/session';
 
 /**
- * Fills the gaps Google sign-in leaves behind.
+ * Everything signing up no longer asks for.
  *
- * The email sign-up form collects a name, a company and a contact number, so
- * an account created there never reaches this screen. Google gives us a name
- * and an email and nothing else — which leaves the person with no number on
- * their card and an organisation literally called "My workspace". Rather than
- * let either of those follow them around, ask once, here.
+ * This used to be the screen that patched up Google sign-ins, which hand over a
+ * name and an email and nothing else. Since #33a it is where almost everything
+ * is collected: creating an account is one email box, so a new account arrives
+ * named "New user" at an organisation called "My workspace" with no number and
+ * no password, and this is the screen that replaces all four.
+ *
+ * Three shapes, decided by where the person came from:
+ *
+ *   code    — name, company (admins), number, and a password to set. Everything.
+ *   Google  — name is already real, so: company (admins) and a number. No
+ *             password, ever: they sign in with Google and would be inventing
+ *             one they never type.
+ *   older   — accounts predating the mandatory contact number. Number only.
  *
  * Reached only via nextRouteAfterAuth(), which sends anyone whose profile is
- * missing a contact number here before anything else.
+ * incomplete here before anything else.
  *
  * THIS SCREEN HAS NO SKIP, AND THAT IS DELIBERATE.
  *
@@ -48,17 +56,33 @@ const PLACEHOLDER_ORG = 'My workspace';
  */
 export default function CompleteProfileScreen() {
   const user = useSessionStore((s) => s.user);
-  const completeProfile = useSessionStore((s) => s.completeProfile);
+  const updateProfile = useSessionStore((s) => s.updateProfile);
 
   const isAdmin = user?.role === 'admin';
+
+  // True only for an account created by an emailed code, which has no password
+  // yet. A Google account is signed in by Google and must not be made to invent
+  // one; an older email+password account already has one. See emailCode.ts.
+  const mustSetPassword = needsPasswordSetup(user);
+
+  const [name, setName] = useState(
+    user?.name && user.name !== PLACEHOLDER_NAME ? user.name : ''
+  );
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [company, setCompany] = useState(
     user?.company && user.company !== PLACEHOLDER_ORG ? user.company : ''
   );
+  const [password, setPasswordValue] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const canSubmit = Boolean(phone.trim() && (!isAdmin || company.trim()));
+  const canSubmit = Boolean(
+    name.trim() &&
+      phone.trim() &&
+      (!isAdmin || company.trim()) &&
+      (!mustSetPassword || (password.trim() && confirm.trim()))
+  );
 
   const edit = (setter: (v: string) => void) => (value: string) => {
     if (error) setError(null);
@@ -73,8 +97,34 @@ export default function CompleteProfileScreen() {
       return;
     }
 
+    if (mustSetPassword) {
+      if (password.length < MIN_PASSWORD) {
+        setError(`Use at least ${MIN_PASSWORD} characters for your password.`);
+        return;
+      }
+      if (password !== confirm) {
+        setError('Those two passwords don’t match.');
+        return;
+      }
+    }
+
     setSaving(true);
-    const result = await completeProfile({
+
+    // Password first, deliberately. If the profile saved and this failed, the
+    // guard would let them through to the app with no password at all and no
+    // screen left that asks for one — locked out of every other device. The
+    // other way round, a failure here simply leaves them on this screen.
+    if (mustSetPassword) {
+      const pw = await setPassword(password);
+      if (pw.error) {
+        setSaving(false);
+        setError(pw.error);
+        return;
+      }
+    }
+
+    const result = await updateProfile({
+      name,
       phone,
       ...(isAdmin ? { company } : {}),
     });
@@ -110,12 +160,24 @@ export default function CompleteProfileScreen() {
             {user?.name ? `Welcome, ${user.name.split(' ')[0]}.` : 'Welcome.'}
           </Typography>
           <Typography className="mt-3 text-[13.5px] leading-[1.55] text-white/[0.60] text-center">
-            {isAdmin
-              ? 'Two details Google doesn’t hand over — your company, and a number people can reach you on.'
-              : 'One detail Google doesn’t hand over — a number people can reach you on.'}
+            {mustSetPassword
+              ? isAdmin
+                ? 'Your name, your company, a number people can reach you on, and a password for next time.'
+                : 'Your name, a number people can reach you on, and a password for next time.'
+              : isAdmin
+                ? 'A few details Google doesn’t hand over — your company, and a number people can reach you on.'
+                : 'One detail Google doesn’t hand over — a number people can reach you on.'}
           </Typography>
 
           <View className="gap-3 mt-8">
+            <AuthPillInput
+              placeholder="Priya Sharma"
+              value={name}
+              onChangeText={edit(setName)}
+              autoCapitalize="words"
+              autoComplete="name"
+              textContentType="name"
+            />
             {isAdmin ? (
               <AuthPillInput
                 placeholder="Acme Industries Pvt Ltd"
@@ -137,6 +199,33 @@ export default function CompleteProfileScreen() {
           <Typography className="mt-3 text-[11.5px] leading-[1.45] text-white/[0.45] text-center">
             This is the number that goes on your digital card.
           </Typography>
+
+          {/* Only for an account that arrived by code and has no password yet.
+              A Google account never sees this. */}
+          {mustSetPassword ? (
+            <>
+              <View className="gap-3 mt-6">
+                <AuthPillInput
+                  placeholder={`Password — at least ${MIN_PASSWORD} characters`}
+                  value={password}
+                  onChangeText={edit(setPasswordValue)}
+                  secureTextEntry
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                />
+                <AuthPillInput
+                  placeholder="Confirm password"
+                  value={confirm}
+                  onChangeText={edit(setConfirm)}
+                  secureTextEntry
+                  autoComplete="new-password"
+                />
+              </View>
+              <Typography className="mt-3 text-[11.5px] leading-[1.45] text-white/[0.45] text-center">
+                You’ll use this to sign in next time, instead of waiting for a code.
+              </Typography>
+            </>
+          ) : null}
 
           {error ? (
             <Typography className="mt-4 text-[12.5px] font-semibold text-[#FF8A8A] text-center leading-[1.45]">

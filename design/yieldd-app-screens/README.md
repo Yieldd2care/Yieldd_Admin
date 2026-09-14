@@ -40,6 +40,18 @@ is settled — `TASKS.md` §1.2 commits concretely to Supabase
 and approved. The phone/OTP language in the older planning docs is
 superseded; don't redesign auth around OTP.
 
+**REVERSED 2026-09-14 — auth now DOES use a code, by the user's decision
+(PENDING #33b's sibling, #33a).** Creating an account is a single email field;
+a 6-digit code is emailed and entered on `app/verify-code.tsx`; name, company,
+contact number and password are collected afterwards on
+`app/(app)/onboarding/complete-profile.tsx`. Signing in still uses email +
+password, with an emailed code as the fallback for an account that has not set
+one yet. Google is unchanged and never sends a code.
+
+Note what did **not** change: the code is emailed, not texted. The 2026-08-22
+note above is still right to reject the *phone*/SMS OTP in the old planning
+docs — there is no SMS provider on this project and none is planned.
+
 ## Wired into real code (2026-08-25)
 
 All 13 screens listed below as "Approved" / "Designed, needs review" (Auth,

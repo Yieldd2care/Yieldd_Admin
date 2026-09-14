@@ -137,12 +137,34 @@ export interface SessionState {
 }
 
 /**
+ * The names handle_new_user() falls back to when signup supplied no metadata.
+ *
+ * Both are written by the database, never typed by a person, and both are now
+ * reached routinely: signing up with an emailed code (#33a) sends nothing but
+ * the address, so every new account begins as "New user" at "My workspace"
+ * until complete-profile replaces them.
+ *
+ * Exported so the screen that prefills the fields, the guard below, and
+ * lib/auth/emailCode.ts cannot drift to different spellings of the same string.
+ */
+export const PLACEHOLDER_NAME = 'New user';
+export const PLACEHOLDER_ORG = 'My workspace';
+
+/**
  * True when the account is missing something every account is supposed to have.
  *
- * Only ever true for an account that did not come through the email signup
- * form: a Google sign-in supplies a name and an email and nothing else, and
- * accounts created before the contact number became mandatory.
+ * Two cases now, not one:
+ *
+ *   - No contact number. A Google sign-in supplies a name and an email and
+ *     nothing else, and accounts predate the number being mandatory.
+ *   - The placeholder name. An account created by an emailed code arrives as
+ *     "New user", because the only thing it was created from was an address.
+ *
+ * The second is not redundant. Such an account also has a null phone today, so
+ * the first test happens to catch it — but that is a coincidence, and it stops
+ * being true the moment anything saves a number without a name. Relying on it
+ * would leave people named "New user" with no route back to fixing it.
  */
 export function profileNeedsCompletion(user: User | null): boolean {
-  return Boolean(user && !user.phone);
+  return Boolean(user && (!user.phone || user.name === PLACEHOLDER_NAME));
 }

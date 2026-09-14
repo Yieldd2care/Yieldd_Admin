@@ -105,31 +105,9 @@ export function AuthFormNative(form: AuthFormState) {
               <View className="flex-1 h-px bg-white/[0.14]" />
             </View>
 
+            {/* Creating an account is one field (#33a): the rest is asked for
+                on complete-profile, after a code has proved the address. */}
             <View className="gap-3">
-              {form.isCreate ? (
-                <>
-                  <AuthPillInput
-                    placeholder="Priya Sharma"
-                    value={form.name}
-                    onChangeText={form.setName}
-                    autoCapitalize="words"
-                  />
-                  <AuthPillInput
-                    placeholder="Acme Industries Pvt Ltd"
-                    value={form.company}
-                    onChangeText={form.setCompany}
-                    autoCapitalize="words"
-                  />
-                  <AuthPillInput
-                    placeholder="+91 98765 43210"
-                    value={form.phone}
-                    onChangeText={form.setPhone}
-                    keyboardType="phone-pad"
-                    autoComplete="tel"
-                    textContentType="telephoneNumber"
-                  />
-                </>
-              ) : null}
               <AuthPillInput
                 placeholder="you@company.com"
                 value={form.email}
@@ -138,13 +116,15 @@ export function AuthFormNative(form: AuthFormState) {
                 keyboardType="email-address"
                 autoComplete="email"
               />
-              <AuthPillInput
-                placeholder={`At least ${MIN_PASSWORD} characters`}
-                value={form.password}
-                onChangeText={form.setPassword}
-                secureTextEntry
-                autoComplete="password"
-              />
+              {form.isCreate ? null : (
+                <AuthPillInput
+                  placeholder={`At least ${MIN_PASSWORD} characters`}
+                  value={form.password}
+                  onChangeText={form.setPassword}
+                  secureTextEntry
+                  autoComplete="password"
+                />
+              )}
             </View>
 
             {/* Sign-in only. On the create-account tab there is no password to
@@ -168,19 +148,43 @@ export function AuthFormNative(form: AuthFormState) {
 
             <Button
               label={
-                form.isSubmitting
-                  ? form.isCreate
-                    ? 'Creating account…'
-                    : 'Signing in…'
-                  : form.isCreate
-                    ? 'Create account'
+                form.isCreate
+                  ? form.sendingCode
+                    ? 'Sending code…'
+                    : 'Send me a code'
+                  : form.isSubmitting
+                    ? 'Signing in…'
                     : 'Sign in'
               }
               onPress={form.handleSubmit}
-              disabled={!form.canSubmit || form.isSubmitting}
+              disabled={!form.canSubmit || form.isSubmitting || form.sendingCode}
               shape="pill"
-              className={`w-full mt-5 ${!form.canSubmit || form.isSubmitting ? 'opacity-50' : ''}`}
+              className={`w-full mt-5 ${
+                !form.canSubmit || form.isSubmitting || form.sendingCode ? 'opacity-50' : ''
+              }`}
             />
+
+            {/*
+              The way back in for an account that has no password yet.
+
+              Someone who signs up with a code and closes the app before
+              choosing a password on complete-profile has no password at all.
+              Without this they could not sign in from a second device — the
+              password box would refuse them and there would be nothing else to
+              try. See PENDING #33a.
+            */}
+            {form.isCreate ? null : (
+              <Pressable
+                onPress={form.handleCodeSignIn}
+                disabled={form.sendingCode || form.isSubmitting}
+                accessibilityRole="button"
+                className="self-center mt-4 px-6 py-2 active:opacity-60"
+              >
+                <Typography className="text-[12.5px] font-bold text-gold text-center">
+                  {form.sendingCode ? 'Sending…' : 'Email me a code instead'}
+                </Typography>
+              </Pressable>
+            )}
 
             {form.isCreate ? (
               <View className="flex-row items-center justify-center gap-[6px] mt-4">

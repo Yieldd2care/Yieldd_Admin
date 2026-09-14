@@ -24,9 +24,9 @@ import { MIN_PASSWORD, type AuthFormState } from './useAuthForm';
 const COPY = {
   create: {
     heading: 'Create your account',
-    subheading: '',
-    submit: 'Create account',
-    pending: 'Creating account…',
+    subheading: 'Just your email to start — we’ll send you a code.',
+    submit: 'Send me a code',
+    pending: 'Sending code…',
     footnote: 'By creating an account you agree to our Terms and Privacy Policy.',
   },
   signin: {
@@ -105,34 +105,9 @@ export function AuthFormWeb(form: AuthFormState) {
                 <View className="flex-1 h-px bg-hairline" />
               </View>
 
+              {/* Creating an account is one field (#33a): the rest is asked
+                  for on complete-profile, after a code proves the address. */}
               <View className="gap-3">
-                {form.isCreate ? (
-                  <>
-                    <TextInput
-                      label="Full name"
-                      placeholder="Priya Sharma"
-                      value={form.name}
-                      onChangeText={form.setName}
-                      autoCapitalize="words"
-                    />
-                    <TextInput
-                      label="Company name"
-                      placeholder="Acme Industries Pvt Ltd"
-                      value={form.company}
-                      onChangeText={form.setCompany}
-                      autoCapitalize="words"
-                    />
-                    <TextInput
-                      label="Contact number"
-                      placeholder="+91 98765 43210"
-                      value={form.phone}
-                      onChangeText={form.setPhone}
-                      keyboardType="phone-pad"
-                      autoComplete="tel"
-                      textContentType="telephoneNumber"
-                    />
-                  </>
-                ) : null}
                 <TextInput
                   label="Work email"
                   placeholder="you@company.com"
@@ -142,14 +117,16 @@ export function AuthFormWeb(form: AuthFormState) {
                   keyboardType="email-address"
                   autoComplete="email"
                 />
-                <TextInput
-                  label="Password"
-                  placeholder={`At least ${MIN_PASSWORD} characters`}
-                  value={form.password}
-                  onChangeText={form.setPassword}
-                  secureTextEntry
-                  autoComplete="password"
-                />
+                {form.isCreate ? null : (
+                  <TextInput
+                    label="Password"
+                    placeholder={`At least ${MIN_PASSWORD} characters`}
+                    value={form.password}
+                    onChangeText={form.setPassword}
+                    secureTextEntry
+                    autoComplete="password"
+                  />
+                )}
               </View>
 
               {/* Sign-in only — nothing has been forgotten on the create tab. */}
@@ -171,11 +148,36 @@ export function AuthFormWeb(form: AuthFormState) {
               ) : null}
 
               <Button
-                label={form.isSubmitting ? copy.pending : copy.submit}
+                label={
+                  form.isCreate
+                    ? form.sendingCode
+                      ? copy.pending
+                      : copy.submit
+                    : form.isSubmitting
+                      ? copy.pending
+                      : copy.submit
+                }
                 onPress={form.handleSubmit}
-                disabled={!form.canSubmit || form.isSubmitting}
-                className={`w-full mt-6 ${!form.canSubmit || form.isSubmitting ? 'opacity-50' : ''}`}
+                disabled={!form.canSubmit || form.isSubmitting || form.sendingCode}
+                className={`w-full mt-6 ${
+                  !form.canSubmit || form.isSubmitting || form.sendingCode ? 'opacity-50' : ''
+                }`}
               />
+
+              {/* The way back in for an account with no password yet — see the
+                  same block in AuthFormNative and PENDING #33a. */}
+              {form.isCreate ? null : (
+                <Pressable
+                  onPress={form.handleCodeSignIn}
+                  disabled={form.sendingCode || form.isSubmitting}
+                  accessibilityRole="button"
+                  className="self-center mt-4 px-6 py-2 active:opacity-70"
+                >
+                  <Typography className="text-[13px] font-semibold text-blue text-center">
+                    {form.sendingCode ? 'Sending…' : 'Email me a code instead'}
+                  </Typography>
+                </Pressable>
+              )}
 
               <Typography className="text-[13.5px] text-slate mt-4 text-center">
                 {copy.footnote}
