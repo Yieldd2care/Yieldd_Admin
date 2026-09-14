@@ -26,6 +26,49 @@ Full diagnosis for each is in its numbered section below.
 | 8 | 18 | Back-of-card scan + branch address field | `[x]` done 2026-09-02 |
 | 9 | 20 | Export Leads hides an event that already has leads | `[x]` done 2026-09-02 |
 
+**Reported 2026-09-11 — not started, some of it needs your answers first**
+
+| # | Item | Status |
+|---|---|---|
+| 33a | Sign-up becomes email → OTP → name + password | `[ ]` needs a decision on company/phone |
+| 33b | Referral — "where did you hear about us" + sub-lists | `[ ]` needs the platform lists |
+| 33c | Skip on every onboarding screen | `[~]` 2026-09-14 — component built; neither existing screen takes one, waits on 33b/33d |
+| 33d | First-run tutorial on Home (collage + Next) | `[ ]` |
+| 34 | Password fields need a show/hide eye icon | `[ ]` |
+| 35 | Bottom content behind the Android nav bar (Samsung Ultra 26) | `[ ]` needs testing on that handset |
+| 36 | No confirmation the front of the card was captured | `[ ]` |
+| 37 | Remove em dashes from app content | `[ ]` scope question: docs and comments too? |
+| 38 | Invite reps from the phone's contacts | `[x]` 2026-09-14 — done; no permission asked for, nothing outside the feature moved |
+| 39 | Lock icon and explanation on paid features | `[ ]` |
+| 40 | "Needs a note" ignores voice notes | `[ ]` needs a decision on what it means |
+| 41 | Save-to-contacts icon does nothing | `[ ]` cause unknown, needs a device log |
+| 42 | Show the captured card in the list; make lead details editable | `[ ]` |
+
+**Reported 2026-09-14 — not started**
+
+| # | Item | Status |
+|---|---|---|
+| 45 | Web dashboard — Leads and Follow-ups showed nothing | `[x]` done 2026-09-14 |
+| 43 | Record where each lead was captured and show it on a map | `[ ]` now covers coordinates **and** the resolved address; needs decisions on scope, map provider and privacy |
+| 46 | Pipeline chart bars should open the leads behind them | `[ ]` needs a status filter on the leads list first |
+| 47 | Export CSV carries no deal value | `[ ]` decide one column or two; must stay admin-only |
+| 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
+| 49 | "New template" is silent, and creates a default not a draft | `[ ]` |
+| 50 | Home — all-events analytics with an event picker | `[ ]` needs a server-side multi-event aggregate |
+| 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
+| 52 | An invite counts as ready with a number that is not one | `[ ]` surfaced by 38; changes typed invites too, so needs a decision |
+| 53 | iOS ships a contacts permission string it never uses | `[ ]` surfaced by 38; App Store Review reads it, no user ever sees it |
+
+**Parked for Phase 2 — decided 2026-09-14**
+
+Phase 2 here means *after the current launch push*, and is **not** the same thing as "Phase 2" in
+[TASKS.md](TASKS.md), which is the old build-order numbering and is already finished. Nothing in
+this table gets started until the launch queue above is clear.
+
+| # | Item | Still needs deciding before it starts |
+|---|---|---|
+| 44 | Admin imports an existing Excel list of leads — web dashboard only | Provenance tag, and what happens to duplicates |
+
 **Blocked on you, not on code**
 
 | # | Item | Waiting on |
@@ -89,6 +132,595 @@ links to these same pages, and the Play data safety form has to match them word 
 ---
 
 ## Open
+
+### 33. Sign-up rebuilt as steps, referral capture, and a first-run tutorial — reported 2026-09-11
+
+Four separate pieces of work, reported together. Nothing here is started. Split below the way it
+was described, so none of it gets merged into one screen by mistake.
+
+**Open questions — answer before building 33a and 33b.** They are listed under each part.
+
+---
+
+#### 33a. Sign-up becomes email → OTP → name + password `[ ]`
+
+**Today:** one screen collects **name, company, phone, email and password** together
+([stores/useSessionStore.ts:246](stores/useSessionStore.ts#L246) —
+`signUp({ name, company, phone, email, password })`).
+
+**Wanted:** three steps.
+
+1. **Email only.** The first screen asks for the email address and nothing else.
+2. **OTP.** A verification code is emailed to that address. The user types it in to verify.
+3. **Name + password, on one screen.** Once the OTP is accepted, ask for the user's name, and on
+   that same screen take **password** and **confirm password**. The account is created here.
+
+**Open questions:**
+
+- **What happens to `company` and `phone`?** They are collected today and are not in the new
+  flow. Company is not cosmetic — signup metadata feeds the `handle_new_user()` trigger, which
+  names the organisation. Dropping it without a replacement leaves organisations unnamed. Decide:
+  drop, move to a later onboarding step, or keep.
+- **Supabase auto-confirm is currently ON** (no verification email is sent at all). An OTP step
+  means turning that off and moving to `signInWithOtp` / `verifyOtp`. That is a console change as
+  well as a code change.
+
+---
+
+#### 33b. Referral — "where did you hear about us" `[ ]`
+
+Shown **after** the account is created.
+
+Options:
+
+- Google
+- Social media
+- AI discovery
+- Friends
+- Colleague
+- Event or conference
+- Other
+
+**Two options open a second list:**
+
+- **Social media** → ask *which platform*.
+- **AI discovery** → ask *which AI platform*.
+
+**The selected option must be clearly highlighted** — this was called out specifically.
+
+**Open questions:**
+
+- **Which social media platforms** should be listed, and in what order?
+- **Which AI platforms** should be listed?
+- **Where is the answer stored?** No column or table exists for it today. It needs one, or the
+  answer is collected and thrown away.
+
+---
+
+#### 33c. A Skip option on every onboarding screen `[~]` component built 2026-09-14
+
+Every onboarding screen gets a Skip — not just the referral one. Applies to the referral screen,
+the tutorial, and any onboarding screen added later.
+
+**Built as a shared component**, [components/app/SkipLink.tsx](components/app/SkipLink.tsx), rather
+than copied markup, so 33b and 33d inherit the same words, position and behaviour. It replaces
+rather than pushes (onboarding must not sit in the back stack), lands on `homeRoute()` (which
+already knows a browser belongs on the dashboard and a phone on the tab bar), and takes an
+optional `onSkip` for a screen that has to record the skip somewhere.
+
+**No screen uses it yet.** Both onboarding screens that exist today were looked at on 2026-09-14
+and neither takes a Skip — see the two decisions below. 33b and 33d drop `<SkipLink />` in when
+they are built, and those two are genuinely optional in a way neither existing screen is.
+
+**Decision — no Skip on the fork, 2026-09-14.** "Setting this up for a team, or just yourself?" is
+two taps, is asked once, and its answer decides where a brand new account is sent next. There is no
+sensible third destination for someone who answers neither. A Skip was built for it and then
+removed on the same day at your call.
+
+**Decision — the contact number stays mandatory, 2026-09-14.**
+[complete-profile](app/(app)/onboarding/complete-profile.tsx) is the one onboarding screen with no
+Skip, and that is deliberate. Skipping it would mean a rep reaching the app with no number on
+their digital card, which is the thing the card exists to hand out. It would also mean relaxing
+the guard in [app/(app)/_layout.tsx](app/(app)/_layout.tsx) — which is exactly the enforcement #4
+added on 2026-08-28 so that force-quitting the app is not a way past the number. Without relaxing
+it, a Skip there is an infinite redirect, not a skip. Sign out remains the way off that screen.
+The reasoning is written into the file so it does not get "fixed" later.
+
+**Left behind by the reverted fork Skip — read this before touching `onboarding_intent`.**
+
+The fork's Skip needed somewhere to record itself, because `nextRouteAfterAuth()` sends an admin
+back to the fork on every sign-in while `organizations.onboarding_intent` is null — so a Skip that
+recorded nothing would have reappeared forever and read as a broken button. `'skipped'` was added
+as a third answer in that column, and the schema change was applied before the Skip itself was
+dropped. It was left in place rather than undone:
+
+- **Applied to the live database 2026-09-14** —
+  [20260914100000_onboarding_intent_skipped.sql](supabase/migrations/20260914100000_onboarding_intent_skipped.sql)
+  widens the CHECK from `('team','solo')` to `('team','solo','skipped')`. Rehearsed in a
+  rolled-back transaction, then pushed, then read back. **No row holds `'skipped'` and nothing
+  writes it** — checked on the live database the same day.
+- `AccountIntent` in [types/session.ts](types/session.ts) and `toIntent` in
+  [lib/mappers/profile.ts](lib/mappers/profile.ts) still accept it, deliberately: the type has to
+  cover what the column can hand back. Narrowing them without narrowing the constraint would make
+  a `'skipped'` row map to `null` and bring the fork back.
+- Nothing else reads it: the routing rule is a truthy check, so any non-null value means "this org
+  has answered", and `lib/api/organization.ts` types the column as plain `string | null`.
+
+**The trap, if a Skip is ever wanted here again:** the column is not a free-text field. It carries
+a CHECK constraint from 20260827130400, so a new value has to be added there first or the write is
+rejected outright.
+
+Also rejected, when this was being worked out: showing the fork only to brand-new accounts, with no
+database change. It would stop showing for someone who reinstalls or changes phone before
+answering, and Google sign-ups never set `isNewSignup`, so they would never see it at all.
+
+---
+
+#### 33d. First-run tutorial on the Home screen `[ ]`
+
+Fires **once**, straight after the account is created, when the user first reaches Home.
+
+- A box that explains how each screen works.
+- **Collage-style:** several screens shown together in one view, with a **Next** button that moves
+  to the next collage.
+- Skippable, per 33c.
+
+**Open question:** which screens go in which collage, and how many collages.
+
+
+### 34. Password fields have no show/hide eye icon — reported 2026-09-11 `[ ]`
+
+Every password field in the app should carry an eye icon that reveals what has been typed.
+Applies to sign-in, sign-up, and the new password + confirm-password screen in 33a.
+
+---
+
+### 35. Bottom content sits behind the Android navigation bar — reported 2026-09-11 `[ ]`
+
+**Reported on a Samsung Galaxy Ultra 26.** Content at the very bottom of several screens runs
+underneath the phone's own navigation bar, where the home and back buttons sit.
+
+Where to look: 7 screens declare only `edges={['top']}`, so nothing reserves space at the bottom —
+[(tabs)/events.tsx](app/(app)/(tabs)/events.tsx), [(tabs)/index.tsx](app/(app)/(tabs)/index.tsx),
+[(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx), [(tabs)/profile.tsx](app/(app)/(tabs)/profile.tsx),
+[(tabs)/qr.tsx](app/(app)/(tabs)/qr.tsx), [leads/drafts.tsx](app/(app)/leads/drafts.tsx) and
+[(web)/index.tsx](app/(web)/index.tsx). The other 54 screens use `['top', 'bottom']`.
+
+On the five tab screens the footer is the tab bar itself, which adds `insets.bottom` on its own —
+so check [components/app/TabBar.tsx](components/app/TabBar.tsx) first, and check it against
+Samsung's 3-button navigation specifically, which is taller than gesture navigation.
+
+**Do not fix this blind.** It needs testing on that handset, or at least on an Android device with
+3-button navigation switched on.
+
+---
+
+### 36. No confirmation that the front of the card was captured — reported 2026-09-11 `[ ]`
+
+When the rep photographs the **front** of a card, the screen moves on to the back with no signal
+that the first shot was taken and kept. There is nothing confirming the front was saved.
+
+Wanted: an icon, a thumbnail, or some visible signal that the front is captured.
+
+Where: [app/(app)/capture/camera.tsx](app/(app)/capture/camera.tsx) — `capture()` sets the front
+image and flips `side` to `'back'` without any feedback in between.
+
+---
+
+### 37. Remove em dashes from all app content — reported 2026-09-11 `[ ]`
+
+Em dashes are to be removed everywhere they appear in the application's content.
+
+**Scope question:** this is written up as user-facing text — screen copy, labels, messages,
+templates, the privacy and terms pages. Confirm whether it also covers code comments and internal
+documents such as this file, which currently use them heavily.
+
+---
+
+### 38. Invite reps from the phone's contacts, not by typing — reported 2026-09-11 `[x]` done 2026-09-14
+
+The phone field on the invite screen now carries a contacts icon. Tapping it opens the system
+picker; the chosen contact's name and number are written into the two fields the admin was going
+to type into, so they can still read and correct both before anything is created. Reached from
+the event wizard's step 3 and from Settings → Team's "+ Invite", which are the same screen.
+
+**No contacts permission is asked for, and the original note above was wrong to assume one was
+needed.** `app.json` keeps `READ_CONTACTS` and `WRITE_CONTACTS` under `blockedPermissions`, the
+privacy policy's "Yieldd never reads your contact list, and the app does not ask for contacts
+permission at all" stays true, and the Play Data Safety form (27) is untouched.
+
+The reason is that `presentContactPickerAsync` hands the choice to the operating system's own
+picker — an `ACTION_PICK` intent on Android, `CNContactPickerViewController` on iOS — and only
+the one chosen contact comes back. The app never reads the address book, so there is nothing to
+hold a permission for. This is the same reasoning already recorded above `pickFromLibrary` in
+[app/(app)/capture/camera.tsx](<app/(app)/capture/camera.tsx>) and in the "No permission request,
+deliberately" comment in [lib/contacts.ts](lib/contacts.ts): **calling `requestPermissionsAsync`
+is what would create a full-library prompt.** Do not add one.
+
+**The non-obvious part, which is why the timeout in [lib/contactPicker.ts](lib/contactPicker.ts)
+must not be deleted:** a failure on this path does not reject, it hangs. Android resolves the
+picker's promise from inside `OnActivityResult`, and nothing in Expo's dispatch chain between the
+Activity and that lambda carries a try/catch. The handler queries the whole
+`ContactsContract.Data` table rather than the single URI `ACTION_PICK` granted; if that query is
+ever refused, the throw escapes before both `pendingPromise.resolve(...)` and
+`contactPickingPromise = null`. So the awaited promise never settles — there is nothing to catch
+— and every later attempt rejects with `ContactPickingInProgressException` instead. iOS has a
+quieter version: the picker delegate swallows a serialisation throw with a bare `catch {}`.
+Racing the await against a clock is what turns that into "type the number in instead" rather
+than a button that spins forever — which is 41 all over again.
+
+Other decisions worth not re-litigating:
+
+- **The number goes in raw, exactly as the contact stores it.** The invite screen validates
+  nothing beyond `.trim()`; normalisation happens once, later, in `createInvites`
+  ([lib/api/invites.ts](lib/api/invites.ts)) via `normalizePhone`. So a picked number takes the
+  identical path a typed one does and lands as the same value. Normalising at pick time would
+  prepend `+91` to an overseas buyer's number and make a wrong value look vetted in a field the
+  admin is looking straight at.
+- **A contact with several numbers writes nothing until one is chosen** — not even the name — so
+  there is no instant where a number the admin did not pick sits in the field looking accepted.
+  Dismissing that sheet is then identical to cancelling the picker: the row was never touched.
+- **A contact with no number fills the name only**, and says so under the row.
+- `isValidPhone` is used as a display hint and never as a filter: its allowed-character set
+  rejects extensions, pauses and unicode hyphens, all of which appear in real address books.
+
+Two things this surfaced but did not change, logged as 52 and 53: `ready` still counts any
+non-empty string as a valid number, and the iOS `NSContactsUsageDescription` string ships even
+though no user can ever see it.
+
+---
+
+### 39. Paid features need a lock icon and an explanation — reported 2026-09-11 `[ ]`
+
+Wherever a free user can see a paid feature, show a lock icon next to it. Tapping or seeing the
+icon should explain, in plain words: *this is a paid feature; to use it you need the paid plan.*
+
+This matches the product rule already agreed: paid features are **greyed, not hidden**, so the
+user knows what exists.
+
+---
+
+### 40. "Needs a note" ignores voice notes — reported 2026-09-11 `[ ]`
+
+**Confirmed in the code.** `needsNote` is set from the typed note only:
+`needsNote: !input.note?.trim()` ([stores/useLeadsStore.ts:261](stores/useLeadsStore.ts#L261),
+and the same rule on update at line 154). A voice note does not clear it.
+
+So a lead the rep recorded a voice note against still counts as "needs a note", and appears under
+that filter on the Leads screen.
+
+**Decide which is intended:** a voice note satisfies "has a note" and should clear the flag, or the
+flag means a *typed* note specifically and the label should say so.
+
+---
+
+### 41. The save-to-contacts icon does nothing — reported 2026-09-11 `[ ]`
+
+**Reported:** the contact icon does not work on the Leads screen, on the home screen's lead
+section, or when a lead is opened.
+
+This is **not** the old stub problem from 16, which was fixed on 2026-09-02. The button is wired:
+[components/app/LeadRow.tsx:95](components/app/LeadRow.tsx#L95) calls a real `saveToContacts()`.
+It also is **not** the SDK 57 import trap, which is already handled —
+[lib/contacts.ts:3](lib/contacts.ts#L3) correctly imports from `expo-contacts/legacy`.
+
+So it is failing at runtime for some other reason, and failing silently. Needs reproducing on a
+device with the log open before anything is changed.
+
+---
+
+### 42. Show the captured card in the lead list, and let lead details be edited — reported 2026-09-11 `[ ]`
+
+Two parts, reported together.
+
+- **The card photo is not shown in the list.** When a card has been captured, its photo should be
+  visible when the lead list is opened, not only on the lead itself.
+- **Lead details should be editable** on the lead detail screen.
+
+---
+
+### 43. Record where each lead was captured and show it on a map — reported 2026-09-14 `[ ]`
+
+**Asked for:** when a lead is captured, record the Google location it was captured from, and map
+every lead back to that place.
+
+**Extended 2026-09-14 — store both halves, not just the fix.** The request is now explicit that a
+lead carries *both* the raw coordinates and the human address for them, the way the Habsy card
+detail shows it:
+
+>     Coordinates   21.132694, 72.796357
+>     Address       Mansarovar Bungalows, Majura Taluka, Surat, Gujarat, 394518, India
+
+That settles part of decision 2 below — it is the **device's position at capture**, resolved to a
+postal address — and it adds a second, separate cost that is easy to miss when reading this as one
+feature. Turning a fix into that address is **reverse geocoding**: a billed Google API call, per
+lead, with its own key, its own quota and its own failure mode. It is not something the GPS hands
+over for free.
+
+Consequences to price in rather than discover:
+
+- **Resolve once, store the string.** The address is written to the lead when it is captured, not
+  looked up each time a screen renders it. Re-resolving on render turns one list of 60 leads into
+  60 billed calls every time somebody scrolls.
+- **The address can fail on its own.** A fix can arrive and the geocode still fail — no network, no
+  quota, a point in the sea. Coordinates present with no address is a normal lead and must render
+  as such, the same way a lead with neither is normal.
+- **It is a second privacy surface.** Coordinates are a data type on both stores; a stored postal
+  address of where a person was standing is the same data in a form anyone can read at a glance.
+  Both belong in the policy review under item 27.
+
+Nothing for this exists yet. This is not a wiring job:
+
+- **No columns.** `leads` has no latitude, longitude, accuracy or resolved address. A migration adds
+  them — four columns, all nullable, none of them ever backfilled.
+- **No library.** `expo-location` is not in `package.json`.
+- **No permission.** Foreground location has to be requested and declared in `app.json` for both
+  platforms, with a purpose string iOS will reject if it is vague.
+- **New privacy surface.** Location is a declared data type on both stores, so the Play data-safety
+  form, the App Store privacy labels and the privacy policy at
+  [app/(web)/privacy.tsx](app/(web)/privacy.tsx) all change. Item 27 already covers a policy review
+  before submission; this makes it bigger.
+
+**The one rule that must not be broken:** a GPS fix takes seconds and fails indoors, and an
+exhibition hall is indoors. Capture cannot wait for it. Same rule as OCR and transcription — take
+the fix if one is already available, attach it afterwards if it arrives late, and never let it
+block the 4-second capture or hold up a save. A lead with no coordinates is a normal lead, not an
+error.
+
+**Three things to decide before any of it is built:**
+
+1. **What the map is actually for.** At one trade show every lead is captured in the same hall,
+   so a map of capture points at a single event is a cloud of dots on one stall. It earns its place
+   across events and cities, or for field visits away from a show. Which of those is wanted?
+2. **Whose location.** The rep's device position at capture time, or the lead's company address
+   geocoded from the card? Habsy's screen offers both as a toggle, and they answer different
+   questions. Geocoding an address off a card needs no device permission at all, which makes it
+   much cheaper to ship.
+3. **Which map.** Google Maps needs an API key with billing attached, per map load. The screenshots
+   show Habsy's own map failing on every tile with an OpenStreetMap policy block, which is what
+   free tiles do at product scale. Budget this before designing around it.
+
+**Note:** option 2's second half — geocode the company address, no device permission, no new
+store declarations — delivers most of the visible result for a fraction of the work. Worth pricing
+that separately before committing to device capture.
+
+---
+
+### 44. Admin imports an existing Excel list of leads — web dashboard only — reported 2026-09-14 `[ ]` PHASE 2
+
+**Parked for Phase 2 on 2026-09-14.** Not to be started until the launch queue is clear. Phase 2
+here means after the current launch push, not the build-order "Phase 2" in
+[TASKS.md](TASKS.md), which is already finished. The two decisions below are still open and should
+be settled before work begins, not while it is in progress.
+
+**Asked for:** an admin uploads their existing Excel list of leads and it lands in the app.
+**Explicitly web only** — this belongs on the dashboard, not in the phone app.
+
+Web-only is the right call and it is worth writing down why, so nobody "helpfully" adds it to the
+phone later. A spreadsheet lives on the machine it was built on, mapping columns needs a wide
+screen, and reviewing a few hundred rows before they are written is not a phone job. It also lands
+on the one surface that already has a file picker and a real table.
+
+Nothing exists yet. Export is built ([lib/api/exportLeads.ts](lib/api/exportLeads.ts)) and import
+is not, and they are not mirror images of each other — export writes whatever it likes, import has
+to accept whatever a customer's spreadsheet happens to contain.
+
+**What the database will refuse without.** A `leads` insert requires `full_name`, `event_id`,
+`organization_id` and `captured_by`. A spreadsheet has the first one at best, so the upload screen
+has to supply the rest:
+
+- **Which event** every imported row is attached to. Nothing can be imported "loose" — the whole
+  ROI model is per event, and a lead with no event has no cost behind it.
+- **Who it counts as captured by.** The importing admin is the honest answer. Assigning imported
+  rows to reps who never met those people would corrupt the leaderboard and every per-rep count.
+
+**Two decisions needed first:**
+
+1. **Provenance.** `lead_source` is an enum with exactly two values, `card_scan` and `manual`.
+   Imported rows are neither. Either add a third value (`imported`) in a migration, or accept that
+   imports are indistinguishable from typed-in leads forever. Recommend adding it: once these rows
+   are mixed into "how they came in" on the dashboard, there is no way back.
+2. **Duplicates.** The app already has duplicate detection for capture
+   ([hooks/useDuplicateLead.ts](hooks/useDuplicateLead.ts), `duplicate_of_lead_id`). An import of
+   400 rows against an event that already has leads will collide. Decide before building: skip the
+   duplicate, import it and flag it, or stop and make the admin choose row by row.
+
+**Also true, and easy to miss:**
+
+- **No spreadsheet library is installed.** There is no `xlsx`, `exceljs` or `papaparse` in
+  `package.json`. [lib/csv.ts](lib/csv.ts) only *writes* CSV; it cannot parse anything. A real
+  `.xlsx` file is a zip archive, not text — it cannot be read without a dependency.
+- **PRODUCT.md says the export target is Excel specifically, and today it emits CSV.** Whatever
+  library is chosen here is the same one that would finally close that gap. Worth doing both in one
+  pass rather than adding a parser now and a writer later.
+- **Preview before writing, always.** Column mapping guessed from headers, then the first rows
+  shown as they will be stored, then one confirm. An import that writes 400 rows straight into a
+  live event with no preview is unrecoverable — the app has no bulk delete.
+
+---
+
+### 45. Web dashboard — Leads and Follow-ups show nothing at all — reported 2026-09-14, DONE 2026-09-14
+
+**Reported against an account holding 64 leads:** `/leads` read "No leads yet · 0 captured", every
+filter pill read 0, and `/follow-ups` read "Nothing to chase" with 0 overdue and 0 due today.
+
+**Not a data problem, and the screens that worked are what proved it.** On the same page load the
+Team table showed 29 / 20 / 10 / 5 leads per member and the home pipeline chart showed 5 / 3 / 3 /
+1. Those two ask the server directly — `useTeam()` and the `event_stats` RPC. Leads and Follow-ups
+are the two screens that read `useLeadsStore`, and nothing on web ever filled it:
+[hooks/useLeadsSync.ts](hooks/useLeadsSync.ts) was mounted only in
+[app/(app)/_layout.tsx](app/(app)/_layout.tsx), the phone's layout. The dashboard's own layout
+never called it, so the store sat at its empty initial state for the life of the session.
+
+**Fixed 2026-09-14:** `useLeadsSync()` is now mounted in
+[app/(dash)/_layout.tsx](app/(dash)/_layout.tsx) as well, above the early returns because hooks
+cannot be called conditionally. It no-ops until there is a signed-in user.
+
+**Worth keeping:** a screen fed by a store looks identical whether the store is empty because the
+data is missing or because nobody fetched it. The two server-backed screens on the same page are
+what separated the two in seconds. When a list is empty, check whether its *source* ever ran before
+looking at the database.
+
+---
+
+### 46. Pipeline chart is not clickable — reported 2026-09-14 `[ ]`
+
+**Asked for:** clicking a bar, its status name or its number on "Pipeline by status" opens the leads
+in that status, for that event.
+
+Today the chart is a read-only readout. The leads list already supports the filter this needs — it
+takes a `Filter` from the URL via `useLocalSearchParams` — but its filters are `hot / warm / cold /
+due / note / draft`, which are temperature and attention, **not** pipeline status. So this is not
+purely a link:
+
+- The leads list needs a status filter (`new / contacted / qualified / won / lost`) alongside the
+  temperature ones, and it has to be addressable from the URL for the chart to link into it.
+- It also needs to carry the **event**, since the chart is per event and the leads list today is
+  not scoped to one.
+- Decide what "Lost 0" does when clicked. A bar at zero that navigates to an empty list is worse
+  than one that does not respond; it should not be clickable at zero.
+
+---
+
+### 47. Export CSV has no deal-value column — reported 2026-09-14 `[ ]`
+
+**Asked for:** the export must carry the money — the value on leads that are Qualified or Won.
+
+The exporter is [lib/api/exportLeads.ts](lib/api/exportLeads.ts). The column simply is not in the
+output today, so the file an exhibitor hands their finance team has the pipeline in it but not what
+the pipeline is worth.
+
+**The one rule this cannot break:** `event_stats` returns money as NULL for a rep, deliberately —
+who captured how many is a leaderboard permission, what the deals are worth is not. An export that
+writes `deal_value_paisa` straight from the row would hand a rep exactly the number the RPC spent
+three migrations withholding. The column has to be **admin-only in the export too**, decided on the
+server, not hidden in the client.
+
+Also settle: one column, or two (expected vs closed)? `expected_value_paisa` sums Qualified + Won
+and `won_value_paisa` sums Won alone, and a single "Deal value" column that mixes a forecast with a
+closed deal is how a finance team is misled. Two columns is the honest answer.
+
+---
+
+### 48. Team table has no "cards scanned" column — reported 2026-09-14 `[ ]`
+
+**Asked for:** the Team screen should show, per representative, how many people scanned their QR
+code / digital card — the column Habsy shows and this table does not.
+
+The Team table today shows Member, Email, Phone, Role, Status and Leads
+([app/(dash)/team.tsx](app/(dash)/team.tsx), `leadCount` from `useTeam()`).
+
+**Nothing is being counted yet.** `business_cards` exists per profile with its public `/c/{slug}`
+page, but there is no view or scan event recorded anywhere — no table, no counter, no column. So
+this is a new write path before it is a new column:
+
+- A row per view (timestamp, card, and how it was reached) rather than a counter on
+  `business_cards`, because "how many this month" and "which event" are the questions that follow
+  immediately, and a bare integer cannot answer either.
+- The public card page is reachable by `anon`, so the insert has to be writable by an unauthenticated
+  visitor while the **reads** stay inside the organisation. That is the whole security design of
+  this feature and it needs writing before any SQL — see the anon-grant trap already documented for
+  the card slug work.
+- Decide whether a rep reloading their own card counts. It should not.
+
+---
+
+### 49. "New template" gives no feedback, and creates a default instead of a draft — reported 2026-09-14 `[ ]`
+
+**Two faults, one button** ([app/(dash)/templates.tsx](app/(dash)/templates.tsx)).
+
+1. **Nothing tells the user it worked.** Pressing "New template" silently appends a card to the
+   bottom of the list — below the fold on a full list — so the screen appears not to have responded
+   and the button gets pressed again. The new template has to announce itself: open its editor
+   focused and ready to be typed into, scrolled to, named.
+2. **It should not be created as a default.** A new template is a draft the user names and edits,
+   not something that immediately becomes what every follow-up is built from. "Default" is a
+   promotion the user makes deliberately, after the template says what they want it to say.
+
+The same button exists on both the WhatsApp and Email tabs and both behave this way.
+
+---
+
+### 50. Home needs an all-events analytics view with an event picker — reported 2026-09-14 `[ ]`
+
+**Asked for:** an analytics screen on Home covering **all** events at once, not one event at a time,
+with a dropdown above the cards to choose which events are included — any number of them, or all.
+
+Everything on the dashboard today is scoped to a single event: the home cards, the pipeline chart
+and the ROI screen all take one `event_id`. This is the first thing in the product that spans them.
+
+**Why this is more than a UI change.** `event_stats(p_event_id uuid)` takes one event and checks
+membership on that one event. A multi-event figure computed by calling it N times and adding up the
+answers on the device is exactly the mistake already written down elsewhere in this file: for a rep
+the totals come back as a fraction of the truth, silently. This needs its **own server-side
+aggregate** taking a set of event ids, applying the same admin/money rule once.
+
+**Decide before building:** which numbers actually belong at the top level. Total leads, total
+spend, total won and blended ROI across selected events are defensible. A "cost per lead" averaged
+across a ₹80,000 show and a ₹4,75,000 show is not a number anyone can act on, and putting it on the
+home screen invites exactly that comparison.
+
+---
+
+### 51. Clicking a lead in the list should open it as a popup — reported 2026-09-14 `[ ]`
+
+**Asked for:** clicking a lead row on the Leads screen opens that lead in an overlay — the modal
+Habsy shows, with the person, the company, quick actions, the contact details, the card images and
+the location, over the list rather than instead of it.
+
+**Most of the content already exists.** #29 built
+[components/dash/LeadDetail.tsx](components/dash/LeadDetail.tsx) behind the route
+`app/(dash)/leads/[id].tsx`. Two things are wrong for this request:
+
+- It is a **page, not an overlay** — opening a lead loses the list, its filters, its page number and
+  its scroll position, so working down a list of 60 means re-finding your place 60 times.
+- **Only the name cell links.** Clicking anywhere else on the row does nothing, which reads as the
+  row being dead.
+
+So: make the row itself open it, and render the existing detail in a dismissible overlay. Keep the
+route working — a lead URL has to stay shareable and reloadable, which is an argument for the
+overlay being a presentation of the same route rather than a second copy of the component.
+
+---
+
+### 52. An invite counts as ready with a number that is not a number — surfaced 2026-09-14 `[ ]`
+
+The invite screen decides a row is ready to send on `r.name.trim() && r.phone.trim()`
+([app/(app)/events/new/invite.tsx](<app/(app)/events/new/invite.tsx>)) — any non-empty string
+counts. A voicemail shortcut or a `*123#` service code passes, reaches `createInvites`, gets
+`normalizePhone`d into something like `+123` and is inserted. The invite is then created against a
+number no WhatsApp message can reach, and nothing says so.
+
+**Surfaced by 38, not caused by it.** It has always been true for typed numbers; picking from
+contacts makes it more likely to be hit, because an address book holds far more oddly-shaped
+entries than a person types.
+
+**Why it was not just fixed:** the obvious tightening is `isValidPhone(r.phone)`, but that
+function's allowed-character set (`/^+?[ds().-]+$/`, [lib/phone.ts](lib/phone.ts)) rejects
+extensions (`x`), dial pauses (`,` `;`), slashes and unicode hyphens — all of which appear in real
+contacts. So it would also start refusing numbers that work today. Needs a decision on whether to
+widen `ALLOWED`, warn instead of block, or leave it.
+
+---
+
+### 53. iOS ships a contacts permission string no user can ever see — surfaced 2026-09-14 `[ ]`
+
+The `expo-contacts` config plugin writes `NSContactsUsageDescription` ("Allow Yieldd to access
+your contacts") into Info.plist unconditionally, and there is no iOS equivalent of
+[app.json](app.json)'s `android.blockedPermissions` to strip it.
+
+No user will ever see that sentence: neither `presentFormAsync` nor `presentContactPickerAsync`
+triggers a `CNContactStore` authorization prompt, which is the whole point of both (38).
+**But App Store Review and privacy-label tooling read Info.plist**, and that string says the app
+accesses Contacts — which contradicts what the privacy policy says in writing.
+
+Two ways out: give the plugin the array form with an honest `contactsPermission` string, or drop
+the `"expo-contacts"` plugin entry entirely — the native module autolinks from the package, and
+the plugin *only* writes permissions, so dropping it would also make the Android
+`blockedPermissions` entries redundant. [scripts/verify-privacy-manifest.mjs](scripts/verify-privacy-manifest.mjs)
+is the natural place to assert whichever is chosen.
+
+---
 
 ### 28. Phone screens render in the browser, stretched and half-broken — reported 2026-09-08, DONE 2026-09-09
 
