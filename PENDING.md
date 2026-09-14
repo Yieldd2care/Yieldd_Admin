@@ -54,7 +54,7 @@ Full diagnosis for each is in its numbered section below.
 | 47 | Export CSV carries no deal value | `[ ]` decide one column or two; must stay admin-only |
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
 | 49 | "New template" is silent, and creates a default not a draft | `[ ]` **web dashboard only** |
-| 50 | Home — all-events analytics with an event picker | `[ ]` needs a server-side multi-event aggregate |
+| 50 | Home — all-events analytics with an event picker | `[x]` done 2026-09-14 — `event_set_stats`; no cost-per-lead, ROI covers priced events only |
 | 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
 | 52 | An invite counts as ready with a number that is not one | `[ ]` surfaced by 38; changes typed invites too, so needs a decision |
 | 53 | iOS ships a contacts permission string it never uses | `[ ]` surfaced by 38; App Store Review reads it, no user ever sees it |
@@ -693,24 +693,59 @@ The same button exists on both the WhatsApp and Email tabs and both behave this 
 
 ---
 
-### 50. Home needs an all-events analytics view with an event picker — reported 2026-09-14 `[ ]`
+### 50. Home needs an all-events analytics view with an event picker — reported 2026-09-14, DONE 2026-09-14
 
 **Asked for:** an analytics screen on Home covering **all** events at once, not one event at a time,
 with a dropdown above the cards to choose which events are included — any number of them, or all.
 
-Everything on the dashboard today is scoped to a single event: the home cards, the pipeline chart
-and the ROI screen all take one `event_id`. This is the first thing in the product that spans them.
+**Done.** An "Across events" block at the top of [app/(dash)/index.tsx](<app/(dash)/index.tsx>),
+with its own multi-select picker
+([components/dash/EventMultiPicker.tsx](<components/dash/EventMultiPicker.tsx>)) and its own
+server-side aggregate, `public.event_set_stats(uuid[])`
+([20260914140000](supabase/migrations/20260914140000_event_set_stats.sql)).
 
-**Why this is more than a UI change.** `event_stats(p_event_id uuid)` takes one event and checks
-membership on that one event. A multi-event figure computed by calling it N times and adding up the
-answers on the device is exactly the mistake already written down elsewhere in this file: for a rep
-the totals come back as a fraction of the truth, silently. This needs its **own server-side
-aggregate** taking a set of event ids, applying the same admin/money rule once.
+**What shipped at the top level:** total leads, captured today, deals won, total spend, total won
+value, and blended ROI. **No cost per lead and no cost per won** — a blended figure spanning an
+₹80,000 show and a ₹4,75,000 one is not a number anyone can act on. They are left off the
+`EventSetStats` type, not merely off the screen, so neither can be rendered later by accident.
 
-**Decide before building:** which numbers actually belong at the top level. Total leads, total
-spend, total won and blended ROI across selected events are defensible. A "cost per lead" averaged
-across a ₹80,000 show and a ₹4,75,000 show is not a number anyone can act on, and putting it on the
-home screen invites exactly that comparison.
+**Why the aggregate is server-side.** `event_stats` takes one event. Calling it N times and adding
+up on the device gives a rep a fraction of the truth, silently, because `leads_select_own_or_admin`
+hides other reps' leads. `event_set_stats` is `security definer` like its sibling, applies the
+organisation and membership checks once, and returns money as NULL for a rep from the database
+rather than letting the client decide.
+
+**Mixed-membership selections are refused, not narrowed.** A rep who asks for a set containing an
+event they were never on gets `Event not found` for the whole call. Narrowing silently would hand
+them a total whose scope is not the scope they picked, and nothing on screen could show it. It
+costs nothing in practice: `events_select_members` uses the same `is_event_member(id)` predicate, so
+the picker cannot offer a rep an event they are not on in the first place. A stale id left in the
+persisted selection is resolved away client-side by `useEventSelection` before the call, so a
+deleted event cannot strand the panel on an error.
+
+**"Today" is each event's own local day, added together.** A set spanning several shows has no
+single today, so every lead is judged against its own event's timezone and the counts are summed —
+`verify:stats` pins this with a New York event whose leads fall on the previous NY day.
+
+**A second bug found while building it, and fixed here.** `events.total_cost_paisa` is a generated
+column that coalesces its seven components to 0, so an event nobody costed reports ₹0 rather than
+unknown. Summed across a selection, those events' won deals land in the ROI numerator while
+contributing nothing to the denominator. The aggregate therefore tracks "priced" separately — from
+the `cost_*_paisa` components, which are NULL-permissive on purpose — computes ROI over the priced
+events only, and returns `priced_events` so the card can say "4 of 6 events have a cost entered".
+In the test fixture this is the difference between a truthful **+100%** and a flattering **+767%**.
+
+**Left alone deliberately:** `EventSwitcher` and the Leads screen. Merging the two controls would
+have made picking a show to work in silently change what the yearly totals covered, and would have
+required a mixed-event leads list that nobody asked for. Both sections now state their scope in
+words — "Across events" and "This event" — so no number on Home is ambiguous about what it covers.
+
+**Also repaired:** `scripts/verify-stats.mjs` had been failing at its rep half since 10 September.
+The seat-limit trigger (20260910100000) postdates the script and refuses its invite, which threw —
+so the run did fail rather than pass quietly, but every assertion from the invite onwards, the
+whole rep-side half, never executed. The throwaway organisation now buys seats and goes Pro during
+setup, which it needs anyway: the Free plan allows one active event, and an organisation that can
+never hold two at once cannot exercise an across-events figure at all.
 
 ---
 

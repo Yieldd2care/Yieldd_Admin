@@ -95,6 +95,7 @@ eq('both template screens land on one',
   webRedirectFor('/settings/whatsapp-template'), '/(dash)/templates');
 eq('delete-account goes to the public page',
   webRedirectFor('/settings/delete-account'), '/(web)/delete-account');
+eq('the QR tab now has a dashboard equivalent', webRedirectFor('/qr'), '/(dash)/card');
 
 // --- what must NOT move. These are the dangerous ones. --------------------
 eq('onboarding is never swallowed — it is the only way to finish a profile',
@@ -111,7 +112,6 @@ eq('the camera stays put; there is nowhere to send it',
 eq('voice capture stays', webRedirectFor('/capture/voice'), null);
 
 // --- routes with no dashboard equivalent stay -----------------------------
-eq('the QR tab has no equivalent', webRedirectFor('/qr'), null);
 eq('a lead detail now has an equivalent', webRedirectFor('/leads/lead-1'), '/(dash)/leads/lead-1');
 // These are sibling screens, not lead ids. A greedy /leads/:id would eat them.
 eq('the evening review is not mistaken for a lead id', webRedirectFor('/leads/review'), null);

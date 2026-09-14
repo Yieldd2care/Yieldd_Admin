@@ -1129,6 +1129,28 @@ export type Database = {
         Returns: boolean
       }
       event_organization_id: { Args: { p_event_id: string }; Returns: string }
+      event_set_stats: {
+        Args: { p_event_ids: string[] }
+        Returns: {
+          consent_given: number
+          count_contacted: number
+          count_lost: number
+          count_new: number
+          count_qualified: number
+          count_won: number
+          deals_won: number
+          events_counted: number
+          expected_value_paisa: number
+          leads_today: number
+          needs_note: number
+          priced_events: number
+          priced_won_value_paisa: number
+          spend_paisa: number
+          total_leads: number
+          with_voice_note: number
+          won_value_paisa: number
+        }[]
+      }
       event_stats: {
         Args: { p_event_id: string }
         Returns: {
@@ -1180,6 +1202,13 @@ export type Database = {
       set_default_message_template: {
         Args: { p_template_id: string }
         Returns: undefined
+      }
+      signup_conflict: {
+        Args: { p_email: string; p_phone: string }
+        Returns: {
+          email_taken: boolean
+          phone_taken: boolean
+        }[]
       }
       suggest_card_slug: { Args: { p_base: string }; Returns: string }
       weekly_digest_rows: {

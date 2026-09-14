@@ -13,6 +13,7 @@ import {
 } from '../lib/api/events';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useCurrentEventStore } from '../stores/useCurrentEventStore';
+import { useEventSelectionStore } from '../stores/useEventSelectionStore';
 import type { Event } from '../types/event';
 
 export const eventKeys = {
@@ -90,6 +91,55 @@ export function useCurrentEvent(): { event: Event | undefined; isLoading: boolea
   }, [data, selectedId]);
 
   return { event, isLoading };
+}
+
+/**
+ * Which events the across-events figures on Home cover.
+ *
+ * The stored selection is always resolved against the list this viewer can
+ * actually see before it reaches the database, for two reasons that are easy to
+ * miss:
+ *
+ * - `event_set_stats` refuses the whole call if any id is not the caller's, so
+ *   one deleted event — or one a rep was removed from — sitting in a persisted
+ *   selection would strand the panel on an error with no way back. Narrowing
+ *   here is visible: the picker list and its label both change with it.
+ * - A selection that has gone empty falls back to all, so there is never a
+ *   state where the section is scoped to nothing and says nothing.
+ *
+ * The server keeps its refusal regardless. This is the stale-data path, not the
+ * permission check.
+ */
+export function useEventSelection(): {
+  events: Event[];
+  selectedIds: string[];
+  isAll: boolean;
+  isLoading: boolean;
+  setSelection: (ids: string[] | null) => void;
+} {
+  const { data, isLoading } = useEvents();
+  // Selected raw and derived below, never derived inside the selector — a
+  // selector that builds a new array on every call re-renders without end.
+  const stored = useEventSelectionStore((s) => s.selectedEventIds);
+  const setSelection = useEventSelectionStore((s) => s.selectEvents);
+
+  const events = useMemo(() => data ?? [], [data]);
+
+  const selectedIds = useMemo(() => {
+    const all = events.map((e) => e.id);
+    if (!stored) return all;
+    // Intersected in list order, so the ids and the ticks always agree.
+    const kept = all.filter((id) => stored.includes(id));
+    return kept.length > 0 ? kept : all;
+  }, [events, stored]);
+
+  return {
+    events,
+    selectedIds,
+    isAll: selectedIds.length === events.length,
+    isLoading,
+    setSelection,
+  };
 }
 
 /**

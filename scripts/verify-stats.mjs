@@ -212,6 +212,23 @@ try {
   await admin.from('leads').delete().eq('id', okId);
 
   // ---- as a rep who can only see their own leads (none) ----
+  //
+  // A new organisation is on the Free plan, which is one seat and it is the
+  // admin's — `invites_seat_limit` (20260910100000) refuses the invite below
+  // outright. That trigger postdates this script, so the rep half of it had
+  // silently stopped running. Buying the throwaway org a seat is test setup, not
+  // a way round the rule: the rule is what `verify:plan` covers.
+  // Pro, too. The Free plan is one active event (`events_admin_insert` checks
+  // `is_pro_user() or active_event_count() = 0`), so an organisation that can
+  // never hold two events at once cannot exercise an across-events figure at
+  // all. Pro is the plan this feature exists for.
+  await adminSql(`
+    update public.organizations
+       set seats_purchased = 4,
+           plan_tier = 'pro'
+     where id = '${orgId}';
+  `);
+
   const { data: invite, error: inviteError } = await admin
     .from('invites')
     .insert({ organization_id: orgId, invited_by: adminId, event_id: event.id, full_name: 'Stats Rep', email: repEmail, phone: '+919876500002', role: 'rep' })
@@ -265,10 +282,144 @@ try {
   const { error: hiddenError } = await rep.rpc('event_leaderboard', { p_event_id: event.id });
   ok('turning the toggle off hides it from the rep', Boolean(hiddenError));
 
+  // ---- across a SET of events: event_set_stats ----
+  //
+  // A second show, deliberately UNCOSTED and in a different timezone. Both
+  // matter: an event nobody costed reports ₹0 rather than unknown, and a set
+  // spanning zones has no single "today".
+  const { data: event2, error: event2Error } = await admin
+    .from('events')
+    .insert({
+      organization_id: orgId,
+      created_by: adminId,
+      name: 'Stats Expo NY',
+      city: 'New York',
+      start_date: isoDay(today),
+      end_date: isoDay(end),
+      timezone: 'America/New_York',
+      // No cost_* columns at all — nobody recorded what this one cost.
+    })
+    .select()
+    .single();
+  if (event2Error) throw new Error(`event2: ${event2Error.message}`);
+  eq('an uncosted event reports ZERO spend, not null (generated column)',
+    Number(event2.total_cost_paisa), 0);
+
+  // 3 leads: 2 won at ₹5,00,000 each, 1 new. Captured at IST midnight today,
+  // which is always the PREVIOUS day in New York.
+  const rows2 = [
+    { status: 'won', deal: 50000000 },
+    { status: 'won', deal: 50000000 },
+    { status: 'new', deal: null },
+  ].map((item, i) => ({
+    id: randomUUID(),
+    organization_id: orgId,
+    event_id: event2.id,
+    captured_by: adminId,
+    full_name: `NY Lead ${i + 1}`,
+    phone: `+9198000001${String(i).padStart(2, '0')}`,
+    status: item.status,
+    deal_value_paisa: item.deal,
+    consent_given: false,
+    note: 'spoke at the stall',
+    source: 'manual',
+    created_at: atIstHour(0),
+    custom_field_values: {},
+  }));
+  const { error: leads2Error } = await admin.from('leads').insert(rows2);
+  if (leads2Error) throw new Error(`leads2: ${leads2Error.message}`);
+
+  const both = [event.id, event2.id];
+  const { data: setRows, error: setError } = await admin.rpc('event_set_stats', { p_event_ids: both });
+  if (setError) throw new Error(`event_set_stats: ${setError.message}`);
+  const ss = setRows[0];
+
+  eq('the set covers both events', Number(ss.events_counted), 2);
+  eq('leads are summed across events', Number(ss.total_leads), 13);
+  eq('deals won are summed', Number(ss.deals_won), 4);
+  eq('pipeline is summed [new, contacted, qualified, won, lost]',
+    [ss.count_new, ss.count_contacted, ss.count_qualified, ss.count_won, ss.count_lost].map(Number),
+    [5, 2, 1, 4, 1]);
+  eq('won value is summed across events', Number(ss.won_value_paisa), 130000000);
+  eq('expected value is summed across events', Number(ss.expected_value_paisa), 170000000);
+
+  // THE fan-out check. Spend is aggregated apart from the join to leads; summed
+  // through it, the ₹1,50,000 event would contribute its cost once per lead.
+  eq('spend is the sum of the events, NOT multiplied by the lead count',
+    Number(ss.spend_paisa), 15000000);
+
+  // The second silent-inflation path. The uncosted event's ₹10,00,000 of won
+  // deals must not count towards a return measured against a spend it never
+  // contributed to.
+  eq('only one of the two events has a cost recorded', Number(ss.priced_events), 1);
+  eq('won value used for ROI covers the priced event only',
+    Number(ss.priced_won_value_paisa), 30000000);
+  const blendedRoi =
+    ((Number(ss.priced_won_value_paisa) - Number(ss.spend_paisa)) / Number(ss.spend_paisa)) * 100;
+  eq('blended ROI is +100%, from the priced event alone', blendedRoi, 100);
+  const naiveRoi =
+    ((Number(ss.won_value_paisa) - Number(ss.spend_paisa)) / Number(ss.spend_paisa)) * 100;
+  ok('and it is far below the flattering figure an all-events ROI would print',
+    naiveRoi > 700 && blendedRoi === 100, `naive ${Math.round(naiveRoi)}%`);
+
+  // "Today" is each event's own local day. IST midnight today is the previous
+  // day in New York, so the NY show contributes nothing — which is only true if
+  // each event is resolved in its own zone rather than in one shared one.
+  const { data: e2Stats } = await admin.rpc('event_stats', { p_event_id: event2.id });
+  eq('the NY event counts none of them as today, in ITS timezone',
+    Number(e2Stats[0].leads_today), 0);
+  eq('leads today is each event\'s own day added up, not one shared day',
+    Number(ss.leads_today), 10);
+
+  // A duplicated id must not count an event's spend twice.
+  const { data: dupRows, error: dupError } = await admin.rpc('event_set_stats', {
+    p_event_ids: [event.id, event.id],
+  });
+  if (dupError) throw new Error(`duplicate ids: ${dupError.message}`);
+  eq('a duplicated event id counts once, not twice',
+    [Number(dupRows[0].events_counted), Number(dupRows[0].spend_paisa), Number(dupRows[0].total_leads)],
+    [1, 15000000, 10]);
+
+  // ---- the case this whole feature exists for: a rep ----
+  //
+  // The rep was invited onto event 1 and was never on event 2.
+  const { error: repMixedError } = await rep.rpc('event_set_stats', { p_event_ids: both });
+  ok('a rep asking for a mix of events they are and are not on is REFUSED',
+    Boolean(repMixedError), 'not silently narrowed to the ones they are on');
+
+  const { data: repSetRows, error: repSetError } = await rep.rpc('event_set_stats', {
+    p_event_ids: [event.id],
+  });
+  if (repSetError) throw new Error(`rep event_set_stats: ${repSetError.message}`);
+  const rss = repSetRows[0];
+
+  eq('over their own event the rep gets the REAL total, not their own fraction',
+    Number(rss.total_leads), 10);
+  eq('and the real pipeline',
+    [rss.count_new, rss.count_contacted, rss.count_qualified, rss.count_won, rss.count_lost].map(Number),
+    [4, 2, 1, 2, 1]);
+  eq('money is withheld from the rep: spend', rss.spend_paisa, null);
+  eq('money is withheld from the rep: won value', rss.won_value_paisa, null);
+  eq('money is withheld from the rep: expected value', rss.expected_value_paisa, null);
+  eq('money is withheld from the rep: ROI numerator', rss.priced_won_value_paisa, null);
+  eq('and the priced-event count that annotates it', rss.priced_events, null);
+
+  // An id that is not this organisation's raises rather than being dropped from
+  // the total — a short answer nobody could see would be worse than an error.
+  const { error: foreignError } = await admin.rpc('event_set_stats', {
+    p_event_ids: [event.id, randomUUID()],
+  });
+  ok('an event outside the organisation makes the whole call raise', Boolean(foreignError));
+
+  const { error: emptyError } = await admin.rpc('event_set_stats', { p_event_ids: [] });
+  ok('an empty selection raises rather than reporting zero', Boolean(emptyError));
+
   // An outsider must not reach any of it.
   const outsider = client();
   const { error: outsiderError } = await outsider.rpc('event_stats', { p_event_id: event.id });
   ok('a signed-out caller is refused', Boolean(outsiderError));
+  const { error: outsiderSetError } = await outsider.rpc('event_set_stats', { p_event_ids: both });
+  ok('a signed-out caller is refused the set aggregate too', Boolean(outsiderSetError));
 } catch (e) {
   eq('run completed', e.message, 'no error');
 } finally {
