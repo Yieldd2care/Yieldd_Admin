@@ -5,6 +5,8 @@ import { router } from 'expo-router';
 import { Typography } from '../../../components/ui/Typography';
 import { LeadRow } from '../../../components/app/LeadRow';
 import { ProTileLock } from '../../../components/app/ProLock';
+import { FirstRunTutorial } from '../../../components/app/FirstRunTutorial';
+import { markTutorialSeen } from '../../../lib/auth/tutorial';
 import {
   BarChartIcon,
   BellIcon,
@@ -73,8 +75,17 @@ export default function HomeScreen() {
   const isAdmin = user?.role === 'admin';
   const { locked, gate } = useProGate();
 
+  // The first-run tutorial (#33d). Driven off the profile rather than local
+  // state, so force-quitting partway through brings it back rather than losing
+  // it, and finishing it on one device settles it on every device.
+  //
+  // `user` can be null for a frame on a cold start; `=== false` rather than `!`
+  // keeps it from flashing open before the profile has loaded.
+  const showTutorial = user?.hasSeenTutorial === false;
+
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top']}>
+      <FirstRunTutorial visible={showTutorial} onDone={() => void markTutorialSeen()} />
       <View className="flex-row items-center justify-between px-5 pt-3">
         <Pressable onPress={() => router.push('/(app)/(tabs)/qr')} className="flex-row items-center gap-[10px]">
           <View className="w-[34px] h-[34px] rounded-md bg-gold items-center justify-center">

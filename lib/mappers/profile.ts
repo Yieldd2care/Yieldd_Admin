@@ -9,7 +9,7 @@ import type { AccountIntent, User } from '../../types/session';
 /** The exact column list refreshProfile() selects. Keep the two in step. */
 export const PROFILE_SELECT =
   'id, full_name, email, role, status, designation, phone, avatar_url, notifications_enabled, ' +
-  'created_at, organization_id, ' +
+  'created_at, tutorial_seen_at, organization_id, ' +
   'organizations!inner(name, plan_tier, onboarding_intent, referral_source)';
 
 type OrganizationJoin = {
@@ -30,6 +30,7 @@ type ProfileRow = {
   avatar_url: string | null;
   notifications_enabled: boolean | null;
   created_at: string;
+  tutorial_seen_at: string | null;
   organization_id: string;
   // PostgREST returns an embedded one-to-one as an object, but supabase-js has
   // inferred it as an array in some versions. Accept both rather than casting.
@@ -74,6 +75,10 @@ export function toSessionUser(row: ProfileRow): User {
     phone: row.phone,
     avatarUrl: row.avatar_url,
     notificationsEnabled: row.notifications_enabled ?? true,
+    // Only ever asked "has it happened?", so it collapses to a boolean here and
+    // the timestamp stays in the database for the question it was kept for:
+    // whether people who joined in a given week actually saw it.
+    hasSeenTutorial: row.tutorial_seen_at !== null,
     createdAt: row.created_at,
   };
 }

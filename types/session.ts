@@ -52,6 +52,15 @@ export interface User {
   avatarUrl: string | null;
   /** `profiles.notifications_enabled`. Defaults true, as the column does. */
   notificationsEnabled: boolean;
+  /**
+   * Whether this person has finished or skipped the first-run tutorial (#33d).
+   *
+   * Per person, not per organisation — every invited rep gets their own, and an
+   * admin finishing it must not consume it for their whole team. Existing
+   * profiles were backfilled as seen, so nobody already using the app is taught
+   * it, the demo login included.
+   */
+  hasSeenTutorial: boolean;
   createdAt: string;
 }
 

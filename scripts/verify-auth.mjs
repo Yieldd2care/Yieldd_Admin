@@ -69,7 +69,7 @@ if (devPass) {
   if (r.data?.session) {
     const { data, error } = await sb
       .from('profiles')
-      .select('id, full_name, email, role, status, designation, phone, avatar_url, created_at, organization_id, organizations!inner(name, plan_tier, onboarding_intent, referral_source)')
+      .select('id, full_name, email, role, status, designation, phone, avatar_url, created_at, tutorial_seen_at, organization_id, organizations!inner(name, plan_tier, onboarding_intent, referral_source)')
       .eq('id', r.data.session.user.id)
       .single();
     check('the profile+organization join the app uses returns a row',

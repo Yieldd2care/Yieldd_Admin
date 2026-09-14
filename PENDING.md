@@ -32,8 +32,8 @@ Full diagnosis for each is in its numbered section below.
 |---|---|---|
 | 33a | Sign-up becomes email → code → name + password | `[x]` done 2026-09-14 |
 | 33b | Referral — "where did you hear about us" + sub-lists | `[x]` done 2026-09-14 |
-| 33c | Skip on every onboarding screen | `[~]` 2026-09-14 — 33b now uses SkipLink; the two older screens take none by decision, waits on 33d |
-| 33d | First-run tutorial on Home (collage + Next) | `[ ]` |
+| 33c | Skip on every onboarding screen | `[x]` done 2026-09-14 — every screen that should take one now does; the two older screens take none by decision |
+| 33d | First-run tutorial on Home (collage + Next) | `[x]` done 2026-09-14 |
 | 34 | Password fields need a show/hide eye icon | `[ ]` |
 | 35 | Bottom content behind the Android nav bar (Samsung Ultra 26) | `[ ]` needs testing on that handset |
 | 36 | No confirmation the front of the card was captured | `[ ]` |
@@ -276,7 +276,7 @@ platform names are the half that moves.
 
 ---
 
-#### 33c. A Skip option on every onboarding screen `[~]` component built 2026-09-14
+#### 33c. A Skip option on every onboarding screen — DONE 2026-09-14
 
 Every onboarding screen gets a Skip — not just the referral one. Applies to the referral screen,
 the tutorial, and any onboarding screen added later.
@@ -289,14 +289,21 @@ optional `onSkip` for a screen that has to record the skip somewhere.
 
 **33b uses it as of 2026-09-14** — [the referral screen](app/(app)/onboarding/referral.tsx) was
 the screen this component was built for, and its Skip records `'skipped'` through `onSkip` so the
-question does not come back. 33d drops `<SkipLink />` in when it is built. The two older
-onboarding screens still take no Skip — see the two decisions below — and that remains deliberate
-rather than outstanding.
+question does not come back. The two older onboarding screens still take no Skip — see the two
+decisions below — and that remains deliberate rather than outstanding.
 
-One thing 33d should know before reusing it: `SkipLink` goes to `homeRoute()` directly rather than
-back through `nextRouteAfterAuth()`, so skipping a screen that has a later onboarding step after it
-lands on Home and defers that step to the next sign-in. On 33b that was accepted rather than
-forking the component, because answering — the path nearly everyone takes — chains on correctly.
+**33d does NOT use it, and that closes this item rather than leaving it open.** The tutorial is
+an overlay already sitting on Home, and `SkipLink` navigates with `router.replace(homeRoute())`
+— right for an onboarding *screen*, wrong for an overlay, where it would remount the screen
+underneath for nothing. Its Skip records and closes instead. The rule "every onboarding screen
+is skippable" is satisfied everywhere it applies; the shared component is simply not the way to
+satisfy it in a modal.
+
+One thing to know before reusing `SkipLink` anywhere else: it goes to `homeRoute()` directly
+rather than back through `nextRouteAfterAuth()`, so skipping a screen that has a later
+onboarding step after it lands on Home and defers that step to the next sign-in. On 33b that was
+accepted rather than forking the component, because answering — the path nearly everyone takes —
+chains on correctly.
 
 **Decision — no Skip on the fork, 2026-09-14.** "Setting this up for a team, or just yourself?" is
 two taps, is asked once, and its answer decides where a brand new account is sent next. There is no
@@ -342,16 +349,47 @@ answering, and Google sign-ups never set `isNewSignup`, so they would never see 
 
 ---
 
-#### 33d. First-run tutorial on the Home screen `[ ]`
+#### 33d. First-run tutorial on the Home screen — DONE 2026-09-14
 
-Fires **once**, straight after the account is created, when the user first reaches Home.
+[components/app/FirstRunTutorial.tsx](components/app/FirstRunTutorial.tsx), mounted on Home.
+Fires once, on the first visit after signing up, skippable from step one.
 
-- A box that explains how each screen works.
-- **Collage-style:** several screens shown together in one view, with a **Next** button that moves
-  to the next collage.
-- Skippable, per 33c.
+**The open question is answered.** Four steps, in this order, set by the user:
 
-**Open question:** which screens go in which collage, and how many collages.
+1. **Start with an event** — everything filed under it
+2. **Scan a card** — the camera in the middle of the bar, works with no signal
+3. **Every lead in one place** — notes, voice memo, WhatsApp and email
+4. **Hand out your own card** — the QR tab
+
+**The same four for everyone**, also by decision. Reps see it too; they are the ones scanning.
+Events leads even though scanning is what people came for, because there is nowhere to put a
+lead until an event exists.
+
+**Recorded on `profiles.tutorial_seen_at`, not on the organisation** — and that is the whole
+decision. The referral question (#33b) is an org-level fact, asked once per company. A tutorial
+teaches one person, so every invited rep needs their own and an admin finishing it must not
+silently consume it for the team.
+
+**Everyone who already had an account was backfilled as having seen it**
+([20260914180000](supabase/migrations/20260914180000_tutorial_backfill_existing.sql)), for the
+reason #33b's backfill exists: otherwise all 8 existing profiles get taught the app they have
+been using for weeks, the Growth Saga demo login included, mid-demo.
+
+**Worth keeping — `profiles` has a column-level UPDATE ACL too.** The trap written up in
+20260827130400 for `organizations` applies here exactly, and was verified before writing the
+migration: `authenticated` held UPDATE on twelve named columns and nothing else. Without
+`grant update (tutorial_seen_at)`, dismissing the tutorial 42501s — and because the dismiss is
+fire-and-forget, that error is swallowed and the tutorial returns on every launch with nothing
+on screen to explain it. Tested against the live project as a real signed-in user, not assumed.
+
+**No SkipLink here, and that is not an oversight.** That component does
+`router.replace(homeRoute())`, which is right for an onboarding *screen* and wrong for an
+overlay already sitting on Home — it would remount the screen underneath for nothing. The Skip
+here records and closes. #33c's rule is satisfied; its component is not the way to satisfy it.
+
+The dismiss is **optimistic**: the local flag flips before the write is awaited, so it closes
+instantly on a bad connection. A failed write costs one extra appearance on the next cold
+start, which is a better trade than a spinner on the one screen that exists to feel smooth.
 
 
 ### 34. Password fields have no show/hide eye icon — reported 2026-09-11 `[ ]`
