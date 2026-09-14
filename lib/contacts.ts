@@ -11,9 +11,12 @@ import { contactFilename, leadVCard, toExpoContact, type ContactInput } from './
  * is the part that touches a device.
  *
  * NOTE ON THE expo-contacts IMPORT: it is loaded lazily, inside the native
- * branch, and must stay that way. The package has no web implementation at all,
- * and this module is reachable from a web route — a top-level import would break
- * the yieldd.co export.
+ * branch, and must stay that way, because this module is reachable from a web
+ * route. The package does ship a web entry point — src/legacy/ExpoContacts.web.ts
+ * — but it implements only the two permission calls; presentFormAsync is absent
+ * from it, so on web the wrapper throws UnavailabilityError. Hence the
+ * Platform check BEFORE the import rather than after it: web takes the vCard
+ * path and never reaches the module at all.
  *
  * AND NOTE THE `/legacy` SUBPATH: SDK 56 redesigned expo-contacts around a
  * Contact class. The old top-level functions still exist on the root import but

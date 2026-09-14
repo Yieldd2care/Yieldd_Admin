@@ -1,6 +1,8 @@
 /**
- * Checks for lib/contactCard.ts — the shape a lead takes on its way into the
- * rep's phone.
+ * Checks the two pure halves of the contacts feature: lib/contactCard.ts, the
+ * shape a lead takes on its way INTO the rep's phone, and lib/pickedContact.ts,
+ * the shape a contact takes coming back OUT of it when an admin picks a rep to
+ * invite.
  *
  *   npm run verify:contacts
  *
@@ -18,6 +20,7 @@ import { pathToFileURL } from 'node:url';
 
 const out = mkdtempSync(join(tmpdir(), 'yieldd-contacts-'));
 let m;
+let picked;
 try {
   // CommonJS rather than the esnext the other pure scripts use: contactCard.ts
   // imports ./vcard and ./phone, and tsc emits those specifiers without a .js
@@ -32,6 +35,7 @@ try {
       // standalone — the flag says so instead of letting tsc refuse.
       '--ignoreConfig',
       'lib/contactCard.ts',
+      'lib/pickedContact.ts',
       '--outDir', out,
       '--module', 'commonjs',
       '--target', 'es2022',
@@ -43,6 +47,7 @@ try {
     { stdio: 'inherit' }
   );
   m = await import(pathToFileURL(join(out, 'contactCard.js')).href);
+  picked = await import(pathToFileURL(join(out, 'pickedContact.js')).href);
 } finally {
   rmSync(out, { recursive: true, force: true });
 }
@@ -174,6 +179,114 @@ ok('a comma in the company name is escaped', vcardText.includes('Northline Indus
 eq('filename is slugged', m.contactFilename('Priya Sharma'), 'priya-sharma.vcf');
 eq('  ...and survives punctuation', m.contactFilename('J.P. Mehta & Co.'), 'j-p-mehta-co.vcf');
 eq('  ...and a name with no latin letters still gets a file', m.contactFilename('प्रिया'), 'contact.vcf');
+
+// ---------------------------------------------------------------------------
+// readPickedContact: a contact coming back OUT of the phone book, on its way
+// into the two fields on the invite screen.
+// ---------------------------------------------------------------------------
+const read = picked.readPickedContact;
+
+// What the picker hands back is a Bundle on Android and a dictionary on iOS.
+// Nothing validates it on the way across, so garbage must not throw.
+eq('null does not throw', read(null), { name: '', numbers: [] });
+eq('undefined does not throw', read(undefined), { name: '', numbers: [] });
+eq('an empty object is empty', read({}), { name: '', numbers: [] });
+eq('a non-array phoneNumbers is ignored', read({ phoneNumbers: 'nope' }).numbers, []);
+
+eq('a name with no numbers still keeps the name', read({ name: 'Ravi Menon' }), {
+  name: 'Ravi Menon',
+  numbers: [],
+});
+
+// Android genuinely produces these. A kept row would show the admin an empty
+// phone field as though a number had been found.
+eq('an empty phone entry is dropped', read({ name: 'A', phoneNumbers: [{}] }).numbers, []);
+eq(
+  'a label with no number is dropped',
+  read({ name: 'A', phoneNumbers: [{ label: 'mobile' }] }).numbers,
+  []
+);
+eq(
+  'a blank number is dropped',
+  read({ name: 'A', phoneNumbers: [{ label: 'mobile', number: '   ' }] }).numbers,
+  []
+);
+
+// An address book routinely holds one number twice, under 'mobile' and again
+// under 'WhatsApp'. Asking the admin to choose between two identical numbers
+// is a worse question than not asking, because it implies they differ.
+eq(
+  'the same number under two labels collapses, first label wins',
+  read({
+    name: 'Priya',
+    phoneNumbers: [
+      { label: 'mobile', number: '+91 98765 43210' },
+      { label: 'WhatsApp', number: '+91 98765 43210' },
+    ],
+  }).numbers,
+  [{ label: 'mobile', number: '+91 98765 43210' }]
+);
+
+// The same person written two ways. phoneMatchKey is what sees through it,
+// and reusing it is why this file does not invent a second matching rule.
+eq(
+  'the same number in two formats collapses',
+  read({
+    phoneNumbers: [
+      { label: 'mobile', number: '+91 98765 43210' },
+      { label: 'home', number: '098765 43210' },
+    ],
+  }).numbers.length,
+  1
+);
+eq(
+  'two genuinely different numbers both survive',
+  read({
+    phoneNumbers: [
+      { label: 'mobile', number: '9876543210' },
+      { label: 'work', number: '9123456789' },
+    ],
+  }).numbers.length,
+  2
+);
+
+// A Google-synced book files some people under their parts only, and a rep
+// row with a number but no name is not usable.
+eq(
+  'a missing display name is assembled from the parts',
+  read({ firstName: 'Priya', lastName: 'Sharma' }).name,
+  'Priya Sharma'
+);
+eq(
+  'a middle name rides along',
+  read({ firstName: 'Priya', middleName: 'R', lastName: 'Sharma' }).name,
+  'Priya R Sharma'
+);
+eq('a display name wins over the parts', read({ name: 'Priya S', firstName: 'X' }).name, 'Priya S');
+
+// Labels are localised by the OS, so they are shown and never switched on.
+// A row with no label still needs something to show.
+eq(
+  'a missing label becomes a generic one',
+  read({ phoneNumbers: [{ number: '9876543210' }] }).numbers[0].label,
+  'phone'
+);
+
+// THE PAIR THAT LOCKS IN THE DESIGN. The number reaches the text field exactly
+// as the contact stores it, so a picked number takes the identical path a typed
+// one does and createInvites normalises it once, later. Normalising here would
+// prepend +91 to an overseas number and make a wrong value look vetted in a
+// field the admin is looking straight at.
+eq(
+  'a US number is handed over untouched',
+  read({ phoneNumbers: [{ label: 'mobile', number: '(415) 555-0134' }] }).numbers[0].number,
+  '(415) 555-0134'
+);
+eq(
+  'an Indian number is not decorated either',
+  read({ phoneNumbers: [{ label: 'mobile', number: '098204 41720' }] }).numbers[0].number,
+  '098204 41720'
+);
 
 console.log(`\n${failed === 0 ? 'All checks passed.' : `${failed} check(s) FAILED.`}`);
 process.exit(failed ? 1 : 0);

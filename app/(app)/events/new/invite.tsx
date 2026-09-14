@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -8,10 +8,12 @@ import { Button } from '../../../../components/ui/Button';
 import { ScreenHeader } from '../../../../components/app/ScreenHeader';
 import { useEvent } from '../../../../hooks/useEvents';
 import { WizardHeader } from '../../../../components/app/WizardHeader';
-import { CheckIcon, CloseIcon, PlusIcon, UsersIcon, WhatsAppIcon } from '../../../../components/ui/icons';
+import { CheckIcon, CloseIcon, ContactsIcon, PlusIcon, UsersIcon, WhatsAppIcon } from '../../../../components/ui/icons';
 import { useEventDraftStore, type DraftRep as Rep } from '../../../../stores/useEventDraftStore';
 import { useSessionStore } from '../../../../stores/useSessionStore';
 import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
+import { PhoneChoiceSheet } from '../../../../components/app/PhoneChoiceSheet';
+import { pickContact, type PickedNumber } from '../../../../lib/contactPicker';
 import {
   createInvites,
   fetchEventInvites,
@@ -66,6 +68,28 @@ export default function InviteRepsScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** Which row is choosing between a contact's several numbers, and what from. */
+  const [chooser, setChooser] = useState<{
+    repId: string;
+    name: string;
+    numbers: PickedNumber[];
+  } | null>(null);
+  /**
+   * Which row is waiting on the picker.
+   *
+   * Without this a double-tap opens the picker twice, and on Android the
+   * second call rejects with ContactPickingInProgressException — so the admin
+   * would be shown a failure message for a picker that is about to work.
+   */
+  const [pickingFor, setPickingFor] = useState<string | null>(null);
+  /**
+   * What the picker did to a row, kept per row and shown under it.
+   *
+   * Not a toast: "which number did it take?" has to be answerable ten seconds
+   * later, while the admin is looking at four rows and deciding whether to send.
+   */
+  const [pickNote, setPickNote] = useState<Record<string, string>>({});
+
   // Invites already created for this event — coming back to the step must not
   // issue a second link to the same person.
   useEffect(() => {
@@ -90,7 +114,78 @@ export default function InviteRepsScreen() {
     setReps((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
   const addRep = () => setReps((prev) => [...prev, { id: `r${nextId++}`, name: '', phone: '' }]);
-  const removeRep = (id: string) => setReps((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+  const noteFor = (id: string, text: string | null) =>
+    setPickNote((prev) => {
+      if (text) return { ...prev, [id]: text };
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+
+  const removeRep = (id: string) => {
+    setReps((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+    // Prune the note with the row, or a later row minted on the same id
+    // inherits an explanation about somebody else.
+    noteFor(id, null);
+  };
+
+  /**
+   * Fill a row from the phone's own contacts.
+   *
+   * It FILLS the two fields rather than bypassing them: whatever comes across
+   * lands in the same boxes a typed invite uses, so the admin can read it and
+   * correct it before anything is created. The number goes in exactly as the
+   * contact stores it, because that is what a typed number does too — the one
+   * normalisation this flow has runs later, in createInvites.
+   */
+  const pickFor = async (repId: string) => {
+    if (pickingFor) return;
+    setPickingFor(repId);
+    const outcome = await pickContact().finally(() => setPickingFor(null));
+
+    if (!outcome.ok) {
+      // Backing out of the picker leaves the row exactly as it was: no
+      // setReps, no note, no error. Achieved by doing nothing at all.
+      if (outcome.reason === 'cancelled') return;
+      setError(outcome.message);
+      return;
+    }
+
+    setError(null);
+    const { name, numbers } = outcome;
+
+    if (numbers.length === 0) {
+      // The name is still worth having; a blank phone field the admin fills
+      // in is honest, where a guessed number would not be.
+      updateRep(repId, { name });
+      noteFor(repId, `${name || 'That contact'} has no number saved — type it in.`);
+      return;
+    }
+
+    if (numbers.length === 1) {
+      updateRep(repId, { name, phone: numbers[0].number });
+      noteFor(repId, `Took the ${numbers[0].label} number.`);
+      return;
+    }
+
+    /**
+     * Several numbers: write NOTHING yet, not even the name.
+     *
+     * Taking the first and letting it be changed would put a number the admin
+     * never chose into the field, looking accepted. Writing nothing also makes
+     * dismissing the sheet identical to cancelling the picker — the row is
+     * untouched either way, because it was never touched.
+     */
+    setChooser({ repId, name, numbers });
+  };
+
+  const chooseNumber = (entry: PickedNumber) => {
+    if (!chooser) return;
+    updateRep(chooser.repId, { name: chooser.name, phone: entry.number });
+    noteFor(chooser.repId, `${chooser.numbers.length} numbers saved — took the ${entry.label}.`);
+    setChooser(null);
+  };
 
   /**
    * Every rep gets their own link.
@@ -199,29 +294,67 @@ export default function InviteRepsScreen() {
           ) : null}
 
           {reps.map((rep) => (
-            <View key={rep.id} className="flex-row gap-[10px] mb-3">
-              <RNTextInput
-                className="flex-[1.3] border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
-                placeholder="Full name"
-                placeholderTextColor="#97A3B8"
-                value={rep.name}
-                onChangeText={(v) => updateRep(rep.id, { name: v })}
-                autoCapitalize="words"
-              />
-              <RNTextInput
-                className="flex-1 border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
-                placeholder="Phone number"
-                placeholderTextColor="#97A3B8"
-                value={rep.phone}
-                onChangeText={(v) => updateRep(rep.id, { phone: v })}
-                keyboardType="phone-pad"
-              />
-              <Pressable
-                onPress={() => removeRep(rep.id)}
-                className="w-[50px] h-[50px] rounded-md bg-white border border-hairline items-center justify-center"
-              >
-                <CloseIcon />
-              </Pressable>
+            <View key={rep.id} className="mb-3">
+              <View className="flex-row gap-[10px]">
+                <RNTextInput
+                  className="flex-[1.3] border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
+                  placeholder="Full name"
+                  placeholderTextColor="#97A3B8"
+                  value={rep.name}
+                  onChangeText={(v) => updateRep(rep.id, { name: v })}
+                  autoCapitalize="words"
+                />
+                {/*
+                  The contacts button sits INSIDE the phone field rather than
+                  taking a fourth column. At 360dp the row already spends 40 on
+                  the screen padding, 30 on gaps and 100 on the two 50px boxes;
+                  a fourth column would leave the phone field around 83dp, too
+                  narrow to show a full number. The input just gains right
+                  padding so a long number never slides under the icon.
+                */}
+                <View className="flex-1">
+                  <RNTextInput
+                    className="w-full border border-hairline rounded-md h-[50px] pl-[14px] pr-[40px] text-[14px] font-regular text-navy bg-white"
+                    placeholder="Phone number"
+                    placeholderTextColor="#97A3B8"
+                    value={rep.phone}
+                    onChangeText={(v) => {
+                      updateRep(rep.id, { phone: v });
+                      // Clear the note here and NOT inside updateRep, which the
+                      // picker itself calls — doing it there would wipe the note
+                      // in the same tick it was written.
+                      noteFor(rep.id, null);
+                    }}
+                    keyboardType="phone-pad"
+                  />
+                  {Platform.OS !== 'web' ? (
+                    <Pressable
+                      onPress={() => pickFor(rep.id)}
+                      // A 30dp target is under the 44dp minimum; hitSlop takes
+                      // the touchable area to 50dp without widening the icon.
+                      hitSlop={10}
+                      className={`absolute right-[5px] top-[10px] w-[30px] h-[30px] items-center justify-center ${
+                        pickingFor === rep.id ? 'opacity-40' : ''
+                      }`}
+                    >
+                      {/* The placeholder grey, so it reads as an offer rather
+                          than as a value already in the field. */}
+                      <ContactsIcon size={15} color="#97A3B8" />
+                    </Pressable>
+                  ) : null}
+                </View>
+                <Pressable
+                  onPress={() => removeRep(rep.id)}
+                  className="w-[50px] h-[50px] rounded-md bg-white border border-hairline items-center justify-center"
+                >
+                  <CloseIcon />
+                </Pressable>
+              </View>
+              {pickNote[rep.id] ? (
+                <Typography className="text-[11.5px] text-slate mt-[6px] ml-[2px]">
+                  {pickNote[rep.id]}
+                </Typography>
+              ) : null}
             </View>
           ))}
 
@@ -274,6 +407,19 @@ export default function InviteRepsScreen() {
           </Pressable>
         </View>
       </KeyboardSafe>
+
+      {/*
+        Dismissing this writes nothing, because nothing was written on the way
+        in — so backing out here and backing out of the system picker leave the
+        row in exactly the same state.
+      */}
+      <PhoneChoiceSheet
+        visible={chooser !== null}
+        name={chooser?.name ?? ''}
+        numbers={chooser?.numbers ?? []}
+        onSelect={chooseNumber}
+        onClose={() => setChooser(null)}
+      />
     </SafeAreaView>
   );
 }
