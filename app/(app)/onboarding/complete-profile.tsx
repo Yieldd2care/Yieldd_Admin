@@ -30,11 +30,13 @@ const PLACEHOLDER_ORG = 'My workspace';
  *
  * THIS SCREEN HAS NO SKIP, AND THAT IS DELIBERATE.
  *
- * PENDING.md #33c puts a Skip on every onboarding screen, and every other one
- * has it — see components/app/SkipLink.tsx. This screen is the exception,
- * confirmed 2026-09-14. #4 made the contact number mandatory at account
- * creation on 2026-08-28: it is the number that goes on the person's digital
- * card, which is the thing the card exists to hand out.
+ * PENDING.md #33c puts a Skip on every onboarding screen. Neither of the two
+ * that exist today takes one — see components/app/SkipLink.tsx for the shared
+ * component, which is waiting for the referral screen (#33b) and the tutorial
+ * (#33d). For this screen the decision was confirmed 2026-09-14: #4 made the
+ * contact number mandatory at account creation on 2026-08-28, because it is
+ * the number that goes on the person's digital card, which is the thing the
+ * card exists to hand out.
  *
  * Adding a Skip here is also not a one-line change. app/(app)/_layout.tsx
  * redirects back here for as long as profileNeedsCompletion(user) is true, so

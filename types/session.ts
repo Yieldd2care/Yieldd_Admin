@@ -10,10 +10,13 @@ export type MemberStatus = Enums<'member_status'>; // 'invited' | 'active' | 'de
 export type PlanTier = Enums<'org_plan_tier'>; // 'free' | 'pro'
 
 /**
- * The fork's answer. `'skipped'` is a real answer, not an absence of one: it
- * is what Skip writes (PENDING.md #33c), and it is what stops the fork being
- * asked again on the next sign-in. Only `null` — never shown, never answered —
- * brings the fork back. See lib/auth/nextRoute.ts.
+ * The fork's answer, and `null` until it is given. Any non-null value means
+ * "this org has answered", which is what stops nextRouteAfterAuth() showing
+ * the fork again on the next sign-in.
+ *
+ * `'skipped'` is here because the column accepts it (20260914100000) and this
+ * type has to cover what the database can hand back. Nothing writes it today:
+ * the fork deliberately has no Skip — see app/(app)/onboarding/fork.tsx.
  */
 export type AccountIntent = 'team' | 'solo' | 'skipped';
 

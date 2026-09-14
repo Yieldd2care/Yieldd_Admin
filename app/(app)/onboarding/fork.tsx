@@ -10,7 +10,6 @@ import { ChevronRightIcon, UsersIcon, ProfileIcon } from '../../../components/ui
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { homeRoute } from '../../../lib/auth/nextRoute';
 import { CenterColumn } from '../../../components/shared/CenterColumn';
-import { SkipLink } from '../../../components/app/SkipLink';
 
 function ChecklistIllustration() {
   return (
@@ -78,15 +77,16 @@ export default function ForkScreen() {
     router.replace('/(app)/card/edit');
   };
 
-  // Skip is awaited, unlike the two choices above, and that is the whole point
-  // of it. nextRouteAfterAuth() sends an admin back here on every sign-in while
-  // onboarding_intent is null, so a Skip that records nothing would reappear
-  // forever and read as a broken button. 'skipped' is the third answer.
+  // NO SKIP ON THIS SCREEN, by decision on 2026-09-14.
   //
-  // A rep cannot write it — setAccountIntent returns "Only an admin can change
-  // this" rather than failing silently — but a rep never reaches this screen,
-  // and SkipLink navigates either way.
-  const skip = () => setAccountIntent('skipped');
+  // PENDING.md #33c puts a Skip on every onboarding screen and this one had
+  // one briefly. It was removed: the question is two taps, it is asked once,
+  // and the answer decides where a brand new account is sent next. There is no
+  // sensible third destination for someone who answers neither.
+  //
+  // See components/app/SkipLink.tsx — the shared Skip is still there, ready
+  // for the referral screen (#33b) and the tutorial (#33d), which are genuinely
+  // optional in a way this is not.
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
@@ -117,8 +117,6 @@ export default function ForkScreen() {
             onPress={chooseSolo}
           />
         </View>
-
-        <SkipLink onSkip={skip} className="mt-7" />
         </CenterColumn>
       </View>
     </SafeAreaView>

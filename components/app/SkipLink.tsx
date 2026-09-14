@@ -6,11 +6,18 @@ import { Typography } from '../ui/Typography';
 import { homeRoute } from '../../lib/auth/nextRoute';
 
 /**
- * The Skip affordance every onboarding screen carries (PENDING.md #33c).
+ * The Skip affordance for onboarding screens (PENDING.md #33c).
  *
- * Shared rather than copied so the referral screen (#33b) and the first-run
- * tutorial (#33d) inherit the same words, the same position and — more
- * importantly — the same two rules that are easy to get wrong:
+ * NOT USED BY ANY SCREEN YET, and that is not an oversight. Both onboarding
+ * screens that exist today were looked at on 2026-09-14 and neither takes a
+ * Skip: the contact number is mandatory (#4), and the fork is a two-tap
+ * question with no sensible third answer. This exists for the referral screen
+ * (#33b) and the first-run tutorial (#33d), which are genuinely optional, so
+ * that neither of them invents its own.
+ *
+ * Shared rather than copied so those two inherit the same words, the same
+ * position and — more importantly — the same two rules that are easy to get
+ * wrong:
  *
  * 1. `replace`, never `push`. Onboarding must not sit in the back stack
  *    waiting to be swiped back into. Same reasoning as the fork's own
