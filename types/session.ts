@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 
 import type { Enums } from '../lib/db';
 import type { OAuthOutcome } from '../lib/auth/google';
+import type { ReferralSourceId } from '../lib/referral';
 
 // Sourced from the generated database enums rather than hand-written unions, so
 // a migration that changes them breaks the build instead of drifting silently.
@@ -37,6 +38,15 @@ export interface User {
   organizationId: string;
   planTier: PlanTier;
   onboardingIntent: AccountIntent | null;
+  /**
+   * `organizations.referral_source` — where this org heard about Yieldd (#33b).
+   *
+   * Deliberately a plain string and not a union, unlike `onboardingIntent`
+   * above. Any non-null value means "answered", so narrowing it would mean a
+   * value we did not recognise collapsing to null and the question returning
+   * forever. See the note in lib/mappers/profile.ts.
+   */
+  referralSource: string | null;
   designation: string | null;
   phone: string | null;
   avatarUrl: string | null;
@@ -77,6 +87,14 @@ export interface SessionState {
   refreshProfile: () => Promise<void>;
   setPendingInviteToken: (token: string | null) => void;
   setAccountIntent: (intent: AccountIntent) => Promise<AuthResult>;
+  /**
+   * Records the answer to "where did you hear about us?" on the organisation.
+   *
+   * `detail` is the platform under Social media or AI discovery, and null for
+   * every other answer. Writing anything at all is what stops the screen coming
+   * back, which is why the Skip link writes `'skipped'` rather than nothing.
+   */
+  setReferralSource: (source: ReferralSourceId, detail?: string | null) => Promise<AuthResult>;
 
   signUp: (input: {
     name: string;

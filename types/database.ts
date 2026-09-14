@@ -779,6 +779,8 @@ export type Database = {
           name: string
           onboarding_intent: string | null
           plan_tier: Database["public"]["Enums"]["org_plan_tier"]
+          referral_detail: string | null
+          referral_source: string | null
           seats_included: number
           seats_purchased: number
           updated_at: string
@@ -791,6 +793,8 @@ export type Database = {
           name: string
           onboarding_intent?: string | null
           plan_tier?: Database["public"]["Enums"]["org_plan_tier"]
+          referral_detail?: string | null
+          referral_source?: string | null
           seats_included?: number
           seats_purchased?: number
           updated_at?: string
@@ -803,6 +807,8 @@ export type Database = {
           name?: string
           onboarding_intent?: string | null
           plan_tier?: Database["public"]["Enums"]["org_plan_tier"]
+          referral_detail?: string | null
+          referral_source?: string | null
           seats_included?: number
           seats_purchased?: number
           updated_at?: string

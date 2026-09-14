@@ -42,7 +42,12 @@ export async function fetchOrganization(): Promise<Organization | null> {
   return data ? toOrganization(data as OrgRow) : null;
 }
 
-/** `category` and `onboarding_intent` are the only columns a client may write. */
+/**
+ * `name`, `category` and `onboarding_intent` are the columns this function may
+ * write. `referral_source` and `referral_detail` are granted too (#33b) but are
+ * written only by useSessionStore.setReferralSource, from the onboarding screen
+ * that asks the question — there is no settings screen for them.
+ */
 export async function updateOrganization(
   id: string,
   patch: { name?: string; category?: string | null; onboardingIntent?: string | null }

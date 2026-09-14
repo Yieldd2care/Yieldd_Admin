@@ -11,6 +11,7 @@ export type AuthDestination =
   | '/(app)'
   | '/(dash)'
   | '/(app)/onboarding/fork'
+  | '/(app)/onboarding/referral'
   | '/(app)/onboarding/complete-profile';
 
 /**
@@ -37,6 +38,19 @@ export function nextRouteAfterAuth(
   // is nothing for them to choose, and the fork writes an org-level setting
   // they have no permission to change.
   if (opts.joinedViaInvite || user.role !== 'admin') return home();
+
+  // Where they heard about us, before the fork rather than after it (#33b).
+  //
+  // The fork navigates with its own hardcoded router.replace — home for team,
+  // the card editor for solo — and never comes back through this function. So
+  // a referral step placed after it would simply never be reached on the run
+  // that matters, the one right after signing up.
+  //
+  // Any non-null value means "this org has answered", which is what stops the
+  // screen reappearing on the next sign-in. That includes 'skipped' and the
+  // 'predates' the migration backfilled onto every organisation that existed
+  // before the question did.
+  if (!user.referralSource) return '/(app)/onboarding/referral';
 
   return user.onboardingIntent ? home() : '/(app)/onboarding/fork';
 }

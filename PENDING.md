@@ -31,8 +31,8 @@ Full diagnosis for each is in its numbered section below.
 | # | Item | Status |
 |---|---|---|
 | 33a | Sign-up becomes email → OTP → name + password | `[ ]` needs a decision on company/phone |
-| 33b | Referral — "where did you hear about us" + sub-lists | `[ ]` needs the platform lists |
-| 33c | Skip on every onboarding screen | `[~]` 2026-09-14 — component built; neither existing screen takes one, waits on 33b/33d |
+| 33b | Referral — "where did you hear about us" + sub-lists | `[x]` done 2026-09-14 |
+| 33c | Skip on every onboarding screen | `[~]` 2026-09-14 — 33b now uses SkipLink; the two older screens take none by decision, waits on 33d |
 | 33d | First-run tutorial on Home (collage + Next) | `[ ]` |
 | 34 | Password fields need a show/hide eye icon | `[ ]` |
 | 35 | Bottom content behind the Android nav bar (Samsung Ultra 26) | `[ ]` needs testing on that handset |
@@ -167,33 +167,72 @@ was described, so none of it gets merged into one screen by mistake.
 
 ---
 
-#### 33b. Referral — "where did you hear about us" `[ ]`
+#### 33b. Referral — "where did you hear about us", DONE 2026-09-14
 
-Shown **after** the account is created.
+Shown **after** the account is created, at
+[app/(app)/onboarding/referral.tsx](app/(app)/onboarding/referral.tsx).
 
-Options:
+Options, in this order — the id in brackets is what is stored:
 
-- Google
-- Social media
-- AI discovery
-- Friends
-- Colleague
-- Event or conference
-- Other
+- Google `google`
+- Social media `social` → opens a second list
+- AI discovery `ai` → opens a second list
+- Friends `friends`
+- Colleague `colleague`
+- Event or conference `event`
+- Other `other`
 
-**Two options open a second list:**
+**The three open questions are now answered:**
 
-- **Social media** → ask *which platform*.
-- **AI discovery** → ask *which AI platform*.
+- **Social media platforms:** LinkedIn, Instagram, YouTube, WhatsApp, Facebook, X — in that
+  order.
+- **AI platforms:** ChatGPT, Gemini, Perplexity, Claude, Copilot — in that order.
+- **Where it is stored:** two new text columns on `public.organizations` —
+  `referral_source` (the top-level answer) and `referral_detail` (the platform, when the
+  answer was Social media or AI discovery). Added by
+  `supabase/migrations/20260914120000_org_referral_source.sql`, pushed 2026-09-14.
 
-**The selected option must be clearly highlighted** — this was called out specifically.
+Both lists live in [lib/referral.ts](lib/referral.ts) and nowhere else.
 
-**Open questions:**
+**Organisations rather than profiles**, deliberately: an invited rep did not hear about Yieldd
+from anywhere, they were invited by their admin. `nextRouteAfterAuth()` already sends every
+non-admin straight home without passing the question.
 
-- **Which social media platforms** should be listed, and in what order?
-- **Which AI platforms** should be listed?
-- **Where is the answer stored?** No column or table exists for it today. It needs one, or the
-  answer is collected and thrown away.
+**Fixed 2026-09-14:** the screen sits in the routing chain *before* the team-or-solo fork —
+complete-profile → referral → fork. It has to come after complete-profile, because
+[app/(app)/_layout.tsx](app/(app)/_layout.tsx) hard-redirects anyone without a phone back
+there on every render and a screen placed earlier is an infinite loop. It comes before the
+fork because the fork navigates with its own hardcoded `router.replace` and never returns
+through `nextRouteAfterAuth()`, so a referral step placed after it would never be reached on
+the one run that matters — the one straight after signing up. It uses the shared
+[SkipLink](components/app/SkipLink.tsx) that #33c built for it; the Skip writes `'skipped'`,
+because the routing rule is "has this org answered?" and a null column means *ask again,
+forever*.
+
+Two values are storable but never shown: `'skipped'` and `'predates'`. The migration
+backfills `'predates'` onto all 5 organisations that already existed, so no current
+admin — the Growth Saga demo login included — is stopped by the question mid-demo. It is kept
+distinct from `'skipped'` so the report can tell "declined to answer" from "was never asked".
+
+**Worth keeping — this screen is the exact case the NativeWind rule in AGENTS.md warns about.**
+A selection highlight is by definition a class that appears after the first render, and if
+that class is `shadow-*`, `ring-*`, `scale-*`, a gradient or a filter, react-native-css-interop
+tries to upgrade the component mid-life and the app shows a completely unrelated red screen
+reading *"Couldn't find a navigation context"*. So the highlight here is only plain background,
+border-colour and font-weight swaps plus a tick: `border-2` is present in both branches and
+only its colour changes. The platform chips use `flex-wrap` rather than a horizontal
+`ScrollView`, which sidesteps the other AGENTS.md rule instead of working around it.
+
+**Also worth keeping:** the value CHECK on `referral_source` is a trade with a real cost —
+adding an eighth option means a *second* migration to widen it, exactly as `20260914100000`
+had to do for `onboarding_intent`'s `'skipped'`. Confirmed with the user that the seven are
+final, which is what buys the guard. `referral_detail` gets a length check only, because the
+platform names are the half that moves.
+
+- **New suite:** `npm run verify:referral` — 58 assertions. The one that earns the file reads
+  the migration, parses the `in (...)` list out of the CHECK constraint, and asserts it is the
+  same set as the ids in `lib/referral.ts`. That drift is invisible to the typechecker and
+  surfaces only as a rejected write on a live signup screen.
 
 ---
 
@@ -208,9 +247,16 @@ rather than pushes (onboarding must not sit in the back stack), lands on `homeRo
 already knows a browser belongs on the dashboard and a phone on the tab bar), and takes an
 optional `onSkip` for a screen that has to record the skip somewhere.
 
-**No screen uses it yet.** Both onboarding screens that exist today were looked at on 2026-09-14
-and neither takes a Skip — see the two decisions below. 33b and 33d drop `<SkipLink />` in when
-they are built, and those two are genuinely optional in a way neither existing screen is.
+**33b uses it as of 2026-09-14** — [the referral screen](app/(app)/onboarding/referral.tsx) was
+the screen this component was built for, and its Skip records `'skipped'` through `onSkip` so the
+question does not come back. 33d drops `<SkipLink />` in when it is built. The two older
+onboarding screens still take no Skip — see the two decisions below — and that remains deliberate
+rather than outstanding.
+
+One thing 33d should know before reusing it: `SkipLink` goes to `homeRoute()` directly rather than
+back through `nextRouteAfterAuth()`, so skipping a screen that has a later onboarding step after it
+lands on Home and defers that step to the next sign-in. On 33b that was accepted rather than
+forking the component, because answering — the path nearly everyone takes — chains on correctly.
 
 **Decision — no Skip on the fork, 2026-09-14.** "Setting this up for a team, or just yourself?" is
 two taps, is asked once, and its answer decides where a brand new account is sent next. There is no

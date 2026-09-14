@@ -457,6 +457,32 @@ export const useSessionStore = create<SessionState>()(
         set({ user: { ...user, onboardingIntent: intent } });
         return { error: null };
       },
+
+      setReferralSource: async (source, detail = null) => {
+        const user = get().user;
+        if (!user) return { error: 'Not signed in.' };
+
+        // Same row-counting as setAccountIntent above, and for the same reason:
+        // org_admin_update requires is_admin(), so a rep's update matches zero
+        // rows and returns no error at all. A null error is not success here.
+        //
+        // `referral_detail` is always sent, including as null, so switching
+        // from Social media to Google clears the platform rather than leaving
+        // "LinkedIn" attached to an answer that no longer has a platform.
+        const { data, error } = await supabase
+          .from('organizations')
+          .update({ referral_source: source, referral_detail: detail })
+          .eq('id', user.organizationId)
+          .select('id');
+
+        if (error) return { error: error.message };
+        if (!data || data.length === 0) {
+          return { error: 'Only an admin can change this.' };
+        }
+
+        set({ user: { ...user, referralSource: source } });
+        return { error: null };
+      },
     }),
     {
       name: 'yieldd-session',

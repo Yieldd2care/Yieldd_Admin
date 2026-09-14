@@ -92,7 +92,8 @@
     "verify:card-photo": "node scripts/verify-card-photo.mjs",
     "verify:lead-search": "node scripts/verify-lead-search.mjs",
     "verify:plan": "node scripts/verify-plan.mjs",
-    "verify:lead-edit": "node scripts/verify-lead-edit.mjs"
+    "verify:lead-edit": "node scripts/verify-lead-edit.mjs",
+    "verify:referral": "node scripts/verify-referral.mjs"
   },
   "private": true
 }

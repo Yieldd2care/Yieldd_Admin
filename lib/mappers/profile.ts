@@ -9,12 +9,14 @@ import type { AccountIntent, User } from '../../types/session';
 /** The exact column list refreshProfile() selects. Keep the two in step. */
 export const PROFILE_SELECT =
   'id, full_name, email, role, status, designation, phone, avatar_url, notifications_enabled, ' +
-  'created_at, organization_id, organizations!inner(name, plan_tier, onboarding_intent)';
+  'created_at, organization_id, ' +
+  'organizations!inner(name, plan_tier, onboarding_intent, referral_source)';
 
 type OrganizationJoin = {
   name: string;
   plan_tier: 'free' | 'pro';
   onboarding_intent: string | null;
+  referral_source: string | null;
 };
 
 type ProfileRow = {
@@ -62,6 +64,12 @@ export function toSessionUser(row: ProfileRow): User {
     organizationId: row.organization_id,
     planTier: org?.plan_tier ?? 'free',
     onboardingIntent: toIntent(org?.onboarding_intent ?? null),
+    // Passed through raw, with NO equivalent of toIntent() above, and that is
+    // the point rather than an omission. Collapsing an unrecognised value to
+    // null here would mean an org that has answered reads as one that has not,
+    // and nextRouteAfterAuth() would ask the same question on every single
+    // sign-in. Nothing branches on the value, so an unknown one is harmless.
+    referralSource: org?.referral_source ?? null,
     designation: row.designation,
     phone: row.phone,
     avatarUrl: row.avatar_url,
