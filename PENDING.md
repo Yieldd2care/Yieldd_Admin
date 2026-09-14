@@ -53,7 +53,7 @@ Full diagnosis for each is in its numbered section below.
 | 46 | Pipeline chart bars should open the leads behind them | `[ ]` needs a status filter on the leads list first |
 | 47 | Export CSV carries no deal value | `[ ]` decide one column or two; must stay admin-only |
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
-| 49 | "New template" is silent, and creates a default not a draft | `[ ]` |
+| 49 | "New template" is silent, and creates a default not a draft | `[ ]` **web dashboard only** |
 | 50 | Home — all-events analytics with an event picker | `[ ]` needs a server-side multi-event aggregate |
 | 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
 | 52 | An invite counts as ready with a number that is not one | `[ ]` surfaced by 38; changes typed invites too, so needs a decision |
@@ -672,6 +672,12 @@ this is a new write path before it is a new column:
 ---
 
 ### 49. "New template" gives no feedback, and creates a default instead of a draft — reported 2026-09-14 `[ ]`
+
+**Web dashboard only**, confirmed 2026-09-14 with the user and against the code. The phone has
+no "New template" button anywhere: neither `settings/whatsapp-template.tsx` nor
+`settings/email-template.tsx` creates one, and `events/[id]/templates.tsx` is a picker that only
+reads `isDefault` to draw a badge. So this is one screen, not a pattern to sweep for — and a fix
+here must not be copied onto the phone screens on the assumption they share it.
 
 **Two faults, one button** ([app/(dash)/templates.tsx](app/(dash)/templates.tsx)).
 
