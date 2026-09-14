@@ -61,6 +61,8 @@ Full diagnosis for each is in its numbered section below.
 | 54 | Ask for the event cost when the show ends | `[ ]` surfaced by 50; the cost is not known at creation time |
 | 55 | "This event cost nothing" is not something you can say | `[ ]` surfaced by 50; unset and zero are the same row today |
 | 56 | Abandoned signups leave an empty organisation behind | `[ ]` surfaced by 33a; the account is made when the code is sent |
+| 57 | Code email's subject still said "Your sign-in link" | `[x]` done 2026-09-14 |
+| 58 | After the code, ask ONLY for a password | `[ ]` 2026-09-14 — name, company and number move to the digital-card step |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -931,6 +933,71 @@ Worth doing only if free events actually happen. If they do, a single "this even
 that writes explicit zeros across the seven components is enough — no schema change, because the
 components already carry the distinction. If they do not, leave it: an extra control for a case that
 never arises is worse than the gap.
+
+---
+
+### 58. After the code, ask only for a password — reported 2026-09-14 `[ ]`
+
+**Wanted.** Signing up should be: **email → code → choose a password → in.** Nothing else.
+Name, company and contact number come later, when the person builds their digital card, because
+that is the moment those details are actually for something.
+
+**Today** ([complete-profile](app/(app)/onboarding/complete-profile.tsx)) asks for name,
+company, number and password on one screen. Three of those four come off it.
+
+**This reverses #4, knowingly.** The contact number was made mandatory at account creation on
+2026-08-28 precisely so that nobody reaches the app without the number that goes on their card.
+That reasoning does not disappear; it moves. Whoever builds this has to make the card step
+enforce it instead, or the guarantee is simply gone.
+
+**Four things break if this is done naively. None is in the screen itself.**
+
+1. **The hard redirect loops forever.** [app/(app)/_layout.tsx](app/(app)/_layout.tsx)
+   redirects to complete-profile for as long as `profileNeedsCompletion(user)` is true, and that
+   function returns true while the phone is missing **or** the name is still the placeholder. If
+   the screen stops collecting either, the guard sends them straight back to it on every render,
+   forever. `profileNeedsCompletion` has to shrink to "has no password" at the same time.
+
+2. **`needsPasswordSetup()` stops working.** [lib/auth/emailCode.ts](lib/auth/emailCode.ts)
+   decides whether to show the password fields by checking whether the name is still
+   `'New user'`. That works today only because the same screen sets the name. Leave the name
+   unset and the check stays true forever, so the screen keeps demanding a password from someone
+   who already has one. It needs a different signal.
+
+3. **The person is called "New user" everywhere until the card step.** Not cosmetic: that name
+   is on the leads they capture, the team list, the leaderboard, and their digital card.
+
+4. **The organisation stays "My workspace".** Visible in dashboard settings and on every invite
+   the admin sends. The company name is also what `handle_new_user()` would otherwise have set.
+
+**Decide before building:** is the card step mandatory before reaching Home, or genuinely
+optional? If optional, the app has to read well for a person called "New user" at "My
+workspace" — which is a copy and empty-state problem across several screens, not a one-screen
+change.
+
+---
+
+### 57. The code email's subject still promised a link — reported 2026-09-14, DONE 2026-09-14
+
+**Reported by the user.** The email carrying the sign-in code arrived with the subject
+**"Your sign-in link"**. The body had been rewritten to carry a 6-digit code for #33a, but the
+subject line is a **separate config field** and was left behind, so the envelope promised one
+thing and the contents were another.
+
+**Fixed 2026-09-14:** both `mailer_subjects_magic_link` and `mailer_subjects_confirmation` are
+now **"Your verification code to sign in"**. `mailer_subjects_recovery` is deliberately
+untouched — password reset genuinely is a link, and its subject should keep saying so.
+
+**Worth keeping:** the subject and the body of a Supabase auth email live in two different
+config fields with nothing tying them together. Change one and the other silently disagrees,
+and no test, build or typecheck will notice — only a person reading their inbox. That is
+exactly how this got out. `npm run verify:otp` now asserts the code emails' subjects do not
+contain the word "link", and that the reset email's still describes a reset.
+
+**Also worth knowing:** the subject can carry the code itself. Supabase's own reauthentication
+subject is `{{ .Token }} is your verification code`, which shows the number on the lock screen
+without the person opening the mail. Not adopted here because the wording above was the user's,
+but it is the better pattern if the subject is ever revisited.
 
 ---
 

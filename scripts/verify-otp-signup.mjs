@@ -61,6 +61,19 @@ try {
     'the confirmation email contains {{ .Token }} too');
   mark(cfg.mailer_otp_length === 6,
     `the code is 6 digits (Supabase's minimum), got ${cfg.mailer_otp_length}`);
+
+  // The subject has to describe a code, not a link. It said "Your sign-in link"
+  // for half a day after the body was changed to carry a code — reported by the
+  // user on 2026-09-14 (#57). The subject and the body live in two different
+  // config fields, so nothing ties them together but this check.
+  const saysLink = (s) => /\blink\b/i.test(s ?? '');
+  mark(!saysLink(cfg.mailer_subjects_magic_link),
+    `the code email's subject does not promise a link, got ${JSON.stringify(cfg.mailer_subjects_magic_link)}`);
+  mark(!saysLink(cfg.mailer_subjects_confirmation),
+    `  ...nor does the confirmation email's, got ${JSON.stringify(cfg.mailer_subjects_confirmation)}`);
+  // Password reset genuinely IS a link, so this one must keep saying so.
+  mark(/reset|password/i.test(cfg.mailer_subjects_recovery ?? ''),
+    'the password-reset subject still describes a password reset');
   // Password reset is a LINK, not a code, and must stay that way — the screen
   // it opens lives on the website. See lib/auth/passwordReset.ts.
   mark(/ConfirmationURL/.test(cfg.mailer_templates_recovery_content ?? ''),
