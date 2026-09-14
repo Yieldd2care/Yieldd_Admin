@@ -1,29 +1,22 @@
 import { View } from 'react-native';
 
 import { Typography } from '../ui/Typography';
-import { Icon, ICON, Menu, MenuToggle } from './controls';
+import { Icon, ICON, Menu, MenuItem } from './controls';
 import { useEventSelection } from '../../hooks/useEvents';
 import type { Event } from '../../types/event';
 
 /**
- * Which shows the across-events figures cover.
+ * Which shows the dashboard is reporting on. The only event control there is.
  *
- * There are now two event controls on Home, and that is deliberate rather than
- * an oversight. `EventSwitcher` sits in the title bar and answers "which show am
- * I working in" — it scopes the panels below it, which is why its own header
- * argues a scope control belongs in the title bar rather than among the panels.
- * That argument holds for a control governing the whole page. It does not hold
- * here: this one governs exactly one section, sits inside that section's
- * heading, and the section states its own scope in words next to it.
+ * Home and Leads used to carry two between them — this one, and an
+ * `EventSwitcher` in the title bar — and a reader had no way to tell which of
+ * the two a given number obeyed. Worse, on Leads the switcher was decoration:
+ * changing it altered nothing on screen, because nothing there read it. One
+ * control now, and both screens scope themselves by it.
  *
- * Merging the two was the alternative. It would have meant the Leads screen
- * inheriting a multi-event scope and needing a mixed-event list designed for it,
- * which is a different piece of work — and it would have made picking a show to
- * work in silently change what the yearly totals covered.
- *
- * The label never reads as a bare count. "4 of 6 events" or "All events", never
- * "4 selected", because the one thing a reader must never have to wonder about
- * is how much of the year the number in front of them covers.
+ * The label never reads as a bare count. "All events" or the show's own name,
+ * never "1 selected", because the one thing a reader must never have to wonder
+ * about is how much of the year the number in front of them covers.
  */
 
 /** `18–21 Feb` — the span, without the year unless it straddles one. */
@@ -41,52 +34,63 @@ function span(startDate: string, endDate: string): string {
 function labelFor(events: Event[], selectedIds: string[], isAll: boolean): string {
   if (events.length === 0) return 'No events';
   if (isAll) return events.length === 1 ? 'This event' : 'All events';
-  return `${selectedIds.length} of ${events.length} events`;
+  // A single show is named; anything else is the count, which only occurs
+  // transiently now that picking is one-at-a-time.
+  const picked = events.filter((e) => selectedIds.includes(e.id));
+  return picked.length === 1 ? picked[0].name : `${picked.length} of ${events.length} events`;
 }
 
+/**
+ * Pick one show, or all of them.
+ *
+ * This was a set of tick boxes, and the tick boxes were the problem. Clicking
+ * an event while everything was selected REMOVED it — so choosing "Gujarat
+ * Industrial Expo" showed every lead except Gujarat's, which is the opposite of
+ * what the click looks like it will do. Nobody reads that as multi-select; they
+ * read it as broken.
+ *
+ * So clicking an event now means that event and nothing else, and "All events"
+ * means all of them. Arbitrary subsets are gone deliberately: they were never
+ * asked for, and the totals above the picker are no harder to read for it.
+ */
 export function EventMultiPicker() {
   const { events, selectedIds, isAll, setSelection } = useEventSelection();
 
   if (events.length === 0) return null;
-
-  const toggle = (id: string) => {
-    const next = selectedIds.includes(id)
-      ? selectedIds.filter((x) => x !== id)
-      : [...selectedIds, id];
-    // Unticking the last one means "all" rather than "nothing". Totals over no
-    // events are not zero, and a section scoped to nothing has nothing to say —
-    // the label flips to "All events" in the same breath, so what happened is
-    // visible rather than silent. The store normalises [] to null either way.
-    setSelection(next.length === 0 ? null : next);
-  };
 
   return (
     <Menu
       label={labelFor(events, selectedIds, isAll)}
       icon={ICON.calendar}
       width={290}
-      align="left"
+      align="right"
     >
-      {() => (
+      {(close) => (
         <>
-          <MenuToggle
+          <MenuItem
             label={events.length === 1 ? 'This event' : 'All events'}
-            on={isAll}
-            // Already showing everything: re-ticking it would be a no-op, and
-            // unticking it has no defined meaning. Leave it alone.
+            active={isAll}
             onPress={() => {
-              if (!isAll) setSelection(null);
+              // null, not the full id list: the store reads null as "everything",
+              // so a later event added to the organisation is included without
+              // anyone re-picking.
+              setSelection(null);
+              close();
             }}
           />
 
           <View className="border-t border-hairline my-[6px]" />
 
           {events.map((e) => (
-            <MenuToggle
+            <MenuItem
               key={e.id}
-              label={`${e.name} · ${span(e.startDate, e.endDate)}`}
-              on={selectedIds.includes(e.id)}
-              onPress={() => toggle(e.id)}
+              label={e.name}
+              hint={span(e.startDate, e.endDate)}
+              active={!isAll && selectedIds.length === 1 && selectedIds[0] === e.id}
+              onPress={() => {
+                setSelection([e.id]);
+                close();
+              }}
             />
           ))}
         </>

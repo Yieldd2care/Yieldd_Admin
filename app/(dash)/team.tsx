@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { DashShell } from '../../components/dash/DashShell';
 import { ConfirmDialog } from '../../components/dash/ConfirmDialog';
@@ -89,6 +90,14 @@ function InviteResult({ invite, from }: { invite: Invite; from?: string }) {
 }
 
 export default function DashTeam() {
+  const router = useRouter();
+  /** Today in the browser’s own timezone — the day the person is standing in. */
+  const todayKey = useMemo(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }, []);
+
   const { data: members, isLoading } = useTeam();
   const { data: invites } = usePendingInvites();
   const { data: org } = useOrganization();
@@ -347,10 +356,27 @@ export default function DashTeam() {
                   m.phone || '—',
                   <StatusChip value={m.badge} />,
                   <StatusChip value={m.status} />,
-                  <Typography className="text-[14px] font-bold text-navy">
-                    {/* Null for a rep looking at someone else, never 0. */}
-                    {m.leadCount != null ? String(m.leadCount) : '—'}
-                  </Typography>,
+                  /*
+                    Opens what this person captured TODAY, not everything they
+                    have ever captured. The number beside it is their running
+                    total, so the two deliberately differ — the question being
+                    answered by a click here is "what has she been doing at the
+                    show", which is a today question.
+
+                    Null for a rep looking at someone else, never 0 — and a
+                    dash is not something to make pressable.
+                  */
+                  m.leadCount != null ? (
+                    <Pressable
+                      onPress={() =>
+                        router.push(`/(dash)/leads?rep=${m.id}&on=${todayKey}`)
+                      }
+                    >
+                      <Typography className="text-[14px] font-bold text-blue">{m.leadCount}</Typography>
+                    </Pressable>
+                  ) : (
+                    <Typography className="text-[14px] font-bold text-navy">—</Typography>
+                  ),
                   isAdmin && !m.isSelf ? (
                     <Pressable
                       onPress={() =>

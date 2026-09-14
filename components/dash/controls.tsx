@@ -146,6 +146,43 @@ export function ProgressBar({
 export type Slice = { key: string; label: string; value: number; color: string };
 
 /**
+ * Where the pointer is, in the coordinates of the thing it is over.
+ *
+ * Web-only by nature. React Native has no hover, and these props are not on
+ * RN's View type — hence the `object` return, which spreads cleanly without
+ * claiming to be something React Native would recognise. React Native Web does
+ * forward the mouse group to the DOM node, so they fire in a browser; on a
+ * phone nothing calls them and the charts render exactly as they did before.
+ */
+export type PointerAt = { x: number; y: number };
+
+export function mouseProps(handlers: {
+  onMove: (at: PointerAt) => void;
+  onLeave: () => void;
+}): object {
+  return {
+    /**
+     * Measured against `currentTarget`, never `offsetX`.
+     *
+     * `offsetX` is relative to whatever element the pointer is actually over,
+     * which inside a chart is a bar or a label rather than the row holding the
+     * handler — so it resets to near zero every time the pointer crosses onto a
+     * different bar, and the tooltip jumps back to the left edge. The bounding
+     * rect of the element that owns the handler is the stable frame.
+     */
+    onMouseMove: (e: {
+      clientX: number;
+      clientY: number;
+      currentTarget: { getBoundingClientRect: () => { left: number; top: number } };
+    }) => {
+      const box = e.currentTarget.getBoundingClientRect();
+      handlers.onMove({ x: e.clientX - box.left, y: e.clientY - box.top });
+    },
+    onMouseLeave: () => handlers.onLeave(),
+  };
+}
+
+/**
  * A donut with a number in the middle.
  *
  * Drawn as one stroked circle per slice with a dash pattern rather than as
@@ -158,13 +195,18 @@ export function Donut({
   thickness = 20,
   centerValue,
   centerLabel,
+  onSelect,
 }: {
   data: Slice[];
   size?: number;
   thickness?: number;
   centerValue: string;
   centerLabel?: string;
+  /** Clicking a slice, with that slice's key. Opens the leads behind it. */
+  onSelect?: (key: string) => void;
 }) {
+  const [hover, setHover] = useState<{ at: PointerAt; key: string } | null>(null);
+
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const r = (size - thickness) / 2;
   const circumference = 2 * Math.PI * r;
@@ -179,8 +221,55 @@ export function Donut({
       return arc;
     });
 
+  /**
+   * Which slice the pointer is over, from the geometry rather than from the SVG.
+   *
+   * The slices are one stroked circle each with a dash pattern, so every slice
+   * is the same full-circle element and they all overlap everywhere — the
+   * browser cannot tell them apart, and hanging hover handlers off them would
+   * report whichever was drawn last. Measuring the angle can tell them apart.
+   *
+   * It also makes the hole in the middle and the space outside the ring hit
+   * nothing, so a click inside the donut but nowhere near a slice does nothing
+   * rather than opening whichever stage happened to be drawn last.
+   */
+  const sliceAt = (at: PointerAt): string | null => {
+    const dx = at.x - size / 2;
+    const dy = at.y - size / 2;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < r - thickness / 2 || dist > r + thickness / 2) return null;
+    // atan2 measures from 3 o'clock going anticlockwise; the arcs start at 12
+    // and run clockwise. The +90 rotates the origin, and atan2's y already
+    // points down in screen coordinates, which supplies the direction flip.
+    let deg = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+    if (deg < 0) deg += 360;
+    const along = (deg / 360) * circumference;
+    return arcs.find((a) => along >= a.offset && along < a.offset + a.length)?.key ?? null;
+  };
+
+  /**
+   * Hover fades the slices you are NOT about to open.
+   *
+   * Not decoration, and not a tooltip either — it is the only way to tell what
+   * a click will do. The arcs are invisible as targets: there is no cursor
+   * change and no outline, so without this you would be aiming at a coloured
+   * band and hoping. Fading the others names the target without putting a box
+   * of text on top of the chart.
+   */
+  const strokeFor = (key: string) => (!hover || key === hover.key ? 1 : 0.22);
+
   return (
-    <View className="items-center justify-center" style={{ width: size, height: size }}>
+    <View
+      className="items-center justify-center"
+      style={{ width: size, height: size }}
+      {...mouseProps({
+        onMove: (at) => {
+          const key = sliceAt(at);
+          setHover(key ? { at, key } : null);
+        },
+        onLeave: () => setHover(null),
+      })}
+    >
       <View style={{ position: 'absolute' }}>
         <Svg width={size} height={size}>
           <Circle cx={size / 2} cy={size / 2} r={r} stroke="#EEF1F7" strokeWidth={thickness} fill="none" />
@@ -192,6 +281,7 @@ export function Donut({
               r={r}
               stroke={a.color}
               strokeWidth={thickness}
+              strokeOpacity={strokeFor(a.key)}
               fill="none"
               strokeDasharray={`${a.length} ${circumference - a.length}`}
               strokeDashoffset={-a.offset}
@@ -200,12 +290,44 @@ export function Donut({
           ))}
         </Svg>
       </View>
-      <View className="items-center">
+
+      {/*
+        One press target over the whole donut, for the same reason sliceAt
+        exists: the arcs cannot be hit individually.
+
+        Which slice was clicked is worked out from the CLICK's own coordinates,
+        not from the hovered slice. Reading it off hover state looks equivalent
+        and is not: hover is empty until a mouse has moved inside the ring, so a
+        click that arrives without one — a tap, a keyboard press, a click landing
+        in the same tick the pointer enters — would silently do nothing at all.
+        A chart button that sometimes ignores you is worse than one that never
+        worked, because nobody reports it.
+      */}
+      {onSelect ? (
+        <Pressable
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          onPress={(e) => {
+            const native = e.nativeEvent as unknown as {
+              locationX?: number;
+              locationY?: number;
+            };
+            const at =
+              typeof native.locationX === 'number' && typeof native.locationY === 'number'
+                ? { x: native.locationX, y: native.locationY }
+                : hover?.at;
+            const key = at ? sliceAt(at) : hover?.key ?? null;
+            if (key) onSelect(key);
+          }}
+        />
+      ) : null}
+
+      <View className="items-center" pointerEvents="none">
         <Typography className="text-[26px] font-extrabold text-navy tracking-tight">{centerValue}</Typography>
         {centerLabel ? (
           <Typography className="text-[11px] font-semibold text-label mt-[1px]">{centerLabel}</Typography>
         ) : null}
       </View>
+
     </View>
   );
 }
