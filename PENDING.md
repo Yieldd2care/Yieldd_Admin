@@ -63,6 +63,9 @@ Full diagnosis for each is in its numbered section below.
 | 56 | Abandoned signups leave an empty organisation behind | `[ ]` surfaced by 33a; the account is made when the code is sent |
 | 57 | Code email's subject still said "Your sign-in link" | `[x]` done 2026-09-14 |
 | 58 | After the code, ask ONLY for a password | `[ ]` 2026-09-14 — name, company and number move to the digital-card step |
+| 59 | Contacts button on the invite screen read as decoration | `[x]` done 2026-09-14 |
+| 60 | Picking from contacts reportedly does nothing | `[ ]` 2026-09-14 — needs the dev console from a real device; Expo Go not ruled out |
+| 61 | "Invite more reps" restarted the setup wizard | `[x]` done 2026-09-14 |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -933,6 +936,86 @@ Worth doing only if free events actually happen. If they do, a single "this even
 that writes explicit zeros across the seven components is enough — no schema change, because the
 components already carry the distinction. If they do not, leave it: an extra control for a case that
 never arises is worse than the gap.
+
+---
+
+### 61. "Invite more reps" restarted the setup wizard — reported 2026-09-14, DONE 2026-09-14
+
+**Reported by the user.** From the finished "Your event is set up" screen, tapping **Invite more
+reps** and then skipping did not go back — it carried on into cost, custom fields and templates,
+marching through the whole setup a second time on an event that was already created.
+
+**Fixed 2026-09-14:** [complete.tsx](app/(app)/events/new/complete.tsx) now pushes
+`/(app)/events/new/invite?eventId=<id>` instead of the bare route.
+
+**Why one query param fixes it.** [invite.tsx](app/(app)/events/new/invite.tsx) reads `eventId`
+as `editingOne`, which sets `standalone`, which is what decides its button:
+
+```ts
+const standalone = scope === 'team' || editingOne;
+const goNext = () => (standalone ? router.back() : router.push('/(app)/events/new/fields'));
+```
+
+With no param it was neither, so the screen believed it was still step three of the wizard.
+The param also attaches the invite to **this** event by id rather than to whatever the draft
+store still held, which is the stale-event bug invite.tsx's own header already describes.
+
+**Still open on the same screen:** **Edit event details** does `router.push('/(app)/events/new')`,
+which walks the wizard from step one for an event that already exists. Not reported yet and not
+touched, but it is the same shape of mistake and will bite the same way.
+
+---
+
+### 60. Picking a rep from contacts reportedly does nothing — reported 2026-09-14 `[ ]`
+
+**Reported by the user**, alongside #59. Unresolved, and deliberately not guessed at.
+
+**Ruled out: the `/legacy` import trap.** AGENTS.md's warning is that `expo-contacts`'
+top-level functions throw at runtime on the root import. [contactPicker.ts](lib/contactPicker.ts)
+already uses `expo-contacts/legacy`, `expo-contacts@57.0.4` is installed, and
+`presentContactPickerAsync` exists in that subpath. So the known trap is not this.
+
+**Most likely explanation is #59 itself.** The control was a 15px grey icon inside the phone
+field with a 30dp target. "Not working" and "I could not tell it was a button, or hit it" look
+identical from outside. Retest with the labelled button from #59 before investigating further.
+
+**If it still does nothing, it is one of these, and the console says which.**
+`pickContact()` logs `[contactPicker]` in dev on every failure path, so the answer is in the
+Metro output, not in the UI:
+
+- **It hangs.** The picker's Android failure path never settles its promise —
+  contactPicker.ts documents this at length — so a refused `getContactById` shows
+  "Opening contacts…" for the full 45-second timeout and then reports a generic error.
+  Symptom: a long freeze, then a message.
+- **Expo Go.** Not ruled out. Expo Go ships its own manifest, so `app.json`'s
+  `blockedPermissions` does not apply, and the host app's contacts entitlement is not this
+  app's. Worth one test in a development build before spending time anywhere else.
+- **No contacts app to pick from**, on an emulator or a stripped device. `ACTION_PICK` with
+  nothing registered to handle it fails immediately.
+
+**Do not "fix" this by adding `requestPermissionsAsync`.** contactPicker.ts explains why at
+length: it would create a full-library permission prompt, put `READ_CONTACTS` into the manifest
+that `blockedPermissions` exists to keep out, and contradict the privacy policy's written
+promise that Yieldd never reads the contact list.
+
+---
+
+### 59. The contacts button on the invite screen read as decoration — reported 2026-09-14, DONE 2026-09-14
+
+**Reported by the user:** on "Bring your team in", nothing indicated that the little icon in the
+phone field opened the phone's contacts, or that it was a button at all.
+
+It was a **15px `ContactsIcon` in `#97A3B8`** — this app's *placeholder* colour — sitting
+absolutely positioned inside the phone input. Inside an empty field, in the same grey as the
+placeholder text, it read as part of the decoration.
+
+**Fixed 2026-09-14:** it is now a bordered pill under the row reading **"Pick from my
+contacts"**, with the icon in gold, and "Opening contacts…" while the picker is up.
+
+**Worth keeping:** the icon was put inside the field to save a column, and the original comment
+did the arithmetic to prove a fourth column would not fit at 360dp. The arithmetic was right and
+the conclusion was still wrong — a control nobody recognises saves no space, it just fails
+quietly. The 34dp the labelled button costs buys a control people can actually find.
 
 ---
 

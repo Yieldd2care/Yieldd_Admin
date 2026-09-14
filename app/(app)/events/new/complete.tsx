@@ -120,7 +120,29 @@ export default function EventSetupCompleteScreen() {
 
       <View className="items-center gap-[14px] px-8 pb-8 pt-4">
         <Button label="Go to home" shape="pill" onPress={goHome} className="w-full" />
-        <Pressable onPress={() => router.push('/(app)/events/new/invite')}>
+        {/*
+          `?eventId=` is what makes this NOT the wizard, and it is load-bearing.
+
+          invite.tsx reads that param as `editingOne`, which sets `standalone`,
+          which decides what its button does: Done goes back here, where a
+          Continue would push on to /fields and march the person through cost,
+          custom fields and templates a second time. Without the param the
+          event is finished and set up, and tapping "Invite more reps" restarted
+          the setup wizard from the middle. Reported 2026-09-14.
+
+          It also attaches the invite to THIS event by id rather than to
+          whatever the draft store still happens to be holding, which is the
+          case invite.tsx's own header describes.
+        */}
+        <Pressable
+          onPress={() =>
+            router.push(
+              eventId
+                ? `/(app)/events/new/invite?eventId=${eventId}`
+                : '/(app)/events/new/invite'
+            )
+          }
+        >
           <Typography className="text-[13px] font-semibold text-white/[0.75]">Invite more reps</Typography>
         </Pressable>
         <Pressable onPress={() => router.push('/(app)/events/new')}>

@@ -304,17 +304,9 @@ export default function InviteRepsScreen() {
                   onChangeText={(v) => updateRep(rep.id, { name: v })}
                   autoCapitalize="words"
                 />
-                {/*
-                  The contacts button sits INSIDE the phone field rather than
-                  taking a fourth column. At 360dp the row already spends 40 on
-                  the screen padding, 30 on gaps and 100 on the two 50px boxes;
-                  a fourth column would leave the phone field around 83dp, too
-                  narrow to show a full number. The input just gains right
-                  padding so a long number never slides under the icon.
-                */}
                 <View className="flex-1">
                   <RNTextInput
-                    className="w-full border border-hairline rounded-md h-[50px] pl-[14px] pr-[40px] text-[14px] font-regular text-navy bg-white"
+                    className="w-full border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
                     placeholder="Phone number"
                     placeholderTextColor="#97A3B8"
                     value={rep.phone}
@@ -327,21 +319,6 @@ export default function InviteRepsScreen() {
                     }}
                     keyboardType="phone-pad"
                   />
-                  {Platform.OS !== 'web' ? (
-                    <Pressable
-                      onPress={() => pickFor(rep.id)}
-                      // A 30dp target is under the 44dp minimum; hitSlop takes
-                      // the touchable area to 50dp without widening the icon.
-                      hitSlop={10}
-                      className={`absolute right-[5px] top-[10px] w-[30px] h-[30px] items-center justify-center ${
-                        pickingFor === rep.id ? 'opacity-40' : ''
-                      }`}
-                    >
-                      {/* The placeholder grey, so it reads as an offer rather
-                          than as a value already in the field. */}
-                      <ContactsIcon size={15} color="#97A3B8" />
-                    </Pressable>
-                  ) : null}
                 </View>
                 <Pressable
                   onPress={() => removeRep(rep.id)}
@@ -350,6 +327,38 @@ export default function InviteRepsScreen() {
                   <CloseIcon />
                 </Pressable>
               </View>
+
+              {/*
+                A LABELLED BUTTON, not an icon tucked inside the phone field.
+
+                It was a 15px grey ContactsIcon sitting at the right edge of the
+                input. Reported 2026-09-14: nobody could tell it was a button,
+                let alone that it opened the phone's contacts. Grey is this
+                app's placeholder colour, so it read as decoration inside an
+                empty field rather than as something to press.
+
+                Moved out and given words. It costs a row about 34dp of height,
+                which is why it was inside the field in the first place — but a
+                control nobody presses saves no space at all, it just fails
+                quietly. The bordered pill and the gold icon both say "tap me"
+                the way the rest of this app does.
+              */}
+              {Platform.OS !== 'web' ? (
+                <Pressable
+                  onPress={() => pickFor(rep.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Choose this rep from your phone contacts"
+                  className={`flex-row items-center gap-[7px] self-start mt-[7px] px-[11px] py-[7px] rounded-full border border-hairline bg-white active:opacity-70 ${
+                    pickingFor === rep.id ? 'opacity-50' : ''
+                  }`}
+                >
+                  <ContactsIcon size={14} color="#F4B000" />
+                  <Typography className="text-[12.5px] font-bold text-navy">
+                    {pickingFor === rep.id ? 'Opening contacts…' : 'Pick from my contacts'}
+                  </Typography>
+                </Pressable>
+              ) : null}
+
               {pickNote[rep.id] ? (
                 <Typography className="text-[11.5px] text-slate mt-[6px] ml-[2px]">
                   {pickNote[rep.id]}
