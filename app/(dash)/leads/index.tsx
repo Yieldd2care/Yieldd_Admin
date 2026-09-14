@@ -3,8 +3,8 @@ import { Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { DashShell } from '../../../components/dash/DashShell';
-import { EventSwitcher } from '../../../components/dash/EventSwitcher';
-import { Cap, Empty, GoldButton, Panel, Pill, StatusChip, TempChip } from '../../../components/dash/primitives';
+import { EventMultiPicker } from '../../../components/dash/EventMultiPicker';
+import { Cap, Empty, Panel, Pill, StatusChip, TempChip } from '../../../components/dash/primitives';
 import {
   Avatar,
   Checkbox,
@@ -18,6 +18,8 @@ import {
 } from '../../../components/dash/controls';
 import { Typography } from '../../../components/ui/Typography';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
+import { useTeam } from '../../../hooks/useTeam';
+import { useEventSelection } from '../../../hooks/useEvents';
 import type { StoredLead } from '../../../stores/useLeadsStore';
 
 type Filter = 'all' | 'hot' | 'warm' | 'cold' | 'due' | 'note' | 'draft';
@@ -68,6 +70,33 @@ function isFilter(value: string | undefined): value is Filter {
   return value != null && value in FILTER_LABEL;
 }
 
+/**
+ * A narrowing arrived at by clicking something on another screen.
+ *
+ * Kept apart from the `filter` pills above rather than folded into them, and
+ * the reason is that these are open-ended. `status` is whatever stages exist,
+ * `rep` is a user id, `hour` is any of twelve — turning each into a pill would
+ * put thirty buttons on a row meant for seven, and most of them would read
+ * zero. So the pills stay the fixed vocabulary of the screen and this rides on
+ * top of them, as one chip that says what it is and removes itself in a click.
+ *
+ * `on` is a plain yyyy-mm-dd, compared against the local date rather than the
+ * stored timestamp's UTC day — a lead captured at 9pm in Ahmedabad is still
+ * today's lead to the person who captured it.
+ */
+type Focus = { status?: string; rep?: string; hour?: number; on?: string };
+
+function localDay(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function hourWord(h: number): string {
+  const base = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${base}${h < 12 ? 'am' : 'pm'}`;
+}
+
 /** A line of contact detail with its icon, or nothing at all. */
 function ContactLine({ icon, value }: { icon: string; value: string | undefined }) {
   if (!value) return null;
@@ -83,7 +112,14 @@ function ContactLine({ icon, value }: { icon: string; value: string | undefined 
 
 export default function DashLeads() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ filter?: string }>();
+  const params = useLocalSearchParams<{
+    filter?: string;
+    status?: string;
+    rep?: string;
+    hour?: string;
+    on?: string;
+    event?: string;
+  }>();
 
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
@@ -99,10 +135,103 @@ export default function DashLeads() {
     if (isFilter(params.filter)) setFilter(params.filter);
   }, [params.filter]);
 
+  /**
+   * Read once into state rather than used straight off the URL, so the chip can
+   * be cleared without a navigation. Clearing by rewriting the URL would put an
+   * entry in the browser history for every dismissal, and Back would then walk
+   * the person through their own filter changes instead of returning them to
+   * the chart they came from.
+   *
+   * `one()` is not defensive padding: useLocalSearchParams hands back a string
+   * for a key seen once and an ARRAY for a key seen twice, and a stale array
+   * arriving here would compare against `l.status` as an object and quietly
+   * match nothing — a filtered list showing everything, with no error anywhere.
+   */
+  const one = (v: string | string[] | undefined): string | undefined => {
+    const value = Array.isArray(v) ? v[0] : v;
+    return value?.trim() || undefined;
+  };
+
+  const [focus, setFocus] = useState<Focus>({});
+  useEffect(() => {
+    const hour = Number(one(params.hour));
+    setFocus({
+      status: one(params.status),
+      rep: one(params.rep),
+      hour: Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : undefined,
+      on: one(params.on),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.status, params.rep, params.hour, params.on, params.event]);
+
+  const { data: team } = useTeam();
+  const focusRepName = useMemo(
+    () => team?.find((m) => m.id === focus.rep)?.name ?? null,
+    [team, focus.rep]
+  );
+
+
+  /**
+   * Which shows this table covers.
+   *
+   * The picker in the title bar used to be decoration here: it set the current
+   * event and nothing on this screen ever read it, so changing the event left
+   * every row exactly where it was. Now it is the scope, and "Every event"
+   * genuinely means every event.
+   */
+  const { selectedIds, setSelection } = useEventSelection();
+
+  /**
+   * Arriving from a chart points the picker at that chart's event.
+   *
+   * Without this the two could disagree — land here scoped to Gujarat from a
+   * donut while the picker still says Auto Expo, and the table would be empty
+   * for a reason nothing on screen explains. Setting the selection instead
+   * keeps the control and the rows telling the same story.
+   */
+  useEffect(() => {
+    const id = one(params.event);
+    if (id) setSelection([id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.event]);
+
+
+  /**
+   * What the chip says. Built from every part that is set, so a click on a rep's
+   * bar for today reads "Priya Sharma · today" rather than losing half of what
+   * was asked for.
+   */
+  const focusLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (focus.status) parts.push(focus.status);
+    if (focus.rep) parts.push(focusRepName ?? 'One person');
+    if (focus.hour !== undefined) parts.push(`captured ${hourWord(focus.hour)}`);
+    if (focus.on) {
+      parts.push(focus.on === localDay(new Date().toISOString()) ? 'today' : focus.on);
+    }
+    // No event here on purpose: the picker in the title bar is the event
+    // control and already names it. Repeating it in a chip whose cross cannot
+    // clear it would offer a button that does not do what it looks like.
+    return parts.length ? parts.join(' · ') : null;
+  }, [focus, focusRepName]);
+
   // The array comes out of the store; every count and slice is derived here.
   // Deriving inside the selector would allocate a new array per call and
   // re-render without end.
-  const leads = useLeadsStore((s) => s.leads);
+  const leadsAll = useLeadsStore((s) => s.leads);
+
+  /**
+   * Everything below this line works on the selected events only.
+   *
+   * Scoped once, here, rather than at each use — the pill counts, the search,
+   * the pagination and the select-all checkbox all have to agree about what
+   * "all" means, and the quickest way for them to disagree is for each to
+   * decide separately.
+   */
+  const leads = useMemo(
+    () => leadsAll.filter((l) => selectedIds.includes(l.eventId)),
+    [leadsAll, selectedIds]
+  );
 
   const counts = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -151,7 +280,25 @@ export default function DashLeads() {
       return false;
     };
 
-    const rows = leads.filter((l) => byFilter(l) && bySearch(l));
+    /**
+     * The narrowing that came in from a chart click.
+     *
+     * Every part is ANDed with the others and with the pills, so arriving from
+     * "Priya's bar, today" and then pressing the Hot pill gives Priya's hot
+     * leads from today — the pills keep working rather than silently competing
+     * with something set on another screen.
+     */
+    const byFocus = (l: StoredLead) => {
+      // No event test here: the picker already scoped `leads` to the selection,
+      // and a chart click points the picker at its own event on the way in.
+      if (focus.status && l.status !== focus.status) return false;
+      if (focus.rep && l.capturedBy !== focus.rep) return false;
+      if (focus.on && localDay(l.capturedAt) !== focus.on) return false;
+      if (focus.hour !== undefined && new Date(l.capturedAt).getHours() !== focus.hour) return false;
+      return true;
+    };
+
+    const rows = leads.filter((l) => byFilter(l) && byFocus(l) && bySearch(l));
 
     return [...rows].sort((a, b) => {
       switch (sort) {
@@ -165,14 +312,14 @@ export default function DashLeads() {
           return a.capturedAt < b.capturedAt ? 1 : -1;
       }
     });
-  }, [leads, filter, query, sort]);
+  }, [leads, filter, focus, query, sort]);
 
   // Any change to what is being shown puts you back on page one. Landing on
   // page 4 of a list that now has two pages is a blank screen with no
   // explanation.
   useEffect(() => {
     setPage(0);
-  }, [filter, query, sort, pageSize]);
+  }, [filter, focus, query, sort, pageSize, selectedIds]);
 
   const shown = useMemo(
     () => matched.slice(page * pageSize, page * pageSize + pageSize),
@@ -275,8 +422,7 @@ export default function DashLeads() {
     <DashShell
       title="Leads"
       subtitle={`${counts.all.toLocaleString('en-IN')} captured`}
-      scope={<EventSwitcher />}
-      actions={<GoldButton label="Export" onPress={() => router.push('/(dash)/export')} />}
+      scope={<EventMultiPicker />}
     >
       {/* The toolbar sits outside the Panel on purpose: the Panel is
           `overflow-hidden` so its rounded corners clip the table, and a menu
@@ -352,6 +498,30 @@ export default function DashLeads() {
         <Pill label={`Not synced ${counts.draft}`} active={filter === 'draft'} onPress={() => setFilter('draft')} />
       </View>
 
+      {/*
+        What a click on a chart elsewhere narrowed this list to.
+
+        Always visible while it applies, and always removable. A list that is
+        quietly showing three of sixty rows is the worst state this screen can
+        be in, because every count and every export taken from it is wrong in a
+        way nothing on the page admits to.
+      */}
+      {focusLabel ? (
+        <View className="flex-row items-center gap-[10px] mb-3">
+          <Typography className="text-[12.5px] text-slate">Showing</Typography>
+          <Pressable
+            onPress={() => setFocus({})}
+            className="flex-row items-center gap-[8px] bg-section border border-navy rounded-full pl-[13px] pr-[10px] py-[6px]"
+          >
+            <Typography className="text-[12.5px] font-bold text-navy">{focusLabel}</Typography>
+            <Icon d={ICON.close} size={11} color="#5A6B87" width={2.2} />
+          </Pressable>
+          <Typography className="text-[12.5px] text-slate">
+            {matched.length} {matched.length === 1 ? 'lead' : 'leads'}
+          </Typography>
+        </View>
+      ) : null}
+
       {/* Only ever on screen while something is selected, and it says what it
           will act on rather than how many boxes are ticked. */}
       {picked.size ? (
@@ -360,12 +530,6 @@ export default function DashLeads() {
             {picked.size} {picked.size === 1 ? 'lead' : 'leads'} selected
           </Typography>
           <View className="flex-1" />
-          <Pressable
-            onPress={() => router.push('/(dash)/export')}
-            className="bg-white/[0.14] rounded-sm px-[14px] py-[7px]"
-          >
-            <Typography className="text-[12.5px] font-bold text-white">Export these</Typography>
-          </Pressable>
           <Pressable onPress={() => setPicked(new Set())} className="px-[10px] py-[7px]">
             <Typography className="text-[12.5px] font-semibold text-white/70">Clear</Typography>
           </Pressable>

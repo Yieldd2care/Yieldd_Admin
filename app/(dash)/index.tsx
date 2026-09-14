@@ -1,11 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { DashShell } from '../../components/dash/DashShell';
-import { EventSwitcher } from '../../components/dash/EventSwitcher';
-import { EventMultiPicker, SelectionSummary } from '../../components/dash/EventMultiPicker';
-import { Cap, Empty, GhostButton, GoldButton, Panel, Row, StatusChip } from '../../components/dash/primitives';
+import { EventMultiPicker } from '../../components/dash/EventMultiPicker';
+import { Cap, Empty, GhostButton, Panel, Row, StatusChip } from '../../components/dash/primitives';
 import {
   Avatar,
   Donut,
@@ -16,7 +15,7 @@ import {
   type Slice,
 } from '../../components/dash/controls';
 import { Typography } from '../../components/ui/Typography';
-import { useCurrentEvent, useEventSelection } from '../../hooks/useEvents';
+import { useEventSelection } from '../../hooks/useEvents';
 import {
   useEventSetStats,
   useEventStats,
@@ -121,16 +120,40 @@ function Task({
 
 export default function DashHome() {
   const router = useRouter();
-  const { event } = useCurrentEvent();
-  const { data: stats } = useEventStats(event?.id);
-  const { data: hourly } = useHourlyCapture(event?.id);
-  const { data: board } = useLeaderboard(event?.id);
-
   // Across-events totals, from their own server-side aggregate. Never N calls to
   // event_stats added up here: a rep can only read their own leads, so a
   // client-side sum would be a fraction of the truth with nothing to show for it.
-  const { selectedIds } = useEventSelection();
+  const { events, selectedIds, isAll: isAllEvents } = useEventSelection();
   const { data: setStats } = useEventSetStats(selectedIds);
+
+  /**
+   * Which single show the per-event panels below are about.
+   *
+   * Taken from the picker's selection rather than from a control of its own,
+   * because there is only one control on this screen now. Pick one event and
+   * these panels are that event; pick several and they follow the liveliest one
+   * in the selection — named in the panel, never left to be assumed.
+   *
+   * They cannot simply add up across a selection the way the tiles above do:
+   * `event_hourly_capture` and `event_leaderboard` each take one event id, and
+   * summing their results in the browser would repeat the mistake the comment
+   * above warns about — a rep can only read their own rows, so the sum would be
+   * a fraction wearing the label of a total. Widening those two to take a set of
+   * ids is a migration, and until someone makes it these panels stay honestly
+   * about one show and say which.
+   */
+  const event = useMemo(() => {
+    const inSelection = events.filter((e) => selectedIds.includes(e.id));
+    if (inSelection.length === 0) return undefined;
+    return (
+      inSelection.find((e) => e.status === 'live') ??
+      [...inSelection].sort((a, b) => (a.startDate < b.startDate ? 1 : -1))[0]
+    );
+  }, [events, selectedIds]);
+
+  const { data: stats } = useEventStats(event?.id);
+  const { data: hourly } = useHourlyCapture(event?.id);
+  const { data: board } = useLeaderboard(event?.id);
 
   // Selecting the array and deriving here, never inside the selector — a
   // selector that builds a new array on every call re-renders forever.
@@ -170,15 +193,74 @@ export default function DashHome() {
 
   const busiest = useMemo(() => byHour.reduce((a, b) => (b.count > a.count ? b : a), byHour[0]), [byHour]);
 
+  /**
+   * Every chart on this page answers the same question — "which leads is that?"
+   * — and they all answer it the same way, by opening the Leads screen already
+   * narrowed to exactly those rows.
+   *
+   * Going to Leads rather than filtering in place is the point. A count on a
+   * chart is not something you can act on; the rows behind it are. Leads is
+   * also where searching, sorting, choosing columns and exporting already live,
+   * so arriving there with the narrowing applied hands over the whole toolkit
+   * instead of a smaller number on a dashboard.
+   */
+  const openLeads = (focus: { status?: string; rep?: string; hour?: number; on?: string }) => {
+    /**
+     * Built as a query STRING, not as router.push({ pathname, params }).
+     *
+     * The object form silently dropped every key here — the Leads screen
+     * received no params at all and showed the whole list, which reads as
+     * the click having done nothing. The string form is what the 'Needs you'
+     * links beside this have always used, and they work.
+     */
+    const query = new URLSearchParams();
+    if (focus.status) query.set('status', focus.status);
+    if (focus.rep) query.set('rep', focus.rep);
+    if (focus.hour !== undefined) query.set('hour', String(focus.hour));
+    if (focus.on) query.set('on', focus.on);
+    /**
+     * The event goes with every one of them, always.
+     *
+     * Every chart on this page is about one show. The Leads screen is about
+     * everything this person can see. Without the event id a click on
+     * "Contacted 3" landed on nine contacted leads drawn from four events,
+     * which looks exactly like a filter that did not work — and is the whole
+     * reason clicking a chart felt broken.
+     */
+    // Only when the picker is on ONE show. With everything selected the
+    // charts cover everything, so pinning the Leads screen to a single event
+    // would show fewer rows than the number that was clicked.
+    if (!isAllEvents && event) query.set('event', event.id);
+    router.push(`/(dash)/leads?${query.toString()}`);
+  };
+
+  /** Today in the browser's own timezone — the day the person is standing in. */
+  const todayKey = useMemo(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }, []);
+
+  /**
+   * The pipeline follows the picker, not the one event below it.
+   *
+   * From `setStats`, which is the aggregate over the WHOLE selection, so
+   * "All events" draws every show's stages and one show draws that show's.
+   * It used to read `stats.pipeline` — a single event — so the donut stayed
+   * stuck on one name no matter what the dropdown said.
+   *
+   * Unlike capture-by-hour and the leaderboard, this needs no migration to do
+   * it: `event_set_stats` already returns a pipeline for a set of ids.
+   */
   const stages: Slice[] = useMemo(
     () =>
-      (stats?.pipeline ?? []).map((p) => ({
+      (setStats?.pipeline ?? []).map((p) => ({
         key: p.status,
         label: p.status,
         value: p.count,
         color: STAGE_COLOR[p.status] ?? '#E3E7EF',
       })),
-    [stats?.pipeline]
+    [setStats?.pipeline]
   );
 
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -258,12 +340,11 @@ export default function DashHome() {
   ].filter(Boolean) as { key: string; label: string; body: string; count: number; href: string }[];
 
   return (
-    <DashShell
-      title="Home"
-      subtitle={today}
-      scope={<EventSwitcher />}
-      actions={<GoldButton label="Export leads" onPress={() => router.push('/(dash)/export')} />}
-    >
+    // No `actions` in the title bar, deliberately. Exporting is its own screen
+    // in the sidebar, and a gold button on Home pointed at it made the page's
+    // loudest control "leave the page" — sitting right beside the event picker,
+    // which is the one control on Home that actually matters.
+    <DashShell title="Home" subtitle={today} scope={<EventMultiPicker />}>
       {!event ? (
         <Panel>
           <Empty
@@ -273,23 +354,46 @@ export default function DashHome() {
         </Panel>
       ) : (
         <>
-          {/* Across several shows at once. Everything below this block is scoped
-              to the one event in the title bar; this block is scoped to the
-              picker beside it, and both say so in words, because the one thing
-              a reader must never have to guess is how much of the year the
-              number in front of them covers. */}
-          <View className="mb-6">
-            <View className="flex-row items-end justify-between mb-3 gap-4">
-              <View className="min-w-0">
-                <Cap>Across events</Cap>
-                <View className="mt-[5px]">
-                  <SelectionSummary />
-                </View>
-              </View>
-              <EventMultiPicker />
+          {/*
+              The one event control on this screen.
+
+              There used to be a second in the title bar, and two controls for
+              one question is a question: a reader seeing "Every event · 4" in
+              the page and a single show named above it has no way to know which
+              of the two the number in front of them obeys. The picker below is
+              the answer, and everything it scopes says so in words — because
+              the one thing that must never be guessed is how much of the year a
+              figure covers.
+          */}
+          <View className="mb-6" style={{ zIndex: 30 }}>
+            {/*
+              Ranked above the cards below it.
+              
+              The menu inside carries its own z-index, but that only orders it
+              against its siblings in THIS row. The cards are a different row,
+              painted after this one, so without a rank here they cover the
+              open menu — which is what kept happening to Total spend and
+              Return.
+            */}
+            {/*
+              The heading follows the selection rather than always claiming
+              "Across events". With one show picked these figures are that
+              show's, and a label saying otherwise is the exact ambiguity this
+              page exists to remove. The picker itself lives in the title bar
+              now, beside the one on every other screen, so the name is not
+              printed twice.
+            */}
+            <View className="mb-3">
+              <Cap>{isAllEvents ? 'Across events' : 'This event'}</Cap>
             </View>
 
-            <View className="flex-row gap-4">
+            {/*
+              Ranked below the row above so the open menu covers the cards
+              rather than the other way round. Without it the browser paints
+              this row second and the menu disappears behind Total spend and
+              Return — the same fault the title bar had, one level down.
+            */}
+            <View className="flex-row gap-4" style={{ zIndex: 0 }}>
               <Metric
                 label="Leads captured"
                 value={String(setStats?.totalLeads ?? 0)}
@@ -327,12 +431,26 @@ export default function DashHome() {
                   <Metric
                     label="Return"
                     value={formatPercent(setStats?.roiPercent ?? null)}
-                    // Deliberately no cost-per-lead tile here. A blended figure
-                    // spanning an ₹80,000 show and a ₹4,75,000 one is not a
-                    // number anyone can act on, and putting it on Home invites
-                    // exactly that comparison.
                     sub={pricedNote ?? 'Won value against spend'}
                   />
+                  {/*
+                    Cost per lead appears ONLY while a single show is selected,
+                    and that restriction is the whole point of it being here.
+
+                    Blended across an ₹80,000 show and a ₹4,75,000 one it is not
+                    a number anyone can act on — it invites exactly the
+                    comparison it cannot support. Narrowed to one event it is the
+                    most useful figure on the page, because the cost is fixed
+                    before the doors open and the lead count climbs all day, so
+                    it falls in front of you.
+                  */}
+                  {selectedIds.length === 1 ? (
+                    <Metric
+                      label="Cost per lead"
+                      value={formatPaise(stats?.costPerLeadPaise)}
+                      sub={`${formatPaise(stats?.spendPaise ?? 0)} spent · ${stats?.totalLeads ?? 0} leads`}
+                    />
+                  ) : null}
                 </>
               ) : (
                 <Metric
@@ -359,58 +477,6 @@ export default function DashHome() {
                 <Icon d={ICON.chevronRight} size={13} color="#1D3F8A" width={2.2} />
               </Pressable>
             ) : null}
-          </View>
-
-          <View className="mb-3">
-            <Cap>This event</Cap>
-            <Typography className="text-[12px] text-slate font-medium mt-[4px]" numberOfLines={1}>
-              {event.name}
-            </Typography>
-          </View>
-
-          <View className="flex-row gap-4">
-            {money ? (
-              <Metric
-                label="Cost per lead"
-                value={formatPaise(stats?.costPerLeadPaise)}
-                sub={`${formatPaise(spend)} spent · ${stats?.totalLeads ?? 0} leads`}
-                hero
-              />
-            ) : (
-              <Metric
-                label="Captured today"
-                value={String(stats?.leadsToday ?? 0)}
-                sub="At this event"
-                hero
-              />
-            )}
-            <Metric
-              label="Leads captured"
-              value={String(stats?.totalLeads ?? 0)}
-              sub={`${stats?.leadsToday ?? 0} today`}
-            />
-            <Metric
-              label="Deals won"
-              value={String(stats?.dealsWon ?? 0)}
-              sub={
-                money
-                  ? formatPaise(won)
-                  : stats?.conversionPercent != null
-                    ? `${stats.conversionPercent.toFixed(1)}% of leads`
-                    : undefined
-              }
-            />
-            <Metric
-              label={money ? 'Return' : 'Consent given'}
-              value={
-                money
-                  ? stats?.roiPercent != null
-                    ? `${stats.roiPercent > 0 ? '+' : ''}${Math.round(stats.roiPercent)}%`
-                    : '—'
-                  : String(stats?.consentGiven ?? 0)
-              }
-              sub={money ? 'Won value against spend' : 'Agreed to a follow-up'}
-            />
           </View>
 
           {/* Spend against what came back. Habsy has no equivalent because a
@@ -463,13 +529,31 @@ export default function DashHome() {
 
           <View className="flex-row gap-4 mt-4 items-start">
             <Panel className="flex-[1.5] px-[22px] py-5">
-              <View className="flex-row items-center justify-between">
+              {/* Wraps rather than overlapping: at a narrow window the event
+                  name drops under the heading instead of running into it. */}
+              <View className="flex-row items-center justify-between gap-3 flex-wrap">
                 <Typography className="text-[17px] font-bold text-navy">Capture by hour</Typography>
-                <Typography className="text-[12px] text-slate font-medium">Today, 8am to 8pm</Typography>
+                <Typography className="text-[12px] text-slate font-medium shrink min-w-0" numberOfLines={1}>
+                  {event.name} · today
+                </Typography>
               </View>
+              {/*
+                The whole column is the target, not just the coloured part. A
+                one-lead hour is a three-pixel stub; asking someone to hit that
+                is asking them not to bother. The empty space above it means the
+                same thing, so it clicks the same way.
+
+                An hour with nothing in it is not pressable at all — opening an
+                empty list is a worse answer than the bar staying put.
+              */}
               <View className="flex-row items-end gap-[10px] h-[180px] mt-[22px]">
                 {byHour.map((b) => (
-                  <View key={b.hour} className="flex-1 h-full justify-end items-center gap-2">
+                  <Pressable
+                    key={b.hour}
+                    disabled={b.count === 0}
+                    onPress={() => openLeads({ hour: b.hour, on: todayKey })}
+                    className="flex-1 h-full justify-end items-center gap-2"
+                  >
                     <View
                       className="w-full rounded-t-md"
                       style={{
@@ -478,13 +562,13 @@ export default function DashHome() {
                       }}
                     />
                     <Typography className="text-[10.5px] text-label font-semibold">{hourLabel(b.hour)}</Typography>
-                  </View>
+                  </Pressable>
                 ))}
               </View>
               <View className="mt-4 pt-[14px] border-t border-hairline">
                 <Typography className="text-[12.5px] text-slate">
                   {busiest.count > 0
-                    ? `Busiest hour was ${hourLabel(busiest.hour)}${busiest.hour < 12 ? 'am' : 'pm'} with ${busiest.count} leads.`
+                    ? `Busiest hour was ${hourLabel(busiest.hour)}${busiest.hour < 12 ? 'am' : 'pm'} with ${busiest.count} leads. Tap an hour to see them.`
                     : 'Nothing captured yet today.'}
                 </Typography>
               </View>
@@ -496,19 +580,27 @@ export default function DashHome() {
                 underneath. */}
             <Panel className="flex-1 px-[22px] py-5">
               <Typography className="text-[17px] font-bold text-navy">Pipeline</Typography>
+              {/* Names the same scope the donut is drawn from — the picker's,
+                  not the one event the panels under it are stuck with. */}
+              <Typography className="text-[11.5px] text-label mt-[1px]" numberOfLines={1}>
+                {isAllEvents ? 'All events' : event.name} · tap a stage to open those leads
+              </Typography>
               <View className="items-center mt-4">
                 <Donut
                   data={stages}
-                  centerValue={String(stats?.totalLeads ?? 0)}
-                  centerLabel={stats?.totalLeads === 1 ? 'lead' : 'leads'}
+                  centerValue={String(setStats?.totalLeads ?? 0)}
+                  centerLabel={setStats?.totalLeads === 1 ? 'lead' : 'leads'}
+                  onSelect={(status) => openLeads({ status })}
                 />
               </View>
               {/* Each tile in its own row. LegendTile is `flex-1`, which in a
-                  column parent would grow it vertically rather than across. */}
+                  column parent would grow it vertically rather than across.
+                  The tiles select too — the donut is a small target, and a
+                  status you can read is an easier thing to aim at than an arc. */}
               <View className="gap-2 mt-[18px]">
                 {stages.map((s) => (
                   <View key={s.key} className="flex-row">
-                    <LegendTile slice={s} />
+                    <LegendTile slice={s} onPress={() => openLeads({ status: s.key })} />
                   </View>
                 ))}
               </View>
@@ -566,7 +658,12 @@ export default function DashHome() {
 
             <Panel className="flex-1 px-[22px] py-5">
               <View className="flex-row items-center justify-between">
-                <Typography className="text-[17px] font-bold text-navy">Team today</Typography>
+                <View className="min-w-0">
+                  <Typography className="text-[17px] font-bold text-navy">Team today</Typography>
+                  <Typography className="text-[11.5px] text-label mt-[1px]" numberOfLines={1}>
+                    {event.name}
+                  </Typography>
+                </View>
                 <Pressable onPress={() => router.push('/(dash)/team')}>
                   <Typography className="text-[12.5px] font-semibold text-blue">Manage</Typography>
                 </Pressable>
@@ -576,8 +673,14 @@ export default function DashHome() {
                   {board.slice(0, 5).map((r, i) => {
                     const top = board[0]?.leadCount || 1;
                     return (
-                      <View
+                      // "Today" is in the panel's own title, so the click has to
+                      // mean today too — landing on a rep's whole history after
+                      // clicking a bar labelled today would be a different
+                      // number than the one that was just pressed.
+                      <Pressable
                         key={r.profileId}
+                        disabled={r.leadCount === 0}
+                        onPress={() => openLeads({ rep: r.profileId, on: todayKey })}
                         className={`py-[11px] ${i === Math.min(board.length, 5) - 1 ? '' : 'border-b border-hairline'}`}
                       >
                         <View className="flex-row items-center gap-3">
@@ -594,7 +697,7 @@ export default function DashHome() {
                             height={5}
                           />
                         </View>
-                      </View>
+                      </Pressable>
                     );
                   })}
                 </View>

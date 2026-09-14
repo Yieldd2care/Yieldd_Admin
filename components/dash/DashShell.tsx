@@ -255,7 +255,21 @@ export function DashShell({
       </View>
 
       <View className="flex-1 min-w-0">
-        <View className="bg-white border-b border-hairline px-8 py-5 flex-row items-center justify-between">
+        {/*
+          The z-indexes on this row and the scroller below it are load-bearing,
+          not decoration.
+
+          The header and the content are siblings, and the content comes second
+          in the tree. Without an explicit order the browser paints it last, so
+          anything the header opens downwards — the event menu, a date range —
+          came out UNDERNEATH the panels it was overlapping. Raising the inner
+          menu on its own could not fix that: it only reorders it within the
+          header. The two have to be ranked against each other here.
+        */}
+        <View
+          className="bg-white border-b border-hairline px-8 py-5 flex-row items-center justify-between"
+          style={{ zIndex: 30 }}
+        >
           <View className="min-w-0">
             {breadcrumb?.length ? (
               <View className="flex-row items-center gap-[6px] mb-[6px]">
@@ -282,7 +296,9 @@ export function DashShell({
           </View>
         </View>
 
-        <ScrollView contentContainerClassName="px-8 py-6">{children}</ScrollView>
+        <ScrollView contentContainerClassName="px-8 py-6" style={{ zIndex: 0 }}>
+          {children}
+        </ScrollView>
       </View>
     </View>
   );
