@@ -51,6 +51,39 @@ export type PickContactOutcome =
  */
 const PICKER_TIMEOUT_MS = 45_000;
 
+/**
+ * The module, loaded once and remembered.
+ *
+ * `await import()` is cheap on the second call — Metro inlines the module and
+ * caches it — but the FIRST one still has to evaluate expo-contacts' legacy
+ * entry point and wire up its native bridge, and that happens on the tap, while
+ * someone is watching a button that says "Opening contacts…".
+ *
+ * Holding the promise rather than the module means two taps in quick succession
+ * share one load instead of racing.
+ */
+let contactsModule: Promise<typeof import('expo-contacts/legacy')> | null = null;
+
+function loadContacts() {
+  contactsModule ??= import('expo-contacts/legacy');
+  return contactsModule;
+}
+
+/**
+ * Starts that load early, from a screen that is probably about to need it.
+ *
+ * Safe to call repeatedly and safe to ignore: it returns nothing, swallows
+ * failure, and pickContact() still does its own load if this never ran. Calling
+ * it is an optimisation, not a precondition.
+ */
+export function warmContactPicker(): void {
+  if (Platform.OS === 'web') return;
+  void loadContacts().catch(() => {
+    // A failure here is not worth reporting — pickContact() will hit the same
+    // problem and has somewhere to put the message.
+  });
+}
+
 export async function pickContact(): Promise<PickContactOutcome> {
   /**
    * Before the dynamic import, not after.
@@ -75,35 +108,78 @@ export async function pickContact(): Promise<PickContactOutcome> {
   }
 
   try {
+    /**
+     * Timings, in dev only.
+     *
+     * "Opening contacts is taking too long" was reported on 2026-09-14, and
+     * there are three quite different places that time can go: loading the
+     * module, the system picker being on screen, and the read that happens
+     * after a contact is chosen. Guessing between them is how an afternoon
+     * disappears, so each is measured separately and printed.
+     *
+     * `pick` is the one number that is NOT ours — it includes however long the
+     * person spent scrolling their address book, so a large value there is
+     * usually a human, not a bug. `load` and `read` are ours.
+     */
+    const t0 = Date.now();
+
     // The `/legacy` subpath, not the root. SDK 56 redesigned expo-contacts
     // around a Contact class; the old top-level functions still exist on the
     // root import but THROW when called, `presentContactPickerAsync` among
     // them. Because this call sits in a try/catch, the root import would not
     // crash — it would quietly report the error message below forever.
-    const Contacts = await import('expo-contacts/legacy');
+    const Contacts = await loadContacts();
+    const tLoaded = Date.now();
 
     /**
-     * No permission request, deliberately — the same decision, for the same
-     * reason, as `saveLeadToContacts` in lib/contacts.ts and `pickFromLibrary`
-     * in app/(app)/capture/camera.tsx.
+     * THE PERMISSION REQUEST. This comment used to say "do not add the call".
+     * It was wrong, and the reason it was wrong is worth keeping.
      *
-     * `presentContactPickerAsync` hands the choice to the system's own picker:
-     * an ACTION_PICK intent on Android, CNContactPickerViewController on iOS.
-     * The person picks one contact and only that contact comes back — the app
-     * never reads the address book, so neither platform needs contacts access.
+     * The old reasoning: `presentContactPickerAsync` hands the choice to the
+     * system's own picker — ACTION_PICK on Android, CNContactPickerViewController
+     * on iOS — the person picks one contact, only that contact comes back, and
+     * the app never reads the address book. All true of the *picker*.
      *
-     * Calling requestPermissionsAsync is what would CREATE a full-library
-     * prompt, and it would put READ_CONTACTS into the manifest that app.json's
-     * `blockedPermissions` exists to keep it out of. Play treats contacts as a
-     * sensitive permission and makes you justify it at review; the privacy
-     * policy says in writing that Yieldd never reads the contact list. Do not
-     * add the call.
+     * What it missed is what expo-contacts does once a contact is chosen. On
+     * Android it takes the returned id and calls `getContactById`, which queries
+     * the whole ContactsContract.Data table rather than the single URI that the
+     * pick granted — and THAT needs READ_CONTACTS. So the picker opened, the
+     * person chose someone, and the read afterwards threw. Reported by the user
+     * on 2026-09-14, which is the only reason anybody found out: nothing in a
+     * build or a test exercises the far side of a system picker.
+     *
+     * The permission is now requested, by the user's decision on 2026-09-14
+     * after the cost was put to them. READ_CONTACTS is out of app.json's
+     * `blockedPermissions`, iOS carries an NSContactsUsageDescription, and two
+     * things follow that are NOT optional:
+     *
+     *   1. The published privacy policy still says "Yieldd never reads your
+     *      contact list, and the app does not ask for contacts permission".
+     *      That is now false and has to be rewritten. See PENDING #62.
+     *   2. Play treats contacts as a sensitive permission and will ask for a
+     *      justification at review.
+     *
+     * Refusal is handled as a first-class outcome rather than an error: someone
+     * who says no has not hit a fault, they have made a choice, and the typed
+     * fields behind this button still work perfectly.
      */
+    const permission = await Contacts.requestPermissionsAsync();
+    if (!permission.granted) {
+      return {
+        ok: false,
+        reason: 'unsupported',
+        message: permission.canAskAgain
+          ? 'Allow contacts access to pick someone, or type the number in.'
+          : 'Contacts access is off for Yieldd. Turn it on in Settings, or type the number in.',
+      };
+    }
     const timedOut = Symbol('timedOut');
     const picked = await Promise.race([
       Contacts.presentContactPickerAsync(),
       new Promise<typeof timedOut>((resolve) => setTimeout(() => resolve(timedOut), PICKER_TIMEOUT_MS)),
     ]);
+
+    const tPicked = Date.now();
 
     if (picked === timedOut) {
       if (__DEV__) console.warn('[contactPicker] the picker never settled — see the note above');
@@ -117,16 +193,42 @@ export async function pickContact(): Promise<PickContactOutcome> {
     // `null` is a cancel on both platforms.
     if (!picked) return { ok: false, reason: 'cancelled' };
 
-    return { ok: true, ...readPickedContact(picked) };
+    const result = readPickedContact(picked);
+
+    if (__DEV__) {
+      console.log(
+        `[contactPicker] load ${tLoaded - t0}ms | picker ${tPicked - tLoaded}ms ` +
+          `| read ${Date.now() - tPicked}ms | numbers ${result.numbers.length}`
+      );
+    }
+
+    return { ok: true, ...result };
   } catch (err) {
-    // Reached by a real rejection, and also by the second attempt after a hang
-    // — ContactPickingInProgressException. Same message either way: the admin's
-    // way out is the same, and naming the internal state would not help them.
-    if (__DEV__) console.warn('[contactPicker]', err);
+    /**
+     * Two different failures land here and they are NOT the same to the person.
+     *
+     * Reported 2026-09-14: the picker opened, a contact was chosen, and this
+     * still said "that didn't open your contacts" — which is plainly untrue and
+     * sends them looking in the wrong place. The picker opening and the read
+     * afterwards are separate steps, and only the second one failed.
+     *
+     * expo-contacts resolves ACTION_PICK by taking the chosen id and calling
+     * getContactById, which queries the whole ContactsContract.Data table
+     * rather than the single URI the pick granted. That query is what needs
+     * READ_CONTACTS, which this app deliberately does not hold — see the note
+     * on permissions above, which is still correct about not adding it.
+     */
+    const message = String((err as Error)?.message ?? err);
+    const afterPick = /permission|denied|SecurityException|getContactById|READ_CONTACTS/i.test(message);
+
+    if (__DEV__) console.warn('[contactPicker]', afterPick ? 'failed AFTER the pick:' : 'failed:', err);
+
     return {
       ok: false,
       reason: 'error',
-      message: "That didn't open your contacts. Type the number in instead.",
+      message: afterPick
+        ? "Your phone wouldn't share that contact's details. Type the number in instead."
+        : "That didn't open your contacts. Type the number in instead.",
     };
   }
 }

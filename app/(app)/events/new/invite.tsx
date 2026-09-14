@@ -13,7 +13,7 @@ import { useEventDraftStore, type DraftRep as Rep } from '../../../../stores/use
 import { useSessionStore } from '../../../../stores/useSessionStore';
 import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
 import { PhoneChoiceSheet } from '../../../../components/app/PhoneChoiceSheet';
-import { pickContact, type PickedNumber } from '../../../../lib/contactPicker';
+import { pickContact, warmContactPicker, type PickedNumber } from '../../../../lib/contactPicker';
 import {
   createInvites,
   fetchEventInvites,
@@ -89,6 +89,13 @@ export default function InviteRepsScreen() {
    * later, while the admin is looking at four rows and deciding whether to send.
    */
   const [pickNote, setPickNote] = useState<Record<string, string>>({});
+
+  // Load the contacts module now rather than on the tap. Reported 2026-09-14
+  // as "opening contacts takes too long"; this takes the module's first-load
+  // cost off the button press, where someone is watching.
+  useEffect(() => {
+    warmContactPicker();
+  }, []);
 
   // Invites already created for this event — coming back to the step must not
   // issue a second link to the same person.

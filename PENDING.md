@@ -64,7 +64,8 @@ Full diagnosis for each is in its numbered section below.
 | 57 | Code email's subject still said "Your sign-in link" | `[x]` done 2026-09-14 |
 | 58 | After the code, ask ONLY for a password | `[ ]` 2026-09-14 — name, company and number move to the digital-card step |
 | 59 | Contacts button on the invite screen read as decoration | `[x]` done 2026-09-14 |
-| 60 | Picking from contacts reportedly does nothing | `[ ]` 2026-09-14 — needs the dev console from a real device; Expo Go not ruled out |
+| 60 | Picking from contacts failed after the contact was chosen | `[x]` done 2026-09-14 — permission now requested, by decision |
+| 62 | **Privacy policy now contradicts the app** | `[ ]` **BLOCKS RELEASE** — it promises Yieldd never asks for contacts permission; it now does |
 | 61 | "Invite more reps" restarted the setup wizard | `[x]` done 2026-09-14 |
 
 **Parked for Phase 2 — decided 2026-09-14**
@@ -966,37 +967,73 @@ touched, but it is the same shape of mistake and will bite the same way.
 
 ---
 
-### 60. Picking a rep from contacts reportedly does nothing — reported 2026-09-14 `[ ]`
+### 62. The privacy policy now contradicts the app — created 2026-09-14 `[ ]` **BLOCKS RELEASE**
 
-**Reported by the user**, alongside #59. Unresolved, and deliberately not guessed at.
+A direct consequence of #60. [app/(web)/privacy.tsx](app/(web)/privacy.tsx) currently says, in
+published text on yieldd.co:
 
-**Ruled out: the `/legacy` import trap.** AGENTS.md's warning is that `expo-contacts`'
-top-level functions throw at runtime on the root import. [contactPicker.ts](lib/contactPicker.ts)
-already uses `expo-contacts/legacy`, `expo-contacts@57.0.4` is installed, and
-`presentContactPickerAsync` exists in that subpath. So the known trap is not this.
+> **Contacts** — saving a lead to your phone book opens your phone's own new-contact screen with
+> the details filled in, and you confirm it there. Yieldd never reads your contact list, and the
+> app does not ask for contacts permission…
 
-**Most likely explanation is #59 itself.** The control was a 15px grey icon inside the phone
-field with a 30dp target. "Not working" and "I could not tell it was a button, or hit it" look
-identical from outside. Retest with the labelled button from #59 before investigating further.
+**The second sentence is now false.** As of #60 the app does ask, on the invite screen.
 
-**If it still does nothing, it is one of these, and the console says which.**
-`pickContact()` logs `[contactPicker]` in dev on every failure path, so the answer is in the
-Metro output, not in the UI:
+The first half is still true and should stay: saving a lead out to the phone book really does go
+through `presentFormAsync` and really does need no permission. Only the reading half changed.
 
-- **It hangs.** The picker's Android failure path never settles its promise —
-  contactPicker.ts documents this at length — so a refused `getContactById` shows
-  "Opening contacts…" for the full 45-second timeout and then reports a generic error.
-  Symptom: a long freeze, then a message.
-- **Expo Go.** Not ruled out. Expo Go ships its own manifest, so `app.json`'s
-  `blockedPermissions` does not apply, and the host app's contacts entitlement is not this
-  app's. Worth one test in a development build before spending time anywhere else.
-- **No contacts app to pick from**, on an emulator or a stripped device. `ACTION_PICK` with
-  nothing registered to handle it fails immediately.
+**Not fixed in the same pass because `app/(web)/privacy.tsx` was being edited by another session
+at the time** — touching it would have swept up work in progress. It is a small edit and it
+should be made by whoever holds that file next.
 
-**Do not "fix" this by adding `requestPermissionsAsync`.** contactPicker.ts explains why at
-length: it would create a full-library permission prompt, put `READ_CONTACTS` into the manifest
-that `blockedPermissions` exists to keep out, and contradict the privacy policy's written
-promise that Yieldd never reads the contact list.
+**This blocks a release, not a build.** Nothing fails; the app ships happily with a policy that
+misdescribes it. That is exactly the sort of thing an app review, or a customer who reads, finds
+before you do — and the policy is already live.
+
+---
+
+### 60. Picking a rep from contacts failed after the contact was chosen — reported 2026-09-14, DONE 2026-09-14
+
+**Reported by the user in stages, and the stages mattered.** First "it does nothing", then —
+after #59 made the button visible — "it opens, but selecting a contact says *that didn't open
+your contacts*". The second report is what located it: the picker was fine, the step after it
+was not.
+
+**Ruled out on the way: the `/legacy` import trap.** AGENTS.md warns that `expo-contacts`'
+top-level functions throw on the root import. [contactPicker.ts](lib/contactPicker.ts) already
+used `expo-contacts/legacy` and `presentContactPickerAsync` exists there, so the known trap was
+not this one.
+
+**The actual cause.** `presentContactPickerAsync` opens the system picker, which needs no
+permission — that part of the old reasoning was right. But once a contact is chosen,
+expo-contacts resolves it by taking the id and calling `getContactById`, which queries the whole
+`ContactsContract.Data` table rather than the single URI the pick granted. **That** needs
+`READ_CONTACTS`, which `app.json` was explicitly stripping out via `blockedPermissions`. So the
+picker opened, a contact was chosen, and the read behind it threw.
+
+**Fixed 2026-09-14, by the user's decision** after the cost was put to them plainly:
+`requestPermissionsAsync()` is now called before the picker, `READ_CONTACTS` is out of
+`blockedPermissions`, and iOS carries an `NSContactsUsageDescription`. `WRITE_CONTACTS` stays
+blocked — the save-a-lead direction goes through `presentFormAsync` and genuinely needs nothing.
+
+A refusal is treated as an outcome, not an error, with a different sentence depending on
+`canAskAgain`, because someone who says no has not hit a fault.
+
+**Two things follow and neither is optional:** the privacy policy is now wrong (#62), and Play
+treats contacts as a sensitive permission and will want a justification at review.
+
+**Worth keeping — a comment can be confidently, carefully wrong.** The block that forbade this
+call laid out real mechanics, cited the right APIs, and reached a conclusion that did not hold,
+because it reasoned about the picker and not about what the library does with the picker's
+result. Nothing in a build, a typecheck or a test suite goes near the far side of a system
+picker. Only a person tapping it found this, and only after the button was made visible enough
+to tap.
+
+**Also fixed alongside:** the error message said "that didn't open your contacts" when the
+contacts had plainly opened, which sent the user looking in the wrong place. Failures after the
+pick now say so. And the module is pre-loaded on screen mount (`warmContactPicker`) rather than
+on the tap, with `[contactPicker] load … | picker … | read …` timings in dev, after "opening
+contacts is taking too long" was reported and there was no way to tell which of the three steps
+was slow.
 
 ---
 
