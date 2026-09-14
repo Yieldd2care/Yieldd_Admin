@@ -10,6 +10,7 @@ import { ChevronRightIcon, UsersIcon, ProfileIcon } from '../../../components/ui
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { homeRoute } from '../../../lib/auth/nextRoute';
 import { CenterColumn } from '../../../components/shared/CenterColumn';
+import { SkipLink } from '../../../components/app/SkipLink';
 
 function ChecklistIllustration() {
   return (
@@ -77,6 +78,16 @@ export default function ForkScreen() {
     router.replace('/(app)/card/edit');
   };
 
+  // Skip is awaited, unlike the two choices above, and that is the whole point
+  // of it. nextRouteAfterAuth() sends an admin back here on every sign-in while
+  // onboarding_intent is null, so a Skip that records nothing would reappear
+  // forever and read as a broken button. 'skipped' is the third answer.
+  //
+  // A rep cannot write it — setAccountIntent returns "Only an admin can change
+  // this" rather than failing silently — but a rep never reaches this screen,
+  // and SkipLink navigates either way.
+  const skip = () => setAccountIntent('skipped');
+
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
@@ -106,6 +117,8 @@ export default function ForkScreen() {
             onPress={chooseSolo}
           />
         </View>
+
+        <SkipLink onSkip={skip} className="mt-7" />
         </CenterColumn>
       </View>
     </SafeAreaView>

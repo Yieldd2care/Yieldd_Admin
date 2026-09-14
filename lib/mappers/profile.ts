@@ -39,8 +39,14 @@ function firstOrg(value: ProfileRow['organizations']): OrganizationJoin | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
+// Anything unrecognised collapses to null, which sends an admin back to the
+// fork — the safe direction for a value we do not understand. 'skipped' has to
+// be listed here explicitly: leave it out and a skip written to the column maps
+// back to null on the next profile load, and the fork returns anyway.
+const INTENTS: readonly string[] = ['team', 'solo', 'skipped'] satisfies AccountIntent[];
+
 function toIntent(value: string | null): AccountIntent | null {
-  return value === 'team' || value === 'solo' ? value : null;
+  return value !== null && INTENTS.includes(value) ? (value as AccountIntent) : null;
 }
 
 export function toSessionUser(row: ProfileRow): User {

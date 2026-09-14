@@ -9,7 +9,13 @@ export type UserRole = Enums<'user_role'>; // 'admin' | 'rep'
 export type MemberStatus = Enums<'member_status'>; // 'invited' | 'active' | 'deactivated'
 export type PlanTier = Enums<'org_plan_tier'>; // 'free' | 'pro'
 
-export type AccountIntent = 'team' | 'solo';
+/**
+ * The fork's answer. `'skipped'` is a real answer, not an absence of one: it
+ * is what Skip writes (PENDING.md #33c), and it is what stops the fork being
+ * asked again on the next sign-in. Only `null` — never shown, never answered —
+ * brings the fork back. See lib/auth/nextRoute.ts.
+ */
+export type AccountIntent = 'team' | 'solo' | 'skipped';
 
 /**
  * The signed-in person, flattened from `profiles` joined to `organizations`.

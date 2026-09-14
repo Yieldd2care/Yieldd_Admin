@@ -27,6 +27,22 @@ const PLACEHOLDER_ORG = 'My workspace';
  *
  * Reached only via nextRouteAfterAuth(), which sends anyone whose profile is
  * missing a contact number here before anything else.
+ *
+ * THIS SCREEN HAS NO SKIP, AND THAT IS DELIBERATE.
+ *
+ * PENDING.md #33c puts a Skip on every onboarding screen, and every other one
+ * has it — see components/app/SkipLink.tsx. This screen is the exception,
+ * confirmed 2026-09-14. #4 made the contact number mandatory at account
+ * creation on 2026-08-28: it is the number that goes on the person's digital
+ * card, which is the thing the card exists to hand out.
+ *
+ * Adding a Skip here is also not a one-line change. app/(app)/_layout.tsx
+ * redirects back here for as long as profileNeedsCompletion(user) is true, so
+ * a Skip that navigates home returns to this screen immediately, forever. A
+ * Skip would mean relaxing that guard too — which is exactly the enforcement
+ * #4 added so that force-quitting the app is not a way past the number.
+ *
+ * Sign out, below, is the way off this screen without supplying one.
  */
 export default function CompleteProfileScreen() {
   const user = useSessionStore((s) => s.user);
