@@ -53,11 +53,11 @@ Full diagnosis for each is in its numbered section below.
 | 46 | Pipeline chart bars should open the leads behind them | `[x]` done 2026-09-14 — leads list now takes a `status` param |
 | 47 | Export CSV carries no deal value | `[ ]` **decided 2026-09-15: two columns, expected and won**, admin-only and enforced on the server |
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
-| 49 | "New template" is silent, and creates a default not a draft | `[ ]` **web dashboard only** |
+| 49 | "New template" is silent, and creates a default not a draft | `[x]` done 2026-09-15 — web dashboard only; `addNew` now selects the new row and opens its editor, and creates it with `is_default: false` |
 | 50 | Home — all-events analytics with an event picker | `[x]` done 2026-09-14 — `event_set_stats`; no cost-per-lead, ROI covers priced events only |
 | 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
 | 52 | An invite counts as ready with a number that is not one | `[ ]` **decided 2026-09-15: warn, never block** — nothing that sends today stops sending |
-| 53 | iOS ships a contacts permission string it never uses | `[ ]` surfaced by 38; App Store Review reads it, no user ever sees it |
+| 53 | iOS ships a contacts permission string it never uses | `[x]` closed 2026-09-15 by 60 — the permission is genuinely requested now, so the string describes something real |
 | 54 | Ask for the event cost when the show ends | `[ ]` **decided 2026-09-15: wizard unchanged; notify the admin after the end date, naming the blank lines** |
 | 55 | "This event cost nothing" is not something you can say | `[ ]` **decided 2026-09-15: free events do happen — build the tick** |
 | 56 | Abandoned signups leave an empty organisation behind | `[ ]` surfaced by 33a; the account is made when the code is sent |
@@ -65,7 +65,7 @@ Full diagnosis for each is in its numbered section below.
 | 58 | After the code, ask ONLY for a password | `[ ]` 2026-09-14 — name, company and number move to the digital-card step |
 | 59 | Contacts button on the invite screen read as decoration | `[x]` done 2026-09-14 |
 | 60 | Picking from contacts failed after the contact was chosen | `[x]` done 2026-09-14 — permission now requested, by decision |
-| 62 | **Privacy policy now contradicts the app** | `[ ]` **BLOCKS RELEASE** — it promises Yieldd never asks for contacts permission; it now does |
+| 62 | **Privacy policy now contradicts the app** | `[x]` done 2026-09-15 — the policy now states the app does ask, and why. On master, so live. **The Play data safety form still has to be updated to match** |
 | 61 | "Invite more reps" restarted the setup wizard | `[x]` done 2026-09-14 |
 
 **Parked for Phase 2 — decided 2026-09-14**
