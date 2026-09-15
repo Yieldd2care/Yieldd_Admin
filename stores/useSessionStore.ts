@@ -90,10 +90,11 @@ function mapAuthError(error: AuthError): string {
   // project. Matching on the message is the only option, and without it the
   // user is shown the words "Database error saving new user".
   //
-  // By far the likeliest cause is a stale invite token, so the copy points
-  // there. The invite screen validates with peek_invite first; this is the
-  // backstop for a link that expired between opening it and signing up.
-  if (/database error saving new user/i.test(message)) {
+  // Which of its several causes it was cannot be told apart from here, so this
+  // is only the fallback. describeSignupFailure() below asks the database and
+  // names the real one; it lands here when the answer is "neither column is
+  // taken", which leaves a stale invite token as the remaining explanation.
+  if (SIGNUP_TRIGGER_FAILURE.test(message)) {
     if (__DEV__) console.error('[session] signup trigger raised', error);
     return 'We could not finish setting up your account. If you followed an invite link, ask for a fresh one.';
   }
@@ -102,6 +103,54 @@ function mapAuthError(error: AuthError): string {
     return "You're offline. Connect and try again.";
   }
   return message || 'Something went wrong. Please try again.';
+}
+
+const SIGNUP_TRIGGER_FAILURE = /database error saving new user/i;
+
+/**
+ * The sentence shown when signUp fails, with the duplicate cases named.
+ *
+ * `profiles` is unique on both email and phone. GoTrue enforces the first
+ * itself and reports it as `user_already_exists`, which mapAuthError already
+ * handles. The second it knows nothing about: the insert reaches
+ * handle_new_user(), raises 23505 there, and GoTrue replaces the whole thing
+ * with an opaque 500 — so the reason has to be asked for in a second call.
+ *
+ * signup_conflict() (migration 20260914150000) answers it, and returns booleans
+ * only. Anything unexpected — the function not deployed yet, the network gone
+ * with the auth error — falls through to mapAuthError()'s wording rather than
+ * replacing one wrong guess with another.
+ */
+async function describeSignupFailure(
+  error: AuthError,
+  email: string,
+  phone: string
+): Promise<string> {
+  if (!SIGNUP_TRIGGER_FAILURE.test(error.message ?? '')) return mapAuthError(error);
+
+  try {
+    const { data, error: rpcError } = await supabase
+      .rpc('signup_conflict', { p_email: email, p_phone: phone })
+      .maybeSingle<{ email_taken: boolean; phone_taken: boolean }>();
+
+    if (!rpcError && data) {
+      if (data.email_taken && data.phone_taken) {
+        return 'This email address and mobile number both already have an account. Sign in instead, or use different details.';
+      }
+      if (data.phone_taken) {
+        return 'This mobile number is already used by another account. Enter a different number, or sign in with the account that has it.';
+      }
+      if (data.email_taken) {
+        return 'That email already has an account — sign in instead.';
+      }
+    } else if (__DEV__ && rpcError) {
+      console.warn('[session] signup_conflict failed', rpcError.message);
+    }
+  } catch (err) {
+    if (__DEV__) console.warn('[session] signup_conflict threw', err);
+  }
+
+  return mapAuthError(error);
 }
 
 // ---------------------------------------------------------------------------
@@ -271,7 +320,15 @@ export const useSessionStore = create<SessionState>()(
           // Cleared on failure too — a bad token must not linger and silently
           // attach the next signup on this device to someone else's org.
           set({ isSubmitting: false, pendingInviteToken: null });
-          return { error: mapAuthError(error) };
+          // The same normalised phone that was just submitted, so the value
+          // checked for a clash is the value that would have been written.
+          return {
+            error: await describeSignupFailure(
+              error,
+              email.trim().toLowerCase(),
+              normalizedPhone
+            ),
+          };
         }
 
         if (!data.session) {
