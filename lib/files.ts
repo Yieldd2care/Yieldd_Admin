@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { File } from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 
 /**
  * Reading a local file, on both platforms.
@@ -29,6 +29,37 @@ export async function readAsBase64(uri: string): Promise<string> {
   }
 
   return await new File(uri).base64();
+}
+
+/**
+ * Base64 of a file that lives on the server, not on this device.
+ *
+ * Needed by the "read the card again" action: by the time a rep retries a card
+ * the extraction failed on, the local copy has been uploaded and deleted, so
+ * the only copy is the object in the bucket behind a signed URL.
+ *
+ * Native downloads to the cache first and reads from disk, reusing the proven
+ * path above, rather than pulling the whole image through `fetch` and a Blob —
+ * the same reasoning the header gives for not using `fetch('file://...')`. The
+ * temporary file is deleted whether or not the read succeeds; it is a scratch
+ * copy of something the server still holds.
+ */
+export async function readRemoteAsBase64(url: string): Promise<string> {
+  if (Platform.OS === 'web') {
+    return await readAsBase64(url);
+  }
+
+  const scratch = new File(Paths.cache, `remote-${Date.now()}.jpg`);
+  try {
+    await File.downloadFileAsync(url, scratch, { idempotent: true });
+    return await scratch.base64();
+  } finally {
+    try {
+      if (scratch.exists) scratch.delete();
+    } catch {
+      /* The cache is the system's to reclaim; a leftover scratch file is fine. */
+    }
+  }
 }
 
 export async function readAsBytes(uri: string): Promise<Uint8Array> {

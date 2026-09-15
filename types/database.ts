@@ -459,6 +459,7 @@ export type Database = {
           duplicate_of_lead_id: string | null
           email: string | null
           event_id: string
+          extra_photo_path: string | null
           extraction_status: Database["public"]["Enums"]["extraction_status"]
           follow_up_date: string | null
           full_name: string
@@ -494,6 +495,7 @@ export type Database = {
           duplicate_of_lead_id?: string | null
           email?: string | null
           event_id: string
+          extra_photo_path?: string | null
           extraction_status?: Database["public"]["Enums"]["extraction_status"]
           follow_up_date?: string | null
           full_name: string
@@ -529,6 +531,7 @@ export type Database = {
           duplicate_of_lead_id?: string | null
           email?: string | null
           event_id?: string
+          extra_photo_path?: string | null
           extraction_status?: Database["public"]["Enums"]["extraction_status"]
           follow_up_date?: string | null
           full_name?: string

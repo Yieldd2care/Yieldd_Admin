@@ -44,6 +44,20 @@ export const TEMPERATURE_TEXT: Record<LeadTemperature, string> = {
 
 export type CustomFieldValue = string | boolean;
 
+/**
+ * How far the card reader has got with this lead.
+ *
+ * The column has existed since the initial schema and went unread until the
+ * capture rework moved extraction out of the confirm screen and into the sync
+ * drain. Now it is the only thing that distinguishes "no name yet because the
+ * AI has not run" from "no name because the card was unreadable".
+ *
+ *   pending    queued, or retried until its attempts ran out
+ *   completed  read, or hand-typed and so never needing a read
+ *   failed     the reader ran and got nothing usable
+ */
+export type ExtractionStatus = 'pending' | 'completed' | 'failed';
+
 export type Lead = {
   id: string;
   initial: string;
@@ -70,6 +84,20 @@ export type Lead = {
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   imageUri?: string;
+  /**
+   * The optional product photo, as an object key in `card-images` — not a URL.
+   * Resolved to a signed URL by `useCardImages`, same as `imageUri`.
+   */
+  extraPhotoUri?: string;
+  /**
+   * Another lead at the same event with the same number, found when the card
+   * was read. Informational only - it has never blocked a capture.
+   */
+  duplicateOfLeadId?: string;
+  /** Defaults to `completed` for anything typed by hand; see the type. */
+  extractionStatus?: ExtractionStatus;
+  /** Why the card could not be read, shown to the rep verbatim. */
+  extractionError?: string;
   /** `'2026-03-04'` — the day this lead is due to be chased. */
   followUpDate?: string;
   /** Rupees. Set when the lead is marked Won — this is what makes ROI real. */

@@ -286,6 +286,25 @@ export function EditIcon({ size = 15, color = '#0B132B', strokeWidth = 1.75 }: I
   );
 }
 
+/**
+ * A keyboard, for "type this in instead".
+ *
+ * A pencil was tried first and is wrong here: beside a shutter button it reads
+ * as "edit the photo". A keyboard says what the button actually does to anyone
+ * who has used a phone, which on the capture screen - the first screen a new
+ * rep meets - is the whole requirement.
+ */
+export function KeyboardIcon({ size = 18, color = '#0B132B', strokeWidth = 1.75 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x="2" y="5" width="20" height="14" rx="2.5" />
+      <Path d="M6.5 9h.01M10 9h.01M13.5 9h.01M17 9h.01" />
+      <Path d="M6.5 12.5h.01M10 12.5h.01M13.5 12.5h.01M17 12.5h.01" />
+      <Path d="M8 16h8" />
+    </Svg>
+  );
+}
+
 export function FlashIcon({ size = 17, color = '#fff', strokeWidth = 1.75 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">

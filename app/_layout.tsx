@@ -5,9 +5,8 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Network from 'expo-network';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { QueryClientProvider, onlineManager } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import {
   useFonts,
   Inter_400Regular,
@@ -20,6 +19,7 @@ import {
 import { queryClient } from '../lib/queryClient';
 import { startAuthAutoRefresh } from '../lib/supabase';
 import { useSessionStore } from '../stores/useSessionStore';
+import { useConnectivity } from '../hooks/useConnectivity';
 import { useLeadsStore } from '../stores/useLeadsStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -57,40 +57,9 @@ export default function RootLayout() {
   }, [ready]);
 
   // Connectivity: drives react-query's online state on native, and drains the
-  // lead outbox the moment a connection comes back.
-  useEffect(() => {
-    let wasOffline = false;
-
-    // On web, react-query's own online/offline listeners are instant and
-    // correct; replacing them with a 4-second poll would be a downgrade.
-    const ownsOnlineManager = Platform.OS !== 'web';
-
-    const checkConnectivity = async () => {
-      try {
-        const state = await Network.getNetworkStateAsync();
-        const isOnline = Boolean(state.isConnected && state.isInternetReachable !== false);
-
-        if (ownsOnlineManager) onlineManager.setOnline(isOnline);
-
-        if (!isOnline) {
-          wasOffline = true;
-        } else if (wasOffline) {
-          wasOffline = false;
-          const userId = useSessionStore.getState().user?.id;
-          if (userId) {
-            await useLeadsStore.getState().syncDrafts(userId);
-            await useLeadsStore.getState().refresh();
-          }
-        }
-      } catch {
-        // ignore transient check failures
-      }
-    };
-
-    void checkConnectivity();
-    const interval = setInterval(checkConnectivity, 4000);
-    return () => clearInterval(interval);
-  }, []);
+  // lead outbox the moment a connection comes back. See the hook for why it is
+  // a listener plus a slow backstop rather than the 4-second poll this was.
+  useConnectivity();
 
   // The navigator renders from the very first frame and is never taken away
   // again. Returning null while waiting was a real hazard: anything that

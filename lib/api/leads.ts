@@ -12,7 +12,7 @@ import {
   type LeadRow,
 } from '../mappers/lead';
 import { phoneMatchKey } from '../phone';
-import type { CustomFieldValue, Lead, LeadStatus, LeadTemperature } from '../../data/leads';
+import type { ExtractionStatus, CustomFieldValue, Lead, LeadStatus, LeadTemperature } from '../../data/leads';
 
 /**
  * `voice_notes(count)` rather than the rows: the list only needs to know
@@ -152,6 +152,28 @@ export type LeadCaptureInput = {
    * has to carry the key before storage will accept the file.
    */
   cardImagePath?: string;
+  /** Same contract as `cardImagePath` — the policy reads this column back. */
+  extraPhotoPath?: string;
+  /**
+   * How the card read went, decided before the insert.
+   *
+   * The column defaults to `pending`, which was harmless while nothing read it.
+   * Now it drives what the rep sees, so it has to be written explicitly: a
+   * hand-typed lead is `completed` (there was never a card to read), and
+   * leaving it `pending` would mark every manual entry as waiting on an AI that
+   * will never run for it.
+   */
+  extractionStatus?: ExtractionStatus;
+  /**
+   * Written with the row so the flag survives a refresh.
+   *
+   * The duplicate check moved into the sync drain when the confirm screen went
+   * away - there is no phone field for it to watch any more, so the only moment
+   * it can run is between the card being read and this insert. Keeping the
+   * answer only on the device would mean losing it the first time the lead list
+   * refreshed from the server.
+   */
+  duplicateOfLeadId?: string;
   consentGiven?: boolean;
   source?: 'card_scan' | 'manual';
   capturedAt?: string;
@@ -176,6 +198,9 @@ function toInsert(input: LeadCaptureInput): Inserts<'leads'> {
     company_summary: input.companySummary?.trim() || null,
     custom_field_values: (input.customFieldValues ?? {}) as Inserts<'leads'>['custom_field_values'],
     card_image_path: input.cardImagePath ?? null,
+    extra_photo_path: input.extraPhotoPath ?? null,
+    extraction_status: input.extractionStatus ?? 'completed',
+    duplicate_of_lead_id: input.duplicateOfLeadId ?? null,
     consent_given: input.consentGiven ?? false,
     consent_at: input.consentGiven ? (input.capturedAt ?? new Date().toISOString()) : null,
     source: input.source ?? 'manual',
@@ -224,6 +249,15 @@ export type LeadPatch = {
   dealClosedAt?: string | null;
   reviewedAt?: string | null;
   savedToContacts?: boolean;
+  /**
+   * Only the "read the card again" retry sets this, and only to `completed`.
+   *
+   * Everything else about extraction is decided before the insert, where it
+   * costs one write instead of two. This exists because that retry happens
+   * long after the row exists — the local photo has been uploaded and deleted
+   * by then, so the card is re-read from the bucket and the result patched in.
+   */
+  extractionStatus?: ExtractionStatus;
 };
 
 export function toUpdate(patch: LeadPatch): Updates<'leads'> {
@@ -251,6 +285,7 @@ export function toUpdate(patch: LeadPatch): Updates<'leads'> {
   }
   if (patch.dealClosedAt !== undefined) row.deal_closed_at = patch.dealClosedAt;
   if (patch.reviewedAt !== undefined) row.reviewed_at = patch.reviewedAt;
+  if (patch.extractionStatus !== undefined) row.extraction_status = patch.extractionStatus;
   if (patch.savedToContacts !== undefined) row.saved_to_contacts = patch.savedToContacts;
   return row;
 }

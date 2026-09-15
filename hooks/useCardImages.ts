@@ -26,11 +26,21 @@ export const cardImageKeys = {
  * on the row would leave dead links behind — but it means nothing can render
  * it without a trip through here first.
  */
-function cardPath(lead: Pick<StoredLead, 'imageUri' | 'localImageUri'>): string | null {
+/** Which of a lead's two photos is being asked for. */
+export type PhotoKind = 'card' | 'extra';
+
+type PhotoFields = Pick<
+  StoredLead,
+  'imageUri' | 'localImageUri' | 'extraPhotoUri' | 'localExtraPhotoUri'
+>;
+
+function pathsOf(lead: PhotoFields): string[] {
+  const out: string[] = [];
   // A photo still on the device is not in the bucket yet, so it has no key to
   // sign. It is handled by the caller, which prefers it outright.
-  if (lead.localImageUri) return null;
-  return lead.imageUri ?? null;
+  if (!lead.localImageUri && lead.imageUri) out.push(lead.imageUri);
+  if (!lead.localExtraPhotoUri && lead.extraPhotoUri) out.push(lead.extraPhotoUri);
+  return out;
 }
 
 /**
@@ -40,13 +50,11 @@ function cardPath(lead: Pick<StoredLead, 'imageUri' | 'localImageUri'>): string 
  * filtering and searching the same leads all hit the same cache entry instead
  * of re-signing the same objects under a different name.
  */
-export function useCardImages(leads: Pick<StoredLead, 'id' | 'imageUri' | 'localImageUri'>[]) {
+export function useCardImages(leads: (PhotoFields & Pick<StoredLead, 'id'>)[]) {
   // Sorted so that the same set of leads in a different order is the same
   // query. Without it, a re-sorted list looks like a cache miss and re-signs
   // every object.
-  const paths = Array.from(
-    new Set(leads.map(cardPath).filter((p): p is string => Boolean(p)))
-  ).sort();
+  const paths = Array.from(new Set(leads.flatMap(pathsOf))).sort();
 
   const { data } = useQuery({
     queryKey: cardImageKeys.forPaths(paths),
@@ -67,11 +75,11 @@ export function useCardImages(leads: Pick<StoredLead, 'id' | 'imageUri' | 'local
    * stall has its photo on the phone and possibly nothing in the bucket yet,
    * and even once both exist the local one needs no network and no signature.
    */
-  return function cardImageUri(
-    lead: Pick<StoredLead, 'imageUri' | 'localImageUri'>
-  ): string | null {
-    if (lead.localImageUri) return lead.localImageUri;
-    const path = lead.imageUri;
+  return function photoUri(lead: PhotoFields, kind: PhotoKind = 'card'): string | null {
+    // `kind` defaults to 'card' so every existing call site is unchanged.
+    const local = kind === 'card' ? lead.localImageUri : lead.localExtraPhotoUri;
+    if (local) return local;
+    const path = kind === 'card' ? lead.imageUri : lead.extraPhotoUri;
     if (!path) return null;
     return data?.[path] ?? null;
   };

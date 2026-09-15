@@ -63,8 +63,14 @@ const TEXT_KEYS = [
  * so without the trim every untouched empty field would look like a change
  * and every save would write ten nulls over the whole row.
  */
-function changed(next: string, before: string | undefined): boolean {
-  return next.trim() !== (before ?? '').trim();
+function changed(next: string | undefined, before: string | undefined): boolean {
+  // `next` is typed as present on LeadEditForm, so an undefined here means a
+  // caller built a form before a field was added to TEXT_KEYS. Coalescing
+  // rather than trusting the type: this runs inside a save, and a throw would
+  // lose the rep's edits outright. An absent field reads as '' — unchanged —
+  // which is the safe direction, since the alternative is writing a null over
+  // a value the form never showed.
+  return (next ?? '').trim() !== (before ?? '').trim();
 }
 
 /**

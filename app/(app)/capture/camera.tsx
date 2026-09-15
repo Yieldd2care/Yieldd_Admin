@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
-import { Image, Linking, Platform, Pressable, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 
 import { Typography } from '../../../components/ui/Typography';
-import { CheckIcon, CloseIcon, FlashIcon, ImageIcon } from '../../../components/ui/icons';
+import { CheckIcon, CloseIcon, FlashIcon, ImageIcon, KeyboardIcon } from '../../../components/ui/icons';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
-import { normaliseCardPhoto } from '../../../lib/cardPhoto';
+import { GUIDE_BOX, cropToGuideBox, normaliseCardPhoto } from '../../../lib/cardPhoto';
+import { persistCapture } from '../../../lib/captureFiles';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 
 export default function CameraScreen() {
@@ -39,6 +40,9 @@ export default function CameraScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
+  // The guide box is a fixed size in dp; the crop needs to know how much
+  // of the frame that box covers, which depends on the screen it is on.
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const setImageUri = useCaptureDraftStore((s) => s.setImageUri);
   /**
    * Read back, not just written. The rep photographs the front and the screen
@@ -66,8 +70,17 @@ export default function CameraScreen() {
    */
   const hasFront = side === 'back' && !!frontImageUri;
 
-  const goToConfirm = () =>
-    router.push(isProfileScan ? '/(app)/card/scan-confirm' : '/(app)/capture/confirm');
+  const goToDetails = () => {
+    // The business-card scan is a different feature and keeps its own screen.
+    if (isProfileScan) {
+      router.push('/(app)/card/scan-confirm');
+      return;
+    }
+    // `replace`, not `push`: Back from the details screen should leave the
+    // flow, not drop the rep onto a live camera holding a photo they have
+    // already moved past.
+    router.replace('/(app)/capture/details');
+  };
 
   /**
    * The same card, from a photo the rep already had.
@@ -122,14 +135,14 @@ export default function CameraScreen() {
 
       if (side === 'front') {
         // Same reasoning as the shutter: a fresh front orphans any previous back.
-        setImageUri(photo.uri);
+        setImageUri(await persistCapture(photo.uri, 'front.jpg'));
         setBackImageUri(null);
         setSide('back');
         return;
       }
 
-      setBackImageUri(photo.uri);
-      goToConfirm();
+      setBackImageUri(await persistCapture(photo.uri, 'back.jpg'));
+      goToDetails();
     } catch (err) {
       // Unlike `capture()` below, this catches. The picker throws for real
       // reasons — no gallery app resolves the intent on some stripped Android
@@ -161,14 +174,33 @@ export default function CameraScreen() {
 
         // A fresh front means any back left from a previous card is not this
         // card's back, and sending it would put a stranger's address on a lead.
-        setImageUri(photo.uri);
+        // Cut down to what the rep framed before anything else touches it, so
+        // the durable copy, the preview and the card reader all see the card
+        // rather than the floor around it.
+        const front = await cropToGuideBox(
+          photo.uri,
+          photo.width,
+          photo.height,
+          screenWidth,
+          screenHeight
+        );
+        setImageUri(await persistCapture(front, 'front.jpg'));
         setBackImageUri(null);
         setSide('back');
         return;
       }
 
-      if (photo) setBackImageUri(photo.uri);
-      goToConfirm();
+      if (photo) {
+        const back = await cropToGuideBox(
+          photo.uri,
+          photo.width,
+          photo.height,
+          screenWidth,
+          screenHeight
+        );
+        setBackImageUri(await persistCapture(back, 'back.jpg'));
+      }
+      goToDetails();
     } finally {
       setCapturing(false);
     }
@@ -176,7 +208,7 @@ export default function CameraScreen() {
 
   const skipBack = () => {
     setBackImageUri(null);
-    goToConfirm();
+    goToDetails();
   };
 
   /**
@@ -273,7 +305,10 @@ export default function CameraScreen() {
       <RadialGlow color="#1D3F8A" size={600} style={{ top: -180, left: 30, opacity: 0.3 }} />
 
       <View className="flex-1 items-center justify-center">
-        <View className="w-[322px] h-[203px] relative">
+        {/* GUIDE_BOX, not literals: lib/cardPhoto.ts crops the captured frame
+            to exactly this rectangle, and two copies of the numbers would let
+            the cut drift away from what the rep aimed with. */}
+        <View style={{ width: GUIDE_BOX.width, height: GUIDE_BOX.height, position: 'relative' }}>
           {(['tl', 'tr', 'bl', 'br'] as const).map((corner) => (
             <View
               key={corner}
@@ -334,22 +369,51 @@ export default function CameraScreen() {
             </Typography>
           </View>
         ) : null}
-        <View className="flex-row items-center justify-center gap-[52px] w-full">
-          {/*
-            The left spacer was always a placeholder holding the shutter centred.
-            The right one stays a spacer at the same 44x44 so it still is.
+        {/*
+          Above the shutter, not below it.
 
-            `active:scale-95` sits on the Pressable unconditionally, present from
-            the first render, and only a plain background alpha varies with
-            `picking`. A class list that gains its first transform or shadow later
-            makes NativeWind upgrade the component mid-life and throw a red screen
-            about a missing navigation context — see AGENTS.md.
-          */}
+          This is the one control on the screen a rep reaches for mid-stride -
+          most cards have nothing on the back - and under the shutter it sat in
+          the strip of screen a thumb has to stretch past the capture button to
+          reach. Directly above it, it is the nearest thing to the thumb after
+          the shutter itself.
+
+          Only on the back step: there is nothing to skip before a front exists.
+        */}
+        {side === 'back' ? (
+          <Pressable
+            onPress={skipBack}
+            disabled={busy}
+            hitSlop={10}
+            className="bg-navy/[0.55] border border-white/[0.14] rounded-full px-5 py-[10px] active:scale-95"
+          >
+            <Typography className="text-[13px] font-bold text-gold">
+              Skip the back &mdash; read the front
+            </Typography>
+          </Pressable>
+        ) : null}
+
+        {/*
+          Three slots, and the two either side of the shutter are LABELLED.
+
+          They were icon-only, which reads fine to whoever built the screen and
+          not at all to a rep on their first morning: a pencil beside a shutter
+          looks like "edit the photo", not "type it in instead". This is the
+          first screen a new person meets, and the capture button is the only
+          thing on it that explains itself.
+
+          Each side slot is a fixed 70 wide so the shutter stays centred by
+          construction, and every class here is static from first render - a
+          className that gains its first transform or shadow later is what makes
+          NativeWind throw the bogus navigation error described in AGENTS.md.
+        */}
+        <View className="flex-row items-center justify-center gap-[30px] w-full">
           <Pressable
             onPress={pickFromLibrary}
             disabled={busy}
+            accessibilityRole="button"
             accessibilityLabel="Choose a saved photo"
-            className="w-11 h-11 items-center justify-center active:scale-95"
+            className="w-[70px] items-center gap-[6px] active:scale-95"
           >
             <View
               className={`w-[38px] h-[38px] rounded-full border border-white/[0.14] items-center justify-center ${
@@ -358,55 +422,55 @@ export default function CameraScreen() {
             >
               <ImageIcon size={17} color="#fff" strokeWidth={1.75} />
             </View>
+            <Typography className="text-[10px] font-semibold text-white/[0.75]">Gallery</Typography>
           </Pressable>
+
           <Pressable
             onPress={capture}
             disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Take the photo"
             className="w-[76px] h-[76px] rounded-full bg-white/[0.10] border-[3px] border-white items-center justify-center active:scale-95"
           >
             <View className={`w-[60px] h-[60px] rounded-full ${busy ? 'bg-gold/[0.5]' : 'bg-gold'}`} />
           </Pressable>
-          {/*
-            Mirrors the gallery button on the left, so the shutter stays centred
-            either way: 44x44 empty on the front step, the front photo itself
-            once there is one.
 
-            Every class here is fixed from the moment this mounts — the tick
-            badge and the border do not appear later on an element that was
-            already on screen. A className that gains its first transform or
-            shadow mid-life is what makes NativeWind throw the bogus navigation
-            error described in AGENTS.md.
-          */}
           {hasFront ? (
             <Pressable
               onPress={retakeFront}
               disabled={busy}
               accessibilityRole="button"
               accessibilityLabel="Front of the card captured. Tap to retake it."
-              className="w-11 h-11 items-center justify-center active:scale-95"
+              className="w-[70px] items-center gap-[6px] active:scale-95"
             >
-              <View className="w-[38px] h-[38px] rounded-[10px] overflow-hidden border border-white/[0.45]">
-                <Image source={{ uri: frontImageUri }} className="w-full h-full" resizeMode="cover" />
+              {/* The tick is positioned against THIS 38x38 box, not the 70-wide
+                  column, or it would drift out to the edge of the label. */}
+              <View className="w-[38px] h-[38px] relative">
+                <View className="w-[38px] h-[38px] rounded-[10px] overflow-hidden border border-white/[0.45]">
+                  <Image source={{ uri: frontImageUri }} className="w-full h-full" resizeMode="cover" />
+                </View>
+                <View className="absolute -top-[3px] -right-[3px] w-[17px] h-[17px] rounded-full bg-[#4ED17F] border-2 border-[#05070d] items-center justify-center">
+                  <CheckIcon size={9} color="#05070d" strokeWidth={3.4} />
+                </View>
               </View>
-              <View className="absolute -top-[3px] -right-[3px] w-[17px] h-[17px] rounded-full bg-[#4ED17F] border-2 border-[#05070d] items-center justify-center">
-                <CheckIcon size={9} color="#05070d" strokeWidth={3.4} />
-              </View>
+              <Typography className="text-[10px] font-semibold text-white/[0.75]">Retake</Typography>
             </Pressable>
           ) : (
-            <View className="w-11 h-11" />
+            <Pressable
+              onPress={() =>
+                router.replace(isProfileScan ? '/(app)/card/edit' : '/(app)/capture/manual')
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Type the details in instead of photographing a card"
+              className="w-[70px] items-center gap-[6px] active:scale-95"
+            >
+              <View className="w-[38px] h-[38px] rounded-full bg-navy/[0.55] border border-white/[0.14] items-center justify-center">
+                <KeyboardIcon size={17} color="#fff" strokeWidth={1.9} />
+              </View>
+              <Typography className="text-[10px] font-semibold text-white/[0.75]">Type it in</Typography>
+            </Pressable>
           )}
         </View>
-        {side === 'back' ? (
-          <Pressable onPress={skipBack} disabled={busy}>
-            <Typography className="text-[13px] font-bold text-gold">
-              Skip the back &mdash; read the front
-            </Typography>
-          </Pressable>
-        ) : (
-          <Pressable onPress={() => router.replace(isProfileScan ? '/(app)/card/edit' : '/(app)/capture/manual')}>
-            <Typography className="text-[13px] font-semibold text-white/[0.80]">Enter manually instead</Typography>
-          </Pressable>
-        )}
       </View>
     </View>
   );

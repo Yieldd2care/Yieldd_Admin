@@ -36,3 +36,19 @@ So keep the shadow present in **both** branches and vary only its alpha:
 ```
 
 The same applies to every other variable-backed family: transforms (`scale-`, `rotate-`, `translate-`), `ring-`, gradients, filters (`blur-`, `brightness-`), `space-x/y-` and `divide-`. Toggling a plain style like `opacity-60` is fine — those carry no variables. Adding a pseudo-class (`active:`, `hover:`, `focus:`) to a `View` after the first render trips the same path, via a View→Pressable upgrade.
+
+# Keep a 10Hz hook out of a screen that has text inputs
+
+`useAudioRecorderState(recorder, 100)` re-renders whichever component calls it
+ten times a second for the whole recording. On a dedicated screen that is free.
+On a screen that also holds a `ScrollView` of `TextInput`s it is not: every
+keystroke competes with a full re-render of the form, and a continuously
+re-rendering tree is exactly the condition that catches NativeWind mid-upgrade
+and throws the bogus "Couldn't find a navigation context" red screen described
+above.
+
+So the recorder hook lives inside `components/capture/VoiceRecorder.tsx`, which
+is wrapped in `React.memo`, and never in the screen that renders it. The screen
+receives only the settled recording, via `onChange`, on stop or discard — never
+the live ticks. The same rule applies to any other high-frequency subscription
+(a timer, an animation value read on the JS thread, a location watch).

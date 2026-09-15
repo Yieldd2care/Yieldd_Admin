@@ -152,3 +152,105 @@ export async function normaliseCardPhoto(
     return { ok: false, message: "Couldn't open that photo. Try another one." };
   }
 }
+
+/**
+ * The on-screen guide box, in dp.
+ *
+ * Exported so the camera overlay and the crop below read the SAME numbers. If
+ * they ever drift apart the crop silently stops matching what the rep framed,
+ * and nothing about the photo would look obviously wrong - it would just cut
+ * the card differently from the rectangle they aimed with.
+ */
+export const GUIDE_BOX = { width: 322, height: 203 };
+
+/**
+ * How much bigger than the guide box to cut, as a fraction per side.
+ *
+ * The card's edges sit ON the guide, not inside it, so an exact cut shaves them.
+ * It also absorbs the one assumption this whole calculation rests on - that the
+ * still the camera returns frames the same scene as the preview stream. That
+ * holds on both platforms today, but a few percent of slack is much cheaper
+ * than a clipped phone number.
+ */
+const GUIDE_PADDING = 0.07;
+
+/**
+ * Cut a captured frame down to the rectangle the rep actually aimed with.
+ *
+ * The camera fills the screen but the guide box is a small rectangle in the
+ * middle of it, so a full-frame capture hands the reader a portrait photo that
+ * is mostly carpet and lanyard. Cropping is not cosmetic: it removes the
+ * background that competes with the card, and it makes the card's small print a
+ * far larger share of the pixels the model actually looks at.
+ *
+ * ---------------------------------------------------------------------------
+ * The mapping, and why it is simpler than it looks
+ *
+ * Both platforms show the preview "cover"-style: the frame is scaled up until
+ * it fills the screen in both directions, and whatever hangs off the edges is
+ * hidden. So the visible region is a CENTRED crop of the frame - and the guide
+ * box is centred too. Two concentric rectangles, which means no offsets to get
+ * wrong: the crop is centred in the image, and only its SIZE has to be worked
+ * out.
+ *
+ *     s = max(screenW / imageW, screenH / imageH)   // the cover scale
+ *     cropW = guideW / s                            // guide, in image pixels
+ *
+ * ---------------------------------------------------------------------------
+ * It never fails the capture
+ *
+ * A crop that cannot be computed - unknown dimensions, a rectangle that lands
+ * outside the image, a manipulator error - returns the original URI. The full
+ * frame still contains the card and still reads; a lost capture does not.
+ */
+export async function cropToGuideBox(
+  uri: string,
+  imageWidth: number | null | undefined,
+  imageHeight: number | null | undefined,
+  screenWidth: number,
+  screenHeight: number
+): Promise<string> {
+  try {
+    if (!imageWidth || !imageHeight || !screenWidth || !screenHeight) return uri;
+
+    /**
+     * The still can come back in the sensor's orientation rather than the
+     * screen's. Comparing which way up each one is, rather than trusting the
+     * numbers, keeps the scale below honest - getting this backwards would
+     * crop a tall slice out of the middle of a wide photo.
+     */
+    const imageIsPortrait = imageHeight >= imageWidth;
+    const screenIsPortrait = screenHeight >= screenWidth;
+    const w = imageIsPortrait === screenIsPortrait ? imageWidth : imageHeight;
+    const h = imageIsPortrait === screenIsPortrait ? imageHeight : imageWidth;
+
+    const scale = Math.max(screenWidth / w, screenHeight / h);
+    if (!Number.isFinite(scale) || scale <= 0) return uri;
+
+    const pad = 1 + GUIDE_PADDING * 2;
+    const cropW = Math.round((GUIDE_BOX.width / scale) * pad);
+    const cropH = Math.round((GUIDE_BOX.height / scale) * pad);
+
+    // A guide bigger than the frame means the arithmetic is wrong somewhere.
+    // Cropping on that assumption would be worse than not cropping.
+    if (cropW <= 0 || cropH <= 0 || cropW > w || cropH > h) return uri;
+
+    const originX = Math.max(0, Math.round((w - cropW) / 2));
+    const originY = Math.max(0, Math.round((h - cropH) / 2));
+
+    const rendered = await ImageManipulator.manipulate(uri)
+      .crop({ originX, originY, width: cropW, height: cropH })
+      .renderAsync();
+
+    // Quality stays high. This is the one re-encode the camera path takes, and
+    // it is spent on small print - see JPEG_QUALITY.
+    const saved = await rendered.saveAsync({
+      format: SaveFormat.JPEG,
+      compress: JPEG_QUALITY,
+    });
+    return saved.uri;
+  } catch (err) {
+    if (__DEV__) console.warn('[cardPhoto] crop', err);
+    return uri;
+  }
+}

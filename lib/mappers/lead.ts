@@ -121,6 +121,9 @@ export function toLead(row: RowWithVoice): Lead {
     // Private buckets hand back signed URLs that expire, so the row stores the
     // object key and the URL is built when it is needed.
     imageUri: row.card_image_path ?? undefined,
+    extraPhotoUri: row.extra_photo_path ?? undefined,
+    extractionStatus: row.extraction_status ?? undefined,
+    duplicateOfLeadId: row.duplicate_of_lead_id ?? undefined,
     followUpDate: row.follow_up_date ?? undefined,
     dealValue: row.deal_value_paisa == null ? undefined : paiseToRupees(row.deal_value_paisa),
     dealClosedAt: row.deal_closed_at ?? undefined,

@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { readAsBase64 } from '../files';
+import { readAsBase64, readRemoteAsBase64 } from '../files';
 
 /**
  * Reading a business card photo.
@@ -108,6 +108,19 @@ export async function scanCard(imageUri: string, backImageUri?: string): Promise
     }
   }
 
+  return await requestExtraction(base64, backBase64);
+}
+
+/**
+ * The half both entry points share: one call to `extract-card`, and the
+ * mapping of everything it can answer with.
+ *
+ * Split out when the retry-from-bucket path arrived. The two callers differ
+ * only in where the bytes came from, and duplicating this would have meant two
+ * copies of the `error.context` unwrapping below — the subtle part, and the one
+ * that already had to be fixed once.
+ */
+async function requestExtraction(base64: string, backBase64?: string): Promise<ScanResult> {
   const { data, error } = await supabase.functions.invoke<{
     fields?: FunctionFields;
     read?: boolean;
@@ -168,4 +181,30 @@ export async function scanCard(imageUri: string, backImageUri?: string): Promise
       branchAddress: f.branch_address,
     },
   };
+}
+
+/**
+ * Read a card that is already in the bucket, not on this device.
+ *
+ * The retry path. By the time a rep taps "Read the card again" on a lead whose
+ * extraction failed, the sync drain has uploaded the photo and deleted the
+ * local copy — so the only remaining copy is the object behind a signed URL.
+ *
+ * Front only, deliberately. The back of the card is never uploaded (it has no
+ * column and no storage policy, see migration 20260915100000), so a retry has
+ * strictly less to work with than the first attempt did. That is a real and
+ * accepted limitation: paying for a second column and four more policy
+ * amendments to improve a retry nobody may ever press is the wrong trade, and
+ * the first attempt — the one that had both sides — already happened.
+ */
+export async function scanCardFromUrl(url: string): Promise<ScanResult> {
+  let base64: string;
+  try {
+    base64 = await readRemoteAsBase64(url);
+  } catch {
+    // Distinct from the local "Couldn't open that photo": this one is a network
+    // failure against the bucket, so it is worth trying again.
+    return { ok: false, message: "Couldn't fetch the card photo.", retryable: true };
+  }
+  return await requestExtraction(base64);
 }

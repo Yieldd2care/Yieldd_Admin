@@ -3,8 +3,14 @@ import { router } from 'expo-router';
 
 import { Typography } from '../ui/Typography';
 import { CardThumb } from './CardThumb';
-import { ContactsIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../ui/icons';
+import { AlertCircleIcon, ContactsIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../ui/icons';
 import { STATUS_DOT, STATUS_TEXT } from '../../data/leads';
+import {
+  cardNeedsAttention,
+  displayCompany,
+  displayInitial,
+  displayName,
+} from '../../lib/leadDisplay';
 import { useLeadActions } from '../../hooks/useLeadActions';
 import type { StoredLead } from '../../stores/useLeadsStore';
 
@@ -66,14 +72,24 @@ export function LeadRow({ lead, cardUri = null }: { lead: StoredLead; cardUri?: 
       onPress={() => router.push({ pathname: '/(app)/leads/[id]', params: { id: lead.id } })}
       className="flex-row items-center gap-3 bg-white border border-hairline rounded-2xl px-[14px] py-[13px]"
     >
-      <CardThumb uri={cardUri} initial={lead.initial} size={36} radius={10} />
+      <CardThumb uri={cardUri} initial={displayInitial(lead)} size={36} radius={10} />
       <View className="flex-1 min-w-0">
         <View className="flex-row items-center gap-[6px]">
           <View className={`w-[6px] h-[6px] rounded-full ${STATUS_DOT[lead.status]}`} />
           <Typography className="text-[13.5px] font-bold text-navy flex-shrink" numberOfLines={1}>
-            {lead.name}
+            {displayName(lead)}
           </Typography>
           {lead.hasVoice ? <MicIcon size={12} color="#8A98B0" strokeWidth={2} /> : null}
+          {/* The card was photographed but could not be read, so this lead is
+              carrying a photo, a voice note and event fields with nobody's name
+              on them. It is real work, and the only way the rep finds out it
+              needs typing up is if the list says so. */}
+          {cardNeedsAttention(lead) ? (
+            <View className="flex-row items-center gap-[3px] bg-gold/[0.16] rounded-full px-[6px] py-[2px]">
+              <AlertCircleIcon size={9} color="#8A6100" strokeWidth={2.5} />
+              <Typography className="text-[9px] font-bold text-[#8A6100]">CARD NOT READ</Typography>
+            </View>
+          ) : null}
         </View>
         <View className="flex-row items-center gap-[6px] mt-[3px]">
           <Typography className={`text-[11px] font-bold flex-shrink-0 ${STATUS_TEXT[lead.status]}`} numberOfLines={1}>
@@ -81,7 +97,7 @@ export function LeadRow({ lead, cardUri = null }: { lead: StoredLead; cardUri?: 
           </Typography>
           <Typography className="text-[11px] text-slate/35 flex-shrink-0">&bull;</Typography>
           <Typography className="text-[11.5px] text-slate flex-shrink" numberOfLines={1}>
-            {lead.company} &middot; {lead.time}
+            {displayCompany(lead)} &middot; {lead.time}
           </Typography>
         </View>
       </View>

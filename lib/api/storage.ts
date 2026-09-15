@@ -25,6 +25,20 @@ export function cardImagePath(organizationId: string, leadId: string): string {
 }
 
 /**
+ * `{organization_id}/{lead_id}-extra.jpg` — the optional product photo.
+ *
+ * Same bucket and same policies as the card; the `-extra` suffix is the only
+ * thing keeping the two keys apart. It has to be a suffix rather than a
+ * subdirectory because the policies compare the whole object name against a
+ * column, and a nested key would still need its own column anyway — which it
+ * has, `leads.extra_photo_path`, added with the policy amendment in migration
+ * 20260915100000.
+ */
+export function extraPhotoPath(organizationId: string, leadId: string): string {
+  return `${organizationId}/${leadId}-extra.jpg`;
+}
+
+/**
  * `{organization_id}/{voice_note_id}.m4a`
  *
  * The extension follows the actual recording — a phone produces m4a, a browser
@@ -94,6 +108,21 @@ export async function uploadCardImage(
   uri: string
 ): Promise<UploadOutcome> {
   return upload(CARD_IMAGES_BUCKET, cardImagePath(organizationId, leadId), uri, 'image/jpeg');
+}
+
+/**
+ * The product photo, into the same bucket as the card.
+ *
+ * Deliberately never passed to `scanCard` — it is a photo of a machine or a
+ * banner, and feeding it to the card reader would cost a billed call and could
+ * only drag the extraction off course.
+ */
+export async function uploadExtraPhoto(
+  organizationId: string,
+  leadId: string,
+  uri: string
+): Promise<UploadOutcome> {
+  return upload(CARD_IMAGES_BUCKET, extraPhotoPath(organizationId, leadId), uri, 'image/jpeg');
 }
 
 export async function uploadVoiceNote(

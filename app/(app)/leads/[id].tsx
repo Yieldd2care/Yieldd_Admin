@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
-import { CheckIcon, ClockIcon, ContactsIcon, EditIcon, LockIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../../../components/ui/icons';
+import { AlertCircleIcon, CheckIcon, ClockIcon, SparkleIcon, ContactsIcon, EditIcon, LockIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { STATUS_CLASSES, STATUS_TEXT } from '../../../data/leads';
+import { cardNeedsAttention, displayCompany, displayInitial, displayName } from '../../../lib/leadDisplay';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useTeam } from '../../../hooks/useTeam';
 import { useSessionStore } from '../../../stores/useSessionStore';
@@ -18,6 +19,8 @@ import { VoiceNoteCard } from '../../../components/app/VoiceNoteCard';
 import { ProBadge } from '../../../components/app/ProLock';
 import { useProGate } from '../../../hooks/usePlan';
 import { useCardImages } from '../../../hooks/useCardImages';
+import { scanCardFromUrl } from '../../../lib/api/cardScan';
+import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldDef } from '../../../stores/useEventFieldsStore';
 import { formatDateRange } from '../../../lib/dates';
 
@@ -53,6 +56,109 @@ export default function LeadDetailScreen() {
    */
   const cardImageUri = useCardImages(lead ? [lead] : []);
   const cardUri = lead ? cardImageUri(lead) : null;
+  const extraUri = lead ? cardImageUri(lead, 'extra') : null;
+
+  const [rereading, setRereading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  /**
+   * Reads the company's own website and summarises what is actually on it.
+   *
+   * Lives on this screen rather than the edit form, deliberately. It is not a
+   * field anyone types - it is something the app fetches and the rep reads
+   * before a call - so it belongs where the lead is read, not where it is
+   * corrected. Saved straight through `saveLeadEdits`, which means it survives
+   * without the edit form having to know the field exists at all.
+   *
+   * Nothing is invented. With no website there is nothing to read, so the rep
+   * is told exactly that rather than handed a confident paragraph about a
+   * company nobody looked up.
+   */
+  const generateCompanySummary = async () => {
+    if (!lead || summaryLoading) return;
+
+    if (!lead.companyWebsite?.trim()) {
+      Alert.alert(
+        'No company website',
+        'This lead has no company website, so there is nothing to read. Add one with the edit button, then try again.'
+      );
+      return;
+    }
+
+    setSummaryLoading(true);
+    // Only a regenerate asks for a fresh read; the first press is happy with
+    // whatever the team has already fetched for this domain.
+    const result = await summariseCompany({
+      website: lead.companyWebsite,
+      companyName: lead.company,
+      refresh: Boolean(lead.companySummary),
+    });
+    setSummaryLoading(false);
+
+    if (!result.ok) {
+      Alert.alert("Couldn't summarise", result.message);
+      return;
+    }
+    useLeadsStore.getState().saveLeadEdits(lead.id, { companySummary: result.summary });
+  };
+
+  /**
+   * Read the card again, from the copy in the bucket.
+   *
+   * The local photo is gone by now - the sync drain uploads it and deletes the
+   * durable copy once nothing points at it - so this signs the object and sends
+   * that instead. Front only: the back of the card is never uploaded, so a
+   * retry has strictly less to work with than the first attempt did.
+   *
+   * Only ever fills blanks. If the rep has already typed a name in, that wins.
+   */
+  const rereadCard = async () => {
+    if (!lead || rereading) return;
+    const url = cardUri;
+    if (!url) {
+      Alert.alert('No card photo', 'There is no photo on this lead to read.');
+      return;
+    }
+
+    setRereading(true);
+    const result = await scanCardFromUrl(url);
+    setRereading(false);
+
+    if (!result.ok) {
+      Alert.alert("Couldn't read the card", result.message);
+      return;
+    }
+    if (!result.read) {
+      Alert.alert(
+        'Still nothing readable',
+        'The photo does not have anything the reader can make out. Type the details in instead.'
+      );
+      return;
+    }
+
+    const f = result.fields;
+    const fill = (current: string | undefined, next: string | null) =>
+      current?.trim() ? undefined : (next ?? undefined);
+
+    const patch = {
+      name: fill(lead.name, f.fullName),
+      company: fill(lead.company, f.company),
+      phone: fill(lead.phone, f.phone),
+      email: fill(lead.email, f.email),
+      designation: fill(lead.designation, f.designation),
+      companyLandline: fill(lead.companyLandline, f.companyLandline),
+      companyWebsite: fill(lead.companyWebsite, f.companyWebsite),
+      companyAddress: fill(lead.companyAddress, f.companyAddress),
+      branchAddress: fill(lead.branchAddress, f.branchAddress),
+      extractionStatus: 'completed' as const,
+    };
+    // Drop the keys that had nothing to offer, so the patch writes only what
+    // actually moved - the rule lib/leadEdit.ts exists to enforce.
+    const trimmed = Object.fromEntries(
+      Object.entries(patch).filter(([, v]) => v !== undefined)
+    );
+    useLeadsStore.getState().saveLeadEdits(lead.id, trimmed);
+  };
   const { data: event } = useEvent(lead?.eventId || undefined);
 
   // The same four actions the lead rows on the home and Leads screens use.
@@ -168,11 +274,11 @@ export default function LeadDetailScreen() {
       <ScrollView contentContainerClassName="px-5 pt-[18px] pb-8" showsVerticalScrollIndicator={false}>
         <View className="flex-row items-center gap-3">
           <View className="w-[52px] h-[52px] rounded-2xl bg-gold items-center justify-center">
-            <Typography className="text-[19px] font-extrabold text-navy">{lead.initial}</Typography>
+            <Typography className="text-[19px] font-extrabold text-navy">{displayInitial(lead)}</Typography>
           </View>
           <View>
-            <Typography className="text-[17px] font-bold text-navy">{lead.name}</Typography>
-            <Typography className="text-[12.5px] text-slate mt-[2px]">{lead.company || 'No company'}</Typography>
+            <Typography className="text-[17px] font-bold text-navy">{displayName(lead)}</Typography>
+            <Typography className="text-[12.5px] text-slate mt-[2px]">{displayCompany(lead)}</Typography>
           </View>
         </View>
 
@@ -193,6 +299,69 @@ export default function LeadDetailScreen() {
               className="w-full h-full"
               resizeMode="contain"
             />
+          </View>
+        ) : null}
+
+        {/* The product photo the rep attached at capture, if there was one.
+            Below the card rather than beside it: this one is a reminder, the
+            card is the record. */}
+        {extraUri ? (
+          <View className="mt-3">
+            <Typography
+              className="text-[10px] font-bold tracking-[0.12em] text-slate mb-2"
+              style={{ textTransform: 'uppercase' }}
+            >
+              Photo
+            </Typography>
+            <View className="rounded-2xl overflow-hidden bg-surface" style={{ aspectRatio: 4 / 3 }}>
+              <Image
+                key={extraUri}
+                source={{ uri: extraUri }}
+                className="w-full h-full"
+                resizeMode="cover"
+              />
+            </View>
+          </View>
+        ) : null}
+
+        {/* The card was photographed but could not be read. Everything else the
+            rep captured is here; only the name and number are missing, and the
+            photo above is what they type them from. */}
+        {cardNeedsAttention(lead) ? (
+          <View className="bg-gold/[0.08] border border-gold/[0.30] rounded-2xl p-4 mt-4">
+            <View className="flex-row items-center gap-2">
+              <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
+              <Typography className="text-[12.5px] font-bold text-navy">
+                Card not read
+              </Typography>
+            </View>
+            <Typography className="text-[12.5px] text-slate mt-2 leading-[1.5]">
+              {lead.extractionError ??
+                'The card could not be read automatically. Type the details in from the photo above.'}
+            </Typography>
+            <View className="flex-row gap-[10px] mt-3">
+              <Pressable
+                onPress={() => void rereadCard()}
+                disabled={rereading}
+                className={`h-10 px-4 rounded-full bg-white border border-hairline items-center justify-center ${
+                  rereading ? 'opacity-60' : ''
+                }`}
+              >
+                <Typography className="text-[12.5px] font-bold text-navy">
+                  {rereading ? 'Reading\u2026' : 'Read the card again'}
+                </Typography>
+              </Pressable>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: '/(app)/leads/edit', params: { leadId: lead.id } })
+                }
+                className="h-10 px-4 rounded-full bg-gold items-center justify-center"
+              >
+                <Typography className="text-[12.5px] font-bold text-navy">
+                  Add the details
+                </Typography>
+              </Pressable>
+            </View>
           </View>
         ) : null}
 
@@ -269,6 +438,54 @@ export default function LeadDetailScreen() {
             </Typography>
           </View>
         ) : null}
+
+        <View className="bg-white border border-hairline rounded-2xl p-4 mt-[18px]">
+          <View className="flex-row items-center justify-between mb-[10px]">
+            <Typography className="text-[12.5px] font-bold text-navy">Company summary</Typography>
+            <View className="flex-row items-center gap-1 bg-blue/[0.10] rounded-full px-2 py-[3px]">
+              <SparkleIcon size={10} color="#1D3F8A" />
+              <Typography className="text-[9.5px] font-bold text-blue">AI</Typography>
+            </View>
+          </View>
+
+          {lead.companySummary?.trim() ? (
+            <>
+              <Typography className="text-[13px] leading-[1.5] text-navy">
+                {lead.companySummary}
+              </Typography>
+              <Pressable
+                onPress={() => void generateCompanySummary()}
+                disabled={summaryLoading}
+                className="mt-2"
+              >
+                <Typography className="text-[12px] font-bold text-gold">
+                  {summaryLoading ? 'Fetching\u2026' : 'Regenerate'}
+                </Typography>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable
+              onPress={() => void generateCompanySummary()}
+              disabled={summaryLoading}
+              className={`h-11 rounded-md border border-dashed border-hairline items-center justify-center flex-row gap-2 ${
+                summaryLoading ? 'opacity-60' : ''
+              }`}
+            >
+              {summaryLoading ? (
+                <Typography className="text-[13px] font-semibold text-slate">
+                  Fetching company info&#8230;
+                </Typography>
+              ) : (
+                <>
+                  <SparkleIcon size={14} color="#0B132B" />
+                  <Typography className="text-[13px] font-semibold text-navy">
+                    Get AI company summary
+                  </Typography>
+                </>
+              )}
+            </Pressable>
+          )}
+        </View>
 
         {lead.note?.trim() ? (
           <View className="bg-white border border-hairline rounded-2xl p-4 mt-[18px]">

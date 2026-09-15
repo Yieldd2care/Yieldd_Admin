@@ -299,7 +299,7 @@ export default function ManualEntryScreen() {
             useCaptureDraftStore.getState().reset();
             router.replace({
               pathname: '/(app)/capture/saved',
-              params: { name, isDraft: lead.syncStatus === 'draft' ? '1' : '0' },
+              params: { leadId: lead.id },
             });
           }}
           className={`h-[54px] rounded-md items-center justify-center ${canSave ? 'bg-gold shadow-[0_10px_24px_rgba(244,176,0,0.30)]' : 'bg-surface shadow-[0_10px_24px_rgba(244,176,0,0)]'}`}

@@ -11,7 +11,11 @@ import {
   type LeadPatch,
 } from '../lib/api/leads';
 import { captureTimeLabel, initialOf } from '../lib/mappers/lead';
-import { cardImagePath, uploadCardImage } from '../lib/api/storage';
+import { cardImagePath, extraPhotoPath, uploadCardImage, uploadExtraPhoto } from '../lib/api/storage';
+import { claimCaptureFiles, discardCaptureFiles } from '../lib/captureFiles';
+import { scanCard } from '../lib/api/cardScan';
+import { isOnline } from '../lib/connectivity';
+import { findDuplicateLead } from '../lib/api/leads';
 import { attachVoiceNote, requestTranscription } from '../lib/api/voiceNotes';
 import { queryClient } from '../lib/queryClient';
 import { eventKeys } from '../hooks/useEvents';
@@ -58,6 +62,17 @@ function eventCountsChanged() {
  * an empty list.
  */
 
+/**
+ * How many times a transient card-read failure is retried before the lead is
+ * sent without a name.
+ *
+ * Three, because the failure this protects against is `extract-card` being
+ * unreachable, and the cost of guessing wrong is asymmetric: retrying forever
+ * means a rep's captures never reach the server at all, while giving up too
+ * early means a lead arrives blank and can be re-read later with one tap.
+ */
+const MAX_EXTRACTION_ATTEMPTS = 3;
+
 export type SyncStatus = 'draft' | 'synced';
 
 export type StoredLead = Lead & {
@@ -73,6 +88,21 @@ export type StoredLead = Lead & {
    * Separate from `imageUri`, which also holds the object key once it has.
    */
   localImageUri?: string;
+  /**
+   * The back of the card, on this device and NEVER uploaded.
+   *
+   * It exists only so the extraction can read both sides. Under the old flow
+   * the confirm screen read it while it was still in the camera store and threw
+   * it away; extraction now happens down here, long after that screen is gone,
+   * so it has to travel this far. Cleared the moment extraction is finished with
+   * it — there is no column and no storage policy that would accept it.
+   */
+  localBackImageUri?: string;
+  /**
+   * The optional product photo, awaiting upload. Unlike the back of the card
+   * this one does reach the bucket, under `leads.extra_photo_path`.
+   */
+  localExtraPhotoUri?: string;
   /**
    * A recording on this device that has not been attached yet. Cleared once the
    * `voice_notes` row and its audio are both on the server.
@@ -90,6 +120,15 @@ export type StoredLead = Lead & {
    * would hide the problem; this surfaces it.
    */
   syncError?: string;
+  /**
+   * How many times the card reader has been tried and failed transiently.
+   *
+   * Bounded because the alternative is a lead that never reaches the server at
+   * all: if `extract-card` is down for an afternoon, the rep's captures must
+   * still arrive, just without names. At the cap the lead inserts anyway and
+   * stays `pending`, which is what the "Read the card again" action picks up.
+   */
+  extractionAttempts?: number;
 };
 
 export type NewLeadInput = {
@@ -110,6 +149,10 @@ export type NewLeadInput = {
   companySummary?: string;
   customFieldValues?: Record<string, CustomFieldValue>;
   imageUri?: string;
+  /** The back of the card. Read by the extraction, never uploaded. */
+  backImageUri?: string;
+  /** The optional product photo. Uploaded alongside the card. */
+  extraPhotoUri?: string;
   voiceUri?: string;
   voiceDurationSeconds?: number;
   voiceExtension?: string;
@@ -192,7 +235,12 @@ export const useLeadsStore = create<LeadsState>()(
               state.leads
                 .filter(
                   (l) =>
-                    l.syncStatus === 'draft' || l.pendingPatch || l.localImageUri || l.localVoiceUri
+                    l.syncStatus === 'draft' ||
+                    l.pendingPatch ||
+                    l.localImageUri ||
+                    l.localBackImageUri ||
+                    l.localExtraPhotoUri ||
+                    l.localVoiceUri
                 )
                 .map((l) => [l.id, l])
             );
@@ -218,7 +266,15 @@ export const useLeadsStore = create<LeadsState>()(
                 capturedBy: row.capturedBy || local?.capturedBy || '',
                 organizationId: row.organizationId || local?.organizationId || '',
                 localImageUri: local?.localImageUri,
+                // Both of these are device-only and the server knows nothing
+                // about them, so a refresh that dropped them would silently
+                // lose a product photo and the back of the card - with no error
+                // anywhere, which is what makes the omission so easy to miss.
+                localBackImageUri: local?.localBackImageUri,
+                localExtraPhotoUri: local?.localExtraPhotoUri,
                 localVoiceUri: local?.localVoiceUri,
+                extractionAttempts: local?.extractionAttempts,
+                extractionError: local?.extractionError,
                 voiceDurationSeconds: local?.voiceDurationSeconds,
                 voiceExtension: local?.voiceExtension,
                 voiceError: local?.voiceError,
@@ -249,8 +305,23 @@ export const useLeadsStore = create<LeadsState>()(
 
       addLead: async (input) => {
         const capturedAt = new Date().toISOString();
+        const id = newLeadId();
+
+        /**
+         * Move this capture's files out of `captures/pending/` and under the id
+         * that now exists, then rewrite the URIs to match.
+         *
+         * Everything the camera and the recorder produced was copied into
+         * durable storage as it was taken (see lib/captureFiles.ts) — but under
+         * a shared "pending" name, because there was no lead id yet. This is
+         * where they get one. `rebase` passes through unchanged any URI whose
+         * copy failed and is still a cache path, so the fail-soft promise holds
+         * end to end.
+         */
+        const rebase = await claimCaptureFiles(id);
+
         const lead: StoredLead = {
-          id: newLeadId(),
+          id,
           initial: initialOf(input.name),
           name: input.name,
           company: input.company ?? '',
@@ -271,11 +342,24 @@ export const useLeadsStore = create<LeadsState>()(
           branchAddress: input.branchAddress,
           companySummary: input.companySummary,
           customFieldValues: input.customFieldValues,
-          imageUri: input.imageUri,
-          localImageUri: input.imageUri,
-          localVoiceUri: input.voiceUri,
+          imageUri: rebase(input.imageUri),
+          localImageUri: rebase(input.imageUri),
+          localBackImageUri: rebase(input.backImageUri),
+          extraPhotoUri: rebase(input.extraPhotoUri),
+          localExtraPhotoUri: rebase(input.extraPhotoUri),
+          localVoiceUri: rebase(input.voiceUri),
           voiceDurationSeconds: input.voiceDurationSeconds,
           voiceExtension: input.voiceExtension,
+          /**
+           * `pending` ONLY for a card scan that actually has a photo to read.
+           *
+           * Everything else is `completed`, and the distinction is load-bearing
+           * in both directions: a hand-typed lead marked `pending` would sit in
+           * the list saying "Reading card…" forever, and a card scan marked
+           * `completed` would never be picked up by the extraction step at all.
+           */
+          extractionStatus:
+            (input.source ?? 'manual') === 'card_scan' && input.imageUri ? 'pending' : 'completed',
           syncStatus: 'draft',
           eventId: input.eventId,
           capturedBy: input.capturedBy,
@@ -289,7 +373,17 @@ export const useLeadsStore = create<LeadsState>()(
         // happens afterwards and is allowed to take as long as it likes.
         set((state) => ({ leads: [lead, ...state.leads] }));
 
-        void get().syncDrafts();
+        /**
+         * Pass the capturer, which this call used to omit.
+         *
+         * Without it the drain skips its ownership filter and walks every
+         * queued lead on the device, including ones captured by whoever was
+         * signed in before. That was harmless while the first thing it did was
+         * an insert — RLS refuses those anyway. It is not harmless now: the
+         * first step is a billed card read, which happens long before the
+         * database gets an opinion.
+         */
+        void get().syncDrafts(input.capturedBy);
         return lead;
       },
 
@@ -345,6 +439,18 @@ export const useLeadsStore = create<LeadsState>()(
         // otherwise fire forty refetches of the same two queries on reconnect.
         let serverChanged = false;
 
+        /**
+         * Asked once, before the loop, and used only to gate the card reader.
+         *
+         * A failed read costs an attempt, and three of them push a perfectly
+         * readable card into the "gave up" bucket. Burning that budget while
+         * the phone is in a basement would mark cards unreadable for a reason
+         * that was never about the card. The rest of the drain does not need
+         * this - it finds out by trying, and its transient `break` is the right
+         * response - but extraction has state that survives the attempt.
+         */
+        const online = await isOnline();
+
         try {
           for (const lead of [...get().leads]) {
             if (lead.syncError) continue; // Needs attention, not another attempt.
@@ -353,31 +459,200 @@ export const useLeadsStore = create<LeadsState>()(
             // attributing it to whoever is signed in now would be worse.
             if (currentUserId && lead.capturedBy && lead.capturedBy !== currentUserId) continue;
 
-            if (lead.syncStatus === 'draft') {
+            /**
+             * STEP 0 - read the card, before the row is written.
+             *
+             * This used to happen on the confirm screen while the rep stood
+             * there waiting. It lives here now so that a capture taken with no
+             * signal is complete work: the photo, the recording and the event
+             * fields are all on the device, and the reading finishes itself
+             * whenever the network comes back.
+             *
+             * Before the insert rather than after it, deliberately. The
+             * alternative - insert a nameless row, then patch the fields in -
+             * costs two writes per capture, puts a blank-named lead on the
+             * server on every single scan, and routes machine output through
+             * `pendingPatch`, which is the channel for the REP's edits. A rep
+             * correcting a name while an extraction patch was queued for the
+             * same lead would get a three-way merge, and one of the two would
+             * lose. Reading first avoids all of it.
+             *
+             * Guarded on `extractionStatus === 'pending'` and nothing looser.
+             * That value is written only by the new `addLead`, so a draft
+             * queued before this change - which already carries a name the rep
+             * typed by hand - has `undefined` here, skips this entirely, and
+             * inserts exactly as it always did. A falsy check would re-read
+             * those cards and overwrite their names.
+             */
+            if (
+              lead.syncStatus === 'draft' &&
+              lead.extractionStatus === 'pending' &&
+              lead.localImageUri &&
+              online &&
+              // Never spend a billed read on a capture belonging to whoever was
+              // signed in before. The insert below would be refused by RLS, but
+              // that refusal arrives after the money is gone.
+              (!currentUserId || !lead.capturedBy || lead.capturedBy === currentUserId)
+            ) {
+              const attempts = lead.extractionAttempts ?? 0;
+              const result = await scanCard(lead.localImageUri, lead.localBackImageUri);
+
+              if (result.ok) {
+                const f = result.fields;
+                /**
+                 * Fill only what is still empty.
+                 *
+                 * The same rule the confirm screen used. It matters less here -
+                 * nobody is typing underneath - but a lead can reach this point
+                 * with fields already set, from a retry whose insert failed, and
+                 * the rep's own corrections must always win over the machine's.
+                 */
+                const fill = (current: string | undefined, next: string | null) =>
+                  current?.trim() ? current : (next ?? undefined);
+
+                const name = fill(lead.name, f.fullName) ?? '';
+                const phone = fill(lead.phone, f.phone);
+
+                /**
+                 * STEP 0b - the duplicate check, now that a number exists.
+                 *
+                 * It used to run on the confirm screen against a field the rep
+                 * was typing into. There is no such field any more, so the only
+                 * moment this can happen is here, between the card being read
+                 * and the row being written. Never blocks the insert - a flagged
+                 * duplicate is information, not a refusal.
+                 */
+                let duplicateOfLeadId: string | undefined;
+                if (phone) {
+                  const match = await findDuplicateLead(lead.eventId, phone);
+                  if (match) duplicateOfLeadId = match.leadId;
+                }
+
+                /**
+                 * Written to the device BEFORE the insert is attempted.
+                 *
+                 * `scanCard` costs money. If the insert below fails transiently
+                 * - and it will, on the hall wifi this whole feature exists for
+                 * - the next drain must not read the same card again. Recording
+                 * `completed` here makes the step idempotent, which is the same
+                 * property the id-on-the-device trick already gives the insert.
+                 */
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id
+                      ? {
+                          ...l,
+                          name,
+                          initial: initialOf(name),
+                          phone,
+                          company: fill(l.company, f.company) ?? '',
+                          email: fill(l.email, f.email),
+                          designation: fill(l.designation, f.designation),
+                          companyLandline: fill(l.companyLandline, f.companyLandline),
+                          companyWebsite: fill(l.companyWebsite, f.companyWebsite),
+                          companyAddress: fill(l.companyAddress, f.companyAddress),
+                          branchAddress: fill(l.branchAddress, f.branchAddress),
+                          duplicateOfLeadId,
+                          // `read: false` means the call worked and the photo
+                          // held nothing legible - a photo of a badge, a thumb
+                          // over the card. Not retryable, and not an error the
+                          // rep can be asked to do anything about except look.
+                          extractionStatus: result.read ? 'completed' : 'failed',
+                          extractionError: result.read
+                            ? undefined
+                            : 'Nothing readable on that photo.',
+                          // The back has done its only job and is never uploaded.
+                          localBackImageUri: undefined,
+                        }
+                      : l
+                  ),
+                }));
+              } else if (!result.retryable || attempts + 1 >= MAX_EXTRACTION_ATTEMPTS) {
+                /**
+                 * Give up reading, but never give up the lead.
+                 *
+                 * The photo, the recording and the custom fields are real work
+                 * the rep did; the reading is enrichment on top. So this falls
+                 * through to the insert below carrying blanks, and the lead
+                 * shows in the list marked as needing attention. Losing it here
+                 * would be the one outcome this rework must not introduce.
+                 */
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id
+                      ? {
+                          ...l,
+                          extractionAttempts: attempts + 1,
+                          // A permanent failure is final and says so. Running
+                          // out of attempts is not: it stays `pending` so the
+                          // "Read the card again" action can pick it up once
+                          // whatever was wrong has passed.
+                          extractionStatus: result.retryable ? 'pending' : 'failed',
+                          extractionError: result.message,
+                          localBackImageUri: undefined,
+                        }
+                      : l
+                  ),
+                }));
+              } else {
+                /**
+                 * Transient, with attempts left: skip THIS lead and carry on.
+                 *
+                 * Emphatically not `break`. The insert below breaks the drain on
+                 * a transient failure because "the rest will fail the same way"
+                 * - true when the connection is dead. It is not true here:
+                 * `extract-card` can be rate-limited or erroring while Postgres
+                 * is perfectly healthy, and breaking would strand every other
+                 * lead's insert, every photo, every recording, and every queued
+                 * status change and deal value on leads that are already synced.
+                 * One 429 must not hold the outbox hostage.
+                 */
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id ? { ...l, extractionAttempts: attempts + 1 } : l
+                  ),
+                }));
+                continue;
+              }
+            }
+
+            // Re-read: step 0 above may have just filled in the name and the
+            // number this insert is about to send.
+            const forInsert = get().leads.find((l) => l.id === lead.id) ?? lead;
+
+            if (forInsert.syncStatus === 'draft') {
+              // Every field below comes from `forInsert`, never `lead`: the
+              // snapshot taken at the top of the loop predates step 0, so
+              // using it here would send the blanks the card was read to fill.
               const outcome = await insertLead({
-                id: lead.id,
-                organizationId: lead.organizationId,
-                eventId: lead.eventId,
-                capturedBy: lead.capturedBy,
-                name: lead.name,
-                company: lead.company,
-                phone: lead.phone,
-                email: lead.email,
-                designation: lead.designation,
-                note: lead.note,
-                companyLandline: lead.companyLandline,
-                companyWebsite: lead.companyWebsite,
-                companyAddress: lead.companyAddress,
-                branchAddress: lead.branchAddress,
-                companySummary: lead.companySummary,
-                customFieldValues: lead.customFieldValues,
-                consentGiven: lead.consentGiven,
-                source: lead.source,
-                capturedAt: lead.capturedAt,
+                id: forInsert.id,
+                organizationId: forInsert.organizationId,
+                eventId: forInsert.eventId,
+                capturedBy: forInsert.capturedBy,
+                name: forInsert.name,
+                company: forInsert.company,
+                phone: forInsert.phone,
+                email: forInsert.email,
+                designation: forInsert.designation,
+                note: forInsert.note,
+                companyLandline: forInsert.companyLandline,
+                companyWebsite: forInsert.companyWebsite,
+                companyAddress: forInsert.companyAddress,
+                branchAddress: forInsert.branchAddress,
+                companySummary: forInsert.companySummary,
+                customFieldValues: forInsert.customFieldValues,
+                consentGiven: forInsert.consentGiven,
+                source: forInsert.source,
+                capturedAt: forInsert.capturedAt,
                 // Written with the row because the bucket policy reads it back.
-                cardImagePath: lead.localImageUri
-                  ? cardImagePath(lead.organizationId, lead.id)
+                cardImagePath: forInsert.localImageUri
+                  ? cardImagePath(forInsert.organizationId, forInsert.id)
                   : undefined,
+                extraPhotoPath: forInsert.localExtraPhotoUri
+                  ? extraPhotoPath(forInsert.organizationId, forInsert.id)
+                  : undefined,
+                extractionStatus: forInsert.extractionStatus,
+                duplicateOfLeadId: forInsert.duplicateOfLeadId,
               });
 
               if (!outcome.ok) {
@@ -427,6 +702,38 @@ export const useLeadsStore = create<LeadsState>()(
                 set((state) => ({
                   leads: state.leads.map((l) =>
                     l.id === lead.id ? { ...l, localImageUri: undefined } : l
+                  ),
+                }));
+              }
+            }
+
+            /**
+             * STEP 2b - the product photo, on exactly the same rule as the card.
+             *
+             * Same bucket, same policy, same ordering constraint: the row has to
+             * exist carrying `extra_photo_path` before storage will accept the
+             * object. A failure here costs the photo and never the lead, which
+             * is why it neither sets `syncError` nor breaks the drain.
+             */
+            const withExtra = get().leads.find((l) => l.id === lead.id);
+            if (withExtra?.localExtraPhotoUri && withExtra.syncStatus === 'synced') {
+              const outcome = await uploadExtraPhoto(
+                withExtra.organizationId,
+                withExtra.id,
+                withExtra.localExtraPhotoUri
+              );
+              if (outcome.ok) {
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id
+                      ? { ...l, localExtraPhotoUri: undefined, extraPhotoUri: outcome.path }
+                      : l
+                  ),
+                }));
+              } else if (outcome.permanent) {
+                set((state) => ({
+                  leads: state.leads.map((l) =>
+                    l.id === lead.id ? { ...l, localExtraPhotoUri: undefined } : l
                   ),
                 }));
               }
@@ -492,6 +799,32 @@ export const useLeadsStore = create<LeadsState>()(
                 ),
               }));
             }
+
+            /**
+             * Delete this capture's durable files once nothing points at them.
+             *
+             * `lib/captureFiles.ts` copies every photo and recording into the
+             * document directory so the OS cannot reclaim them mid-capture -
+             * which also means the OS will never reclaim them afterwards. Without
+             * this, a rep working a three-day show accumulates a permanent photo
+             * archive that only a reinstall clears.
+             *
+             * Every one of the four has to be clear, not just the card: each is
+             * cleared by its own step above, and deleting the directory while the
+             * recording was still queued would turn a retryable upload into a
+             * permanent one.
+             */
+            const drained = get().leads.find((l) => l.id === lead.id);
+            if (
+              drained &&
+              drained.syncStatus === 'synced' &&
+              !drained.localImageUri &&
+              !drained.localBackImageUri &&
+              !drained.localExtraPhotoUri &&
+              !drained.localVoiceUri
+            ) {
+              discardCaptureFiles(drained.id);
+            }
           }
         } finally {
           set({ isSyncing: false, lastSyncedAt: new Date().toISOString() });
@@ -523,8 +856,19 @@ export const useLeadsStore = create<LeadsState>()(
       // v2: leads are real database rows now. A v1 cache is the seven fake
       // "Rajesh Menon / Northline Engineering" rows and must not be pushed to
       // anyone's account.
-      version: 2,
-      migrate: () => ({ leads: [], lastSyncedAt: null }),
+      /**
+       * v3: three new device-only fields (the back photo, the product photo and
+       * the extraction attempt count).
+       *
+       * The migration KEEPS the cache, unlike v2's. That wipe was correct for
+       * what it faced - a v1 cache held seven fake seeded leads that must never
+       * be pushed to a real account - but copying it here would delete every
+       * unsynced capture on the device the moment the app updated, which is
+       * exactly the data this whole rework exists to protect. The new fields are
+       * all optional, so an untouched v2 lead is already a valid v3 lead.
+       */
+      version: 3,
+      migrate: (persisted) => persisted as { leads: StoredLead[]; lastSyncedAt: string | null },
     }
   )
 );

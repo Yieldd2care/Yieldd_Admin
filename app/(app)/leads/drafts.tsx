@@ -1,16 +1,21 @@
-import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Network from 'expo-network';
 
+import { onlineFromState } from '../../../lib/connectivity';
+
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { EditIcon, MicIcon, WifiIcon } from '../../../components/ui/icons';
+import { CardThumb } from '../../../components/app/CardThumb';
+import { displayCompany, displayInitial, displayName } from '../../../lib/leadDisplay';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useSessionStore } from '../../../stores/useSessionStore';
 
 export default function DraftsScreen() {
-  const [isOnline, setIsOnline] = useState(true);
+  // Instant, and shared with the rule the sync drain uses. This screen used to
+  // run its own 4-second poll - a second copy of the one the root layout had.
+  const isOnline = onlineFromState(Network.useNetworkState());
   const allLeads = useLeadsStore((s) => s.leads);
   const drafts = allLeads.filter((l) => l.syncStatus === 'draft');
   const blocked = allLeads.filter((l) => l.syncError);
@@ -18,25 +23,6 @@ export default function DraftsScreen() {
   const isSyncing = useLeadsStore((s) => s.isSyncing);
   const userId = useSessionStore((s) => s.user?.id);
 
-  useEffect(() => {
-    let mounted = true;
-    const checkConnectivity = async () => {
-      try {
-        const state = await Network.getNetworkStateAsync();
-        if (mounted) {
-          setIsOnline(Boolean(state.isConnected && state.isInternetReachable !== false));
-        }
-      } catch {
-        // keep the last known value
-      }
-    };
-    checkConnectivity();
-    const interval = setInterval(checkConnectivity, 4000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top']}>
@@ -106,15 +92,17 @@ export default function DraftsScreen() {
               <View className="absolute right-[14px] top-[14px] bg-gold/[0.16] rounded-full px-[8px] py-[2px]">
                 <Typography className="text-[9.5px] font-bold text-[#8A6100]">DRAFT</Typography>
               </View>
-              <View className="w-10 h-10 rounded-[11px] bg-surface items-center justify-center">
-                <Typography className="text-[14.5px] font-extrabold text-navy">{lead.initial}</Typography>
-              </View>
+              {/* The card photo, not the initial. A draft from the new capture
+                  flow has no name yet, so its initial is a bare "?" - and the
+                  photo is both more use and the only thing that distinguishes
+                  one waiting draft from another. */}
+              <CardThumb uri={lead.localImageUri ?? null} initial={displayInitial(lead)} size={40} radius={11} />
               <View className="flex-1 min-w-0">
                 <View className="flex-row items-center gap-[6px]">
-                  <Typography className="text-[14.5px] font-bold text-navy">{lead.name}</Typography>
+                  <Typography className="text-[14.5px] font-bold text-navy">{displayName(lead)}</Typography>
                   {lead.hasVoice ? <MicIcon size={13} color="#8A98B0" strokeWidth={2} /> : null}
                 </View>
-                <Typography className="text-[12px] text-slate mt-[1px]">{lead.company || 'No company'} &middot; {lead.time}</Typography>
+                <Typography className="text-[12px] text-slate mt-[1px]">{displayCompany(lead)} &middot; {lead.time}</Typography>
               </View>
             </View>
           ))

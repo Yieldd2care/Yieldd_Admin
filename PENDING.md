@@ -2586,3 +2586,82 @@ in, or only hand-listed emails.
 - **Deliberate choices:** only an admin sees the action — a rep who could reassign could move a
   lead off their own name after a bad outcome, which is what the leaderboard is not for; and
   deactivated members are not offered, since a lead parked on them would be nobody's.
+
+---
+
+## Card scanning reworked: capture first, read afterwards (2026-09-15)
+
+**Done.** The confirm screen is gone. A rep photographs a card, adds a voice note,
+the event's custom fields and an optional product photo, and submits. The card is
+read by the sync drain, not on screen — so a capture made with no signal is
+complete work that finishes itself when the network returns.
+
+New: `app/(app)/capture/details.tsx`, `app/(app)/capture/processing.tsx`,
+`components/capture/VoiceRecorder.tsx`, `hooks/useVoiceRecorder.ts`,
+`hooks/useConnectivity.ts`, `lib/captureFiles.ts`, `lib/leadDisplay.ts`,
+`lib/connectivity.ts`. Deleted: `app/(app)/capture/confirm.tsx` — its company
+fields and the **AI company summary** moved to `app/(app)/leads/edit.tsx`, which
+is now the only place that feature is reachable from.
+
+### The second-photo trap above is CLOSED
+
+The earlier entry decided the back of the card would be "read and discarded"
+rather than pay for a second column plus four storage-policy amendments. The
+product photo is different — it is the rep's own work and nothing can reproduce
+it — so migration `20260915100000_lead_extra_photo.sql` pays that cost:
+`leads.extra_photo_path`, all four `card_images_*` policies widened to
+`(card_image_path = name or extra_photo_path = name)`, and partial indexes on
+both columns, which **nothing had before** — every signed-URL batch had been a
+sequential scan of `leads` since the bucket existed.
+
+`npm run verify:extra-photo` guards it. The check that matters most is the
+card-only lead with a NULL `extra_photo_path`: if the added disjunct mishandled
+NULL, that is every card image in the product, not just new ones.
+
+**The back of the card is still never uploaded.** It now rides on the draft as
+`StoredLead.localBackImageUri` purely so the extraction can still read both
+sides, and is dropped the moment extraction is done with it.
+
+### Five rules in `syncDrafts` that look like details and are not
+
+1. A transient extraction failure **`continue`s, never `break`s**. The insert's
+   `break` is right because "the rest will fail the same way" — true of a dead
+   connection, false of a rate-limited `extract-card`. Breaking there would
+   strand every other lead's insert, photo, recording and queued edit.
+2. Extracted fields are written to the device **before** the insert is
+   attempted, so a transient insert failure cannot cause the same card to be
+   read — and billed — twice.
+3. `addLead` now passes `syncDrafts(input.capturedBy)`. Without it the drain
+   skips its ownership filter and would spend a billed read on a capture
+   belonging to whoever was signed in before. RLS refuses the insert, but that
+   refusal arrives after the money is gone.
+4. The guard is strictly `extractionStatus === 'pending'`, a value only the new
+   `addLead` writes. Drafts queued before this change carry `undefined`, skip
+   extraction entirely, and keep the name the rep typed by hand.
+5. The drain does not extract while offline. Three dead attempts would push a
+   perfectly readable card into the "gave up" bucket for a reason that was never
+   about the card.
+
+### Files are copied out of the OS cache at capture time
+
+`lib/captureFiles.ts`. Previously the photo lived in `Paths.cache` and losing it
+cost a photo — the rep had already typed the name. Now the name comes only from
+the photo, so an eviction would be total, silent loss of a lead. Everything is
+copied into `{document}/captures/`, renamed to `captures/{leadId}/` once an id
+exists, and deleted once all four local URIs have cleared. `useCaptureDraftStore`
+is persisted for the same reason, and its header comment explains why the old
+"deliberately not persisted" reasoning reversed.
+
+### Known gap, accepted by the product owner
+
+**Nothing proof-reads the card reader.** A card that reads confidently but wrongly
+gets no warning anywhere; only a card that fails completely is marked. Asked and
+answered on 2026-09-15: no review step. `app/(app)/leads/review.tsx` already
+exists and is the cheapest place to add one if this bites.
+
+### Unrelated, found while running the suite
+
+`npm run verify:duplicate` fails at **fixture setup**, not on anything it tests:
+it invites a second rep into a fresh org, and the seat-limit trigger from
+`20260910100000` refuses because a new org has `seats_included = 1`. Pre-dates
+this work. The fixture needs to grant itself a seat before inviting.

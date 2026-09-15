@@ -70,8 +70,30 @@ export function useLeadActions(
     if (!outcome.ok) fail('Cannot call', outcome.message);
   };
 
+  /**
+   * A message must never go out with a blank name in it.
+   *
+   * Every default template opens `Hi {{name}},`, and since the capture rework a
+   * lead can legitimately exist with no name at all — the card was photographed
+   * but could not be read. Sending would put "Hi ," in front of a customer.
+   * This repo has already shipped that exact class of bug once, with a blank
+   * `{{event}}` going out in a follow-up.
+   *
+   * Calling is deliberately NOT gated: a phone call carries no template, and a
+   * rep ringing someone whose card did not scan is a perfectly good recovery.
+   */
+  const needsNameFirst = (): boolean => {
+    if (lead?.name?.trim()) return false;
+    fail(
+      'Add their name first',
+      'This card could not be read, so the message would go out addressed to nobody. Add a name on the lead and try again.'
+    );
+    return true;
+  };
+
   const whatsapp = async () => {
     if (!lead) return;
+    if (needsNameFirst()) return;
     const body = whatsappTemplate?.body ?? 'Hi {{name}}, great meeting you at {{event}}.';
     const outcome = await openWhatsApp(lead.phone, renderTemplate(body, mergeContext));
     if (!outcome.ok) {
@@ -92,6 +114,7 @@ export function useLeadActions(
 
   const email = async () => {
     if (!lead) return;
+    if (needsNameFirst()) return;
     if (!lead.email?.trim()) {
       fail('No email', 'This lead was captured without an email address.');
       return;
