@@ -103,24 +103,29 @@ eq(
 eq('normalizePhone would call a US number Indian', m.normalizePhone('4155550134'), '+914155550134');
 eq('normalizePhone mangles a short landline', m.normalizePhone('2493 1234'), '+24931234');
 
-// --- describePhoneProblem: the warning on the two invite screens ---
+// --- describePhoneProblem: the live warning on the two invite screens ---
 //
-// A WARNING, NEVER A GATE (PENDING 52, decided 2026-09-15). So the half that
-// matters most is the silent half: every shape below is one a real address book
-// holds and a dialler copes with, and every one of them creates an invite today.
-// If any of these starts warning, the screen is nagging about working numbers.
+// A WARNING, NEVER A GATE (PENDING 52). It is recomputed on every keystroke, so
+// the first thing to protect is the silent half: a number written in any of the
+// ordinary ways must go quiet the moment its tenth digit lands, or the screen is
+// nagging about numbers that work.
 const SILENT = [
   ['a bare Indian mobile', '9820441720'],
   ['the same with a country code', '+91 98204 41720'],
-  ['an extension written with x', '022 2493 1234 x 204'],
-  ['an extension written with ext', '+91 22 2493 1234 ext 45'],
-  ['a dial pause', '9820441720,,123'],
-  ['a semicolon pause', '9820441720;123'],
-  ['two numbers separated by a slash', '98204 41720 / 22 2493 1234'],
+  // The country code is taken off before counting, exactly as normalizePhone
+  // takes it off. Otherwise every number typed in full reads as "too long" —
+  // including the dashboard's own placeholder.
+  ['a country code with the plus forgotten', '919820441720'],
+  ['the domestic STD form with its leading zero', '098204 41720'],
+  ['brackets, dots and a leading zero', '(0982) 044.1720'],
   ['a unicode non-breaking hyphen', '+91 98204‑41720'],
   ['an en dash', '+91 98204–41720'],
+  // A visiting buyer. There is no honest way to tell someone from another
+  // country that their national number is the wrong length, so an explicit
+  // + that is not +91 is only measured against E.164.
   ['a US number', '+1 415-555-0134'],
-  ['brackets and dots', '(0982) 044.1720'],
+  ['a Singapore number', '+65 8123 4567'],
+  ['a UK mobile', '+44 7700 900123'],
   // Empty is not ready to send, but it is not wrong either, and saying so to
   // someone who has not typed anything yet helps nobody.
   ['an empty box', ''],
@@ -130,44 +135,64 @@ for (const [what, written] of SILENT) {
   eq(`${what} says nothing`, m.describePhoneProblem(written), null);
 }
 
-// --- and the half that must speak up ---
+// --- too short ---
+const SHORT = 'That looks too short for a phone number.';
+eq('three digits', m.describePhoneProblem('982'), SHORT);
+eq('nine digits, one short', m.describePhoneProblem('982044172'), SHORT);
+// normalizePhone turns this into +24931234 (asserted above), which belongs to
+// nobody — the STD code is genuinely missing, not merely terse.
+eq('a landline without its STD code', m.describePhoneProblem('2493 1234'), SHORT);
+eq('an overseas number under the E.164 floor', m.describePhoneProblem('+1 415'), SHORT);
+
+// --- too long ---
+//
+// Everything below is a real thing people write and a dialler copes with. The
+// wa.me link does not: it is built from the digits run together, so an extension
+// or a second number is carried into it and the message reaches nobody. Hence
+// warned about — and, as everywhere here, still sent if that is what they want.
+const LONG = 'That looks too long for a phone number.';
+eq('eleven digits, one over', m.describePhoneProblem('98204417201'), LONG);
+eq('an extension written with x', m.describePhoneProblem('022 2493 1234 x 204'), LONG);
+eq('an extension written with ext', m.describePhoneProblem('+91 22 2493 1234 ext 45'), LONG);
+eq('a dial pause', m.describePhoneProblem('9820441720,,123'), LONG);
+eq('two numbers separated by a slash', m.describePhoneProblem('98204 41720 / 22 2493 1234'), LONG);
+eq('an overseas number past the E.164 ceiling', m.describePhoneProblem('+1 4155550134555555'), LONG);
+
+// --- not a number at all ---
 const warns = (written) => typeof m.describePhoneProblem(written) === 'string';
 eq('a USSD service code warns', warns('*123#'), true);
 eq('a voicemail shortcut warns', warns('*99*1#'), true);
-eq('three digits warns', warns('982'), true);
 eq('letters with no number warns', warns('call me'), true);
-// 8 digits. normalizePhone turns it into +24931234 (asserted above), which
-// belongs to nobody — so the STD code is genuinely missing, not merely terse.
-eq('a landline without its STD code warns', warns('2493 1234'), true);
-eq('nine digits is still under the floor', warns('982044172'), true);
-eq('ten digits is exactly at the floor', warns('9820441720'), false);
-
-// Plain words, not "invalid" — this text is read by an admin mid-invite.
-eq(
-  'the short warning names the problem',
-  m.describePhoneProblem('982'),
-  'That looks too short for a phone number.'
-);
 eq(
   'a dial code is called a dial code',
   m.describePhoneProblem('*123#'),
   'That looks like a dial code, not a number a message can reach.'
 );
+
+// The tenth digit is the moment it goes quiet, and the eleventh the moment it
+// speaks again. This is the whole behaviour someone sees while typing.
+eq('nine digits speaks', warns('982044172'), true);
+eq('ten digits is silent', warns('9820441720'), false);
+eq('eleven digits speaks again', warns('98204417201'), true);
+
 // Item 37 took em dashes out of everything a user reads; this is new such text.
-for (const written of ['982', '*123#', 'call me']) {
+for (const written of ['982', '98204417201', '*123#', 'call me']) {
   eq(`no em dash in the warning for "${written}"`, m.describePhoneProblem(written).includes('—'), false);
 }
 
 // The normalised form is what the created-invite rows re-check, so the same
-// function has to read `+123` the same way it read `*123#`.
+// function has to read what was stored the way it read what was typed.
 eq('the warning survives normalisation', warns(m.normalizePhone('*123#')), true);
+eq('a good number is still silent once normalised', warns(m.normalizePhone('9820441720')), false);
 
 // --- the two checks are deliberately different, and that is the point ---
-// isValidPhone is a gate and stays strict; describePhoneProblem is a warning and
-// stays loose. If these ever agree, one of them has been "tidied up" and invites
-// that send today have started being refused.
-eq('isValidPhone refuses an extension', m.isValidPhone('022 2493 1234 x 204'), false);
-eq('the warning allows the same extension', m.describePhoneProblem('022 2493 1234 x 204'), null);
+// isValidPhone is a gate and stays strict: it REFUSES a value, so its callers
+// depend on it. describePhoneProblem only ever produces a sentence. If these are
+// ever collapsed into one, a gate inherits a warning's tolerance or a warning
+// inherits a gate's refusal, and both are wrong.
+eq('isValidPhone refuses an extension outright', m.isValidPhone('022 2493 1234 x 204'), false);
+eq('the warning only describes it', typeof m.describePhoneProblem('022 2493 1234 x 204'), 'string');
+eq('isValidPhone accepts a 15-digit string', m.isValidPhone('+123456789012345'), true);
 
 console.log(`\n${failed === 0 ? 'All checks passed.' : `${failed} check(s) FAILED.`}`);
 process.exit(failed ? 1 : 0);

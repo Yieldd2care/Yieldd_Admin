@@ -124,16 +124,6 @@ export default function DashTeam() {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<DraftRow[]>([{ name: '', phone: '' }]);
   const [created, setCreated] = useState<Invite[]>([]);
-  /**
-   * Which row's number box is being typed in, so the "looks too short" warning
-   * stays quiet until they leave it. A 10-digit mobile is too short for its
-   * first nine digits, and a warning that is up for almost every keystroke is
-   * one people learn to ignore.
-   *
-   * Every number here is typed: a browser cannot read the phone's contacts, so
-   * this screen has no picker and never will.
-   */
-  const [typingPhone, setTypingPhone] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<
     | { kind: 'deactivate' | 'restore'; id: string; name: string }
@@ -292,7 +282,10 @@ export default function DashTeam() {
 
           <View className="gap-3 mt-[18px]">
             {rows.map((r, i) => {
-              const problem = typingPhone === i ? null : describePhoneProblem(r.phone);
+              // Answered on every keystroke, not on leaving the field: the
+              // person is counting digits as they type and the reply belongs
+              // there. An empty box is never warned about.
+              const problem = describePhoneProblem(r.phone);
               return (
               <View key={i}>
                 <View className="flex-row gap-3 items-end">
@@ -312,18 +305,10 @@ export default function DashTeam() {
                       keyboardType="phone-pad"
                       warn={problem !== null}
                       onChangeText={(t) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, phone: t } : x)))}
-                      onFocus={() => setTypingPhone(i)}
-                      onBlur={() => setTypingPhone((at) => (at === i ? null : at))}
                     />
                   </View>
                   <Pressable
-                    onPress={() => {
-                      // Rows are identified by position, so dropping one shifts
-                      // every index below it. Forget which row was being typed
-                      // in, or the warning goes quiet on somebody else's row.
-                      setTypingPhone(null);
-                      setRows((rs) => (rs.length === 1 ? rs : rs.filter((_, j) => j !== i)));
-                    }}
+                    onPress={() => setRows((rs) => (rs.length === 1 ? rs : rs.filter((_, j) => j !== i)))}
                     className="h-[52px] px-4 items-center justify-center border border-hairline rounded-md bg-white"
                   >
                     <Typography className="text-[13px] font-semibold text-slate">Remove</Typography>

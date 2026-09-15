@@ -90,19 +90,6 @@ export default function InviteRepsScreen() {
    * later, while the admin is looking at four rows and deciding whether to send.
    */
   const [pickNote, setPickNote] = useState<Record<string, string>>({});
-  /**
-   * Which row's number box is being typed in right now.
-   *
-   * Only so the "that looks too short" warning can hold its tongue while
-   * someone is mid-number: a 10-digit mobile is too short for its first nine
-   * digits, and a warning that is on screen for almost every keystroke is one
-   * people stop reading. It appears when they leave the box and goes the
-   * instant they come back to fix it.
-   *
-   * A number arriving from the contacts picker never focuses the field, so it
-   * is warned about immediately — which is the case most likely to be wrong.
-   */
-  const [typingPhone, setTypingPhone] = useState<string | null>(null);
 
   // Load the contacts module now rather than on the tap. Reported 2026-09-14
   // as "opening contacts takes too long"; this takes the module's first-load
@@ -157,9 +144,6 @@ export default function InviteRepsScreen() {
     // Prune the note with the row, or a later row minted on the same id
     // inherits an explanation about somebody else.
     noteFor(id, null);
-    // Same reason: a removed row never blurs, so without this its id would stay
-    // "being typed in" and silence the warning on whichever row takes its place.
-    setTypingPhone((current) => (current === id ? null : current));
   };
 
   /**
@@ -342,8 +326,13 @@ export default function InviteRepsScreen() {
           ) : null}
 
           {reps.map((rep) => {
-            // Silent while this row is the one being typed in; see typingPhone.
-            const problem = typingPhone === rep.id ? null : describePhoneProblem(rep.phone);
+            /*
+              Recomputed on every keystroke, on purpose: the count is what the
+              person is watching, so it has to answer while they type rather
+              than wait for them to tap away. It says nothing about an empty
+              box, so a row nobody has started is never told off.
+            */
+            const problem = describePhoneProblem(rep.phone);
             return (
             <View key={rep.id} className="mb-3">
               <View className="flex-row gap-[10px]">
@@ -374,8 +363,6 @@ export default function InviteRepsScreen() {
                       // in the same tick it was written.
                       noteFor(rep.id, null);
                     }}
-                    onFocus={() => setTypingPhone(rep.id)}
-                    onBlur={() => setTypingPhone((id) => (id === rep.id ? null : id))}
                     keyboardType="phone-pad"
                   />
                 </View>

@@ -30,15 +30,28 @@ export function isValidPhone(value: string): boolean {
 const DIAL_CODE = /[*#]/;
 
 /**
- * The smallest number a WhatsApp invite can actually reach.
- *
- * Every reachable Indian number is 10 digits — a mobile, or a landline with its
- * STD code — and the invite goes out as a wa.me link, which needs the whole
- * number. So a landline typed without its STD code (`2493 1234`) is flagged,
- * which is right: normalizePhone turns it into `+24931234`, a number belonging
- * to nobody.
+ * The length of every reachable Indian number: a mobile, or a landline with its
+ * STD code. Not a preference — the invite goes out as a wa.me link, which needs
+ * the whole number and nothing else attached to it.
  */
-const REACHABLE_DIGITS = 10;
+const INDIAN_DIGITS = 10;
+
+/** E.164 allows 15 digits at most, and nothing real is under 8. */
+const E164_MAX = 15;
+const E164_MIN = 8;
+
+/**
+ * The number without its country code, so it can be measured against 10.
+ *
+ * Exactly the cases normalizePhone already recognises, deliberately: this warns
+ * about the number that function is about to produce, so the two must read an
+ * input the same way or the warning describes something nobody stored.
+ */
+function withoutCountryCode(digits: string): string {
+  if (digits.length === 12 && digits.startsWith(DEFAULT_COUNTRY_CODE)) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+  return digits;
+}
 
 /**
  * "Does this look like something a message could reach?", in plain words, or
@@ -53,16 +66,16 @@ const REACHABLE_DIGITS = 10;
  *                      can insist on a clean one (your own profile, settings).
  *
  *   describePhoneProblem   a warning, never a gate. The invite sends either
- *                      way. So it must NOT object to the shapes a real address
- *                      book holds and a dialler copes with: extensions (`x`,
- *                      `ext`), dial pauses (`,` `;`), a slash between two
- *                      numbers, unicode hyphens and en dashes. isValidPhone
- *                      rejects every one of those, so using it here would stop
- *                      numbers that send today — precisely what the decision on
- *                      PENDING 52 rules out.
+ *                      way, so this only ever produces a sentence to read. It
+ *                      counts digits rather than policing characters, which is
+ *                      what lets a number be written with dashes, brackets,
+ *                      unicode hyphens or a country code and still be measured.
  *
- * Hence counting digits rather than policing characters, and hence no upper
- * bound: `98204 41720 / 22 2493 1234` is two numbers in one box and both work.
+ * The count is what a wa.me link will be built from, which is the thing that
+ * decides whether a message arrives. So an extension (`... x 204`) or two
+ * numbers in one box (`98204 41720 / 22 2493 1234`) are called too long, and
+ * rightly: those extra digits are appended to the link, and the result reaches
+ * nobody. Saying so is not the same as refusing it, and nothing here refuses.
  *
  * Do not tighten isValidPhone to cover this, and do not loosen it either — its
  * callers depend on it refusing things.
@@ -79,7 +92,24 @@ export function describePhoneProblem(value: string | null | undefined): string |
 
   const digits = digitsOf(trimmed);
   if (!digits) return 'There are no digits in that, so no message can reach it.';
-  if (digits.length < REACHABLE_DIGITS) return 'That looks too short for a phone number.';
+
+  /**
+   * An overseas number is measured against E.164 and nothing else.
+   *
+   * National numbers are 7 digits in one country and 11 in the next, so there
+   * is no honest way to tell a visiting buyer their number is the wrong length.
+   * Only a number that is explicitly `+something-not-91` gets this treatment;
+   * bare digits are read as Indian, exactly as normalizePhone reads them.
+   */
+  if (trimmed.startsWith('+') && !digits.startsWith(DEFAULT_COUNTRY_CODE)) {
+    if (digits.length < E164_MIN) return 'That looks too short for a phone number.';
+    if (digits.length > E164_MAX) return 'That looks too long for a phone number.';
+    return null;
+  }
+
+  const national = withoutCountryCode(digits);
+  if (national.length < INDIAN_DIGITS) return 'That looks too short for a phone number.';
+  if (national.length > INDIAN_DIGITS) return 'That looks too long for a phone number.';
 
   return null;
 }
