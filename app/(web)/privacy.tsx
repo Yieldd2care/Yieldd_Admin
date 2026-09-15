@@ -21,7 +21,7 @@ export default function PrivacyScreen() {
   return (
     <LegalPage
       title="Privacy policy"
-      updated="31 August 2026"
+      updated="8 September 2026"
       intro="Yieldd captures leads at exhibitions. That means we hold information about two different groups of people — the people who use Yieldd, and the people whose business cards they scan. This policy covers both, and is specific about which is which."
     >
       <LegalHeading>Who we are</LegalHeading>
@@ -86,6 +86,37 @@ export default function PrivacyScreen() {
       </LegalBullet>
       <LegalBullet>
         Files an organisation attaches to its own follow-up message templates.
+      </LegalBullet>
+
+      <LegalHeading>What the app asks your permission for</LegalHeading>
+      <LegalText>
+        The app asks the device for these at the moment the feature needs them, never in advance.
+        You can refuse any of them and still use the rest of Yieldd, and you can change your mind
+        at any time in your phone&apos;s own settings.
+      </LegalText>
+      <LegalBullet>
+        <LegalStrong>Camera </LegalStrong>&mdash; to photograph a business card. That is its only
+        use; the camera is not opened anywhere else in the app.
+      </LegalBullet>
+      <LegalBullet>
+        <LegalStrong>Microphone </LegalStrong>&mdash; to record a voice note about a lead, only
+        while you are recording one.
+      </LegalBullet>
+      <LegalBullet>
+        <LegalStrong>Photos </LegalStrong>&mdash; to save a QR code or an event dashboard image to
+        your gallery, and to let you choose a picture for your digital business card. We do not
+        read your gallery for anything else.
+      </LegalBullet>
+      <LegalBullet>
+        <LegalStrong>Contacts </LegalStrong>&mdash; two separate things, and only one of them asks
+        your permission. Saving a lead to your phone book opens your phone&apos;s own new-contact
+        screen with the details filled in, and you confirm it there; that needs no permission at
+        all. Inviting a team member offers a &ldquo;Pick from my contacts&rdquo; button, and that
+        one does ask for contacts permission, because your phone will not hand over a contact
+        without it. We read only the single person you pick, and only to fill in their name and
+        number on the invite in front of you. Yieldd never reads the rest of your contact list,
+        and never uploads or stores it. Refuse the permission and everything else still works;
+        you type the number instead.
       </LegalBullet>
 
       <LegalHeading>How we use AI, and what leaves our systems</LegalHeading>
@@ -166,17 +197,32 @@ export default function PrivacyScreen() {
         cannot be undone.
       </LegalText>
       <LegalText>
-        <LegalLink href="/delete-account">What deletion removes, in full</LegalLink> — including
-        what is kept when a colleague carries on running the organisation, and how to ask if you
-        can no longer sign in.
+        <LegalLink href="/delete-account">Our account deletion page</LegalLink> sets out what
+        deletion removes in full, what is kept when a colleague carries on running the
+        organisation, and how to ask us to delete your account if you can no longer sign in.
       </LegalText>
 
       <LegalHeading>Your other rights</LegalHeading>
       <LegalText>
         You can ask us to show you what we hold about you, or correct it. Email <LegalMail /> and
         we will act within 30 days. If you are a rep, note that leads you captured belong to your
-        organisation&apos;s account, so a request about those goes to your admin — we will help
-        you reach the right person.
+        organisation&apos;s account, so a request about those goes to your admin &mdash; we will
+        help you reach the right person.
+      </LegalText>
+      <LegalText>
+        <LegalStrong>Withdrawing your consent. </LegalStrong>
+        Where we rely on your consent, you can take it back, and doing so is as easy as giving it
+        was. Turn off the camera, microphone or photo permission in your phone&apos;s settings, or
+        write to <LegalMail /> to withdraw consent for anything else. We will stop the processing
+        that depended on it; that may mean a feature no longer works, and it does not undo what
+        was lawfully done before you withdrew.
+      </LegalText>
+      <LegalText>
+        <LegalStrong>Nominating someone. </LegalStrong>
+        Under India&apos;s Digital Personal Data Protection Act you may nominate another person to
+        exercise these rights on your behalf if you die or become unable to exercise them
+        yourself. Email <LegalMail /> with their name and how to reach them and we will record the
+        nomination against your account.
       </LegalText>
 
       <LegalHeading>Security</LegalHeading>

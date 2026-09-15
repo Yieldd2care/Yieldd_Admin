@@ -63,6 +63,7 @@
     "web": "expo start --web",
     "db:status": "supabase migration list --linked",
     "db:rehearse": "node --env-file=.env scripts/rehearse-migration.mjs",
+    "seed:demo": "node --env-file=.env scripts/seed-demo-data.mjs",
     "db:push": "supabase db push --linked",
     "db:lint": "supabase db lint --linked --fail-on error",
     "db:types": "supabase gen types typescript --linked --schema public > types/database.ts",
@@ -94,6 +95,7 @@
     "verify:plan": "node scripts/verify-plan.mjs",
     "verify:lead-edit": "node scripts/verify-lead-edit.mjs",
     "verify:referral": "node scripts/verify-referral.mjs",
+    "verify:extra-photo": "node --env-file=.env scripts/verify-extra-photo.mjs",
     "verify:otp": "node --env-file=.env scripts/verify-otp-signup.mjs"
   },
   "private": true

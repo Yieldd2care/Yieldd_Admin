@@ -17,7 +17,7 @@ export default function TermsScreen() {
   return (
     <LegalPage
       title="Terms of use"
-      updated="31 August 2026"
+      updated="8 September 2026"
       intro="These are the terms you agree to when you use Yieldd. We have kept them short and in plain English, because terms nobody can read protect nobody."
     >
       <LegalHeading>Who this agreement is with</LegalHeading>
@@ -112,10 +112,11 @@ export default function TermsScreen() {
 
       <LegalHeading>Ending it</LegalHeading>
       <LegalText>
-        You can stop using Yieldd and ask us to close your account at any time by writing to{' '}
-        <LegalMail />. We may suspend or close an account that breaks these terms, particularly the
-        section about the leads you capture. Where it is reasonable to do so, we will warn you
-        first.
+        You can stop using Yieldd at any time. To close your account, use Settings &rsaquo; Delete
+        account in the app, or write to <LegalMail /> if you can no longer sign in. Closing an
+        account deletes its data, so export anything you want to keep first. We may suspend or
+        close an account that breaks these terms, particularly the section about the leads you
+        capture. Where it is reasonable to do so, we will warn you first.
       </LegalText>
 
       <LegalHeading>Liability</LegalHeading>
