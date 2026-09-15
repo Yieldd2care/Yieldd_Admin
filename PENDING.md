@@ -34,15 +34,15 @@ Full diagnosis for each is in its numbered section below.
 | 33b | Referral — "where did you hear about us" + sub-lists | `[x]` done 2026-09-14 |
 | 33c | Skip on every onboarding screen | `[x]` done 2026-09-14 — every screen that should take one now does; the two older screens take none by decision |
 | 33d | First-run tutorial on Home (collage + Next) | `[x]` done 2026-09-14 |
-| 34 | Password fields need a show/hide eye icon | `[ ]` |
+| 34 | Password fields need a show/hide eye icon | `[x]` done 2026-09-12 — one shared input, so every password box got it at once |
 | 35 | Bottom content behind the Android nav bar (Samsung Ultra 26) | `[ ]` needs testing on that handset |
-| 36 | No confirmation the front of the card was captured | `[ ]` |
+| 36 | No confirmation the front of the card was captured | `[x]` done 2026-09-12 — ticked thumbnail beside the shutter, tap to retake |
 | 37 | Remove em dashes from app content | `[ ]` scope question: docs and comments too? |
-| 38 | Invite reps from the phone's contacts | `[x]` 2026-09-14 — done; no permission asked for, nothing outside the feature moved |
-| 39 | Lock icon and explanation on paid features | `[ ]` |
+| 38 | Invite reps from the phone's contacts | `[x]` done 2026-09-14 — **that "no permission" note was wrong, see 60**: the picker opens without one but reading the chosen contact needs READ_CONTACTS. It is now requested, which is what created 62 |
+| 39 | Lock icon and explanation on paid features | `[x]` done 2026-09-12 — `lib/plan.ts`; no price and no pay button, asserted in `verify:plan` |
 | 40 | "Needs a note" ignores voice notes | `[ ]` needs a decision on what it means |
 | 41 | Save-to-contacts icon does nothing | `[ ]` cause unknown, needs a device log |
-| 42 | Show the captured card in the list; make lead details editable | `[ ]` |
+| 42 | Show the captured card in the list; make lead details editable | `[x]` done 2026-09-12 — card shown in list and whole on the lead; edit form sends only what moved |
 
 **Reported 2026-09-14 — not started**
 
@@ -50,7 +50,7 @@ Full diagnosis for each is in its numbered section below.
 |---|---|---|
 | 45 | Web dashboard — Leads and Follow-ups showed nothing | `[x]` done 2026-09-14 |
 | 43 | Record where each lead was captured and show it on a map | `[ ]` now covers coordinates **and** the resolved address; needs decisions on scope, map provider and privacy |
-| 46 | Pipeline chart bars should open the leads behind them | `[ ]` needs a status filter on the leads list first |
+| 46 | Pipeline chart bars should open the leads behind them | `[x]` done 2026-09-14 — leads list now takes a `status` param |
 | 47 | Export CSV carries no deal value | `[ ]` decide one column or two; must stay admin-only |
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
 | 49 | "New template" is silent, and creates a default not a draft | `[ ]` **web dashboard only** |
