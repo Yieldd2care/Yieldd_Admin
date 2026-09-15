@@ -37,10 +37,10 @@ Full diagnosis for each is in its numbered section below.
 | 34 | Password fields need a show/hide eye icon | `[x]` done 2026-09-12 — one shared input, so every password box got it at once |
 | 35 | Bottom content behind the Android nav bar (Samsung Ultra 26) | `[ ]` needs testing on that handset |
 | 36 | No confirmation the front of the card was captured | `[x]` done 2026-09-12 — ticked thumbnail beside the shutter, tap to retake |
-| 37 | Remove em dashes from app content | `[ ]` scope question: docs and comments too? |
+| 37 | Remove em dashes from app content | `[ ]` **decided 2026-09-15: everything a user reads** — app screens, templates, /privacy, /terms. Code comments and internal docs stay |
 | 38 | Invite reps from the phone's contacts | `[x]` done 2026-09-14 — **that "no permission" note was wrong, see 60**: the picker opens without one but reading the chosen contact needs READ_CONTACTS. It is now requested, which is what created 62 |
 | 39 | Lock icon and explanation on paid features | `[x]` done 2026-09-12 — `lib/plan.ts`; no price and no pay button, asserted in `verify:plan` |
-| 40 | "Needs a note" ignores voice notes | `[ ]` needs a decision on what it means |
+| 40 | "Needs a note" ignores voice notes | `[ ]` **decided 2026-09-15: a voice note clears the flag** |
 | 41 | Save-to-contacts icon does nothing | `[ ]` cause unknown, needs a device log |
 | 42 | Show the captured card in the list; make lead details editable | `[x]` done 2026-09-12 — card shown in list and whole on the lead; edit form sends only what moved |
 
@@ -49,17 +49,17 @@ Full diagnosis for each is in its numbered section below.
 | # | Item | Status |
 |---|---|---|
 | 45 | Web dashboard — Leads and Follow-ups showed nothing | `[x]` done 2026-09-14 |
-| 43 | Record where each lead was captured and show it on a map | `[ ]` now covers coordinates **and** the resolved address; needs decisions on scope, map provider and privacy |
+| 43 | Record where each lead was captured and show it on a map | `[ ]` **decided 2026-09-15: build it, coordinates + address, using the free on-device geocoder first** — Google only for iOS later, and only if real venue addresses come back poor |
 | 46 | Pipeline chart bars should open the leads behind them | `[x]` done 2026-09-14 — leads list now takes a `status` param |
-| 47 | Export CSV carries no deal value | `[ ]` decide one column or two; must stay admin-only |
+| 47 | Export CSV carries no deal value | `[ ]` **decided 2026-09-15: two columns, expected and won**, admin-only and enforced on the server |
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
 | 49 | "New template" is silent, and creates a default not a draft | `[ ]` **web dashboard only** |
 | 50 | Home — all-events analytics with an event picker | `[x]` done 2026-09-14 — `event_set_stats`; no cost-per-lead, ROI covers priced events only |
 | 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
-| 52 | An invite counts as ready with a number that is not one | `[ ]` surfaced by 38; changes typed invites too, so needs a decision |
+| 52 | An invite counts as ready with a number that is not one | `[ ]` **decided 2026-09-15: warn, never block** — nothing that sends today stops sending |
 | 53 | iOS ships a contacts permission string it never uses | `[ ]` surfaced by 38; App Store Review reads it, no user ever sees it |
-| 54 | Ask for the event cost when the show ends | `[ ]` surfaced by 50; the cost is not known at creation time |
-| 55 | "This event cost nothing" is not something you can say | `[ ]` surfaced by 50; unset and zero are the same row today |
+| 54 | Ask for the event cost when the show ends | `[ ]` **decided 2026-09-15: wizard unchanged; notify the admin after the end date, naming the blank lines** |
+| 55 | "This event cost nothing" is not something you can say | `[ ]` **decided 2026-09-15: free events do happen — build the tick** |
 | 56 | Abandoned signups leave an empty organisation behind | `[ ]` surfaced by 33a; the account is made when the code is sent |
 | 57 | Code email's subject still said "Your sign-in link" | `[x]` done 2026-09-14 |
 | 58 | After the code, ask ONLY for a password | `[ ]` 2026-09-14 — name, company and number move to the digital-card step |
@@ -87,6 +87,41 @@ this table gets started until the launch queue above is clear.
 | — | App Links | Android SHA-256 fingerprint + Apple Team ID |
 | — | EAS build | A Yieldd-owned Expo account (blocks Google sign-in testing) |
 | ~~27a~~ | ~~Play billing~~ | **DECIDED 2026-09-08 — sell on yieldd.co only. Not blocked any more; it is now code to remove.** |
+
+**Decisions taken 2026-09-15** — answers to the open questions on 37, 40, 43, 47, 52, 54 and 55.
+Recorded here because they were given in conversation and existed nowhere else.
+
+- **37 — em dashes.** Everything a user reads: app screen text, buttons, messages, the message
+  templates, and /privacy and /terms. Code comments and internal documents including this file are
+  explicitly out of scope — several thousand lines of churn with no user-visible effect.
+- **40 — voice notes.** A voice note counts as having noted the conversation and clears
+  `needsNote`. The filter keeps its current label. Note voice is a Pro feature, so this only
+  changes anything for a paid account.
+- **47 — export money.** Two columns, expected and won, never one combined. Expected sums
+  Qualified + Won, won sums Won alone; a single column mixing a forecast with a closed deal is how
+  a finance team gets misled. Admin-only, decided on the server, for the reason in 47's section.
+- **52 — invite numbers.** Warn, never block. An odd-looking number shows a warning and the invite
+  can still be sent. Chosen specifically so that nothing which sends today stops sending: the
+  existing validator rejects extensions, dial pauses, slashes and unicode hyphens, all of which
+  appear in real address books.
+- **54 — when the cost is asked for.** The creation wizard stays exactly as it is; the user was
+  explicit that the flow is correct. What is added is a notification after the event's end date
+  telling the admin **which cost lines are still blank**, by name, not a generic "add your costs".
+  A line set to 0 is an answer and is never chased again; a blank line is unanswered and is. This
+  is the same distinction the schema already keeps one level down, so no migration is needed for
+  it — see 55.
+- **55 — free events.** They do happen: sponsored stalls, guest passes, a stand someone else paid
+  for. Build the single "this event cost nothing" tick that writes explicit zeros across the seven
+  components. No schema change; the components already carry unset-versus-zero.
+- **43 — lead location.** Build it, with both coordinates and the resolved address. Use
+  `expo-location`'s own `reverseGeocodeAsync`, which runs on the device and costs nothing: no
+  Google Cloud account, no API key, no billing, no quota. Android's built-in geocoder is Google
+  underneath already, so only iPhone would gain anything from paying, and that is the only case
+  worth revisiting. If real venue addresses come back poor on iOS, switch iOS alone to the
+  Geocoding API then — the address is resolved once at capture and stored, so it is one function.
+  For reference if that ever happens: 10,000 free calls a month, then about $5 per 1,000. At
+  ~300 cards a show that is ~30 shows in one month before a bill starts. A key shipped in a mobile
+  app must be restricted to the app and given a quota cap, or a leak or a loop is billable.
 
 **Decisions taken 2026-09-02:** edit-event covers everything asked at creation · back of card is
 an optional second shot, not compulsory · branch address becomes a new field.
