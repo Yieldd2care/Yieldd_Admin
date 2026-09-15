@@ -72,6 +72,34 @@ export async function recordSend(input: {
   if (error && __DEV__) console.warn('[messageSends] recordSend', error);
 }
 
+/**
+ * How many messages have gone out to one lead, per channel.
+ *
+ * Feeds the counts on the dashboard's quick-action buttons — "WhatsApp 2"
+ * beside the button that sends the next one. `skipped` rows are left out
+ * deliberately: the rep was offered that message and declined it, so counting
+ * it would say they made contact when they chose not to.
+ */
+export async function fetchSendCounts(leadId: string): Promise<Record<MessageChannel, number>> {
+  const empty: Record<MessageChannel, number> = { whatsapp: 0, email: 0 };
+
+  const { data, error } = await supabase
+    .from('message_sends')
+    .select('channel')
+    .eq('lead_id', leadId)
+    .eq('status', 'sent');
+
+  if (error) {
+    if (__DEV__) console.warn('[messageSends] fetchSendCounts', error);
+    return empty;
+  }
+
+  return (data as { channel: MessageChannel }[]).reduce((counts, row) => {
+    counts[row.channel] = (counts[row.channel] ?? 0) + 1;
+    return counts;
+  }, empty);
+}
+
 /** Lead ids this person has already been sent something on, for the given channel. */
 export async function fetchSentLeadIds(channel?: MessageChannel): Promise<Set<string>> {
   let query = supabase.from('message_sends').select('lead_id').eq('status', 'sent');
