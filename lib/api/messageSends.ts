@@ -72,6 +72,17 @@ export async function recordSend(input: {
   if (error && __DEV__) console.warn('[messageSends] recordSend', error);
 }
 
+/*
+ * A fetchSendCounts() lived here, counting sends per channel for a "WhatsApp 2"
+ * badge on the lead panel's quick actions. Removed on 2026-09-15 at the user's
+ * request, along with the badges it fed.
+ *
+ * Worth knowing before writing it again: the number it produced was not the
+ * question a rep asks. The activity list answers "have I reached this person"
+ * from recorded outcomes, whereas a counter incremented when a WhatsApp link is
+ * opened counts intentions. That is why Call keeps a count and these two do not.
+ */
+
 /** Lead ids this person has already been sent something on, for the given channel. */
 export async function fetchSentLeadIds(channel?: MessageChannel): Promise<Set<string>> {
   let query = supabase.from('message_sends').select('lead_id').eq('status', 'sent');
