@@ -13,7 +13,6 @@ import { useTeam } from '../../hooks/useTeam';
 import { useLeadActions } from '../../hooks/useLeadActions';
 import { fetchEventFields } from '../../lib/api/eventFields';
 import { fetchVoiceNotes, type VoiceNote } from '../../lib/api/voiceNotes';
-import { fetchSendCounts } from '../../lib/api/messageSends';
 import { summariseCompany } from '../../lib/api/companySummary';
 import { activityLabel, fetchLeadActivity, logLeadActivity, OUTCOME_FROM_LABEL, type LeadActivity } from '../../lib/api/leadActivity';
 import type { CustomFieldDef } from '../../stores/useEventFieldsStore';
@@ -106,7 +105,6 @@ export function LeadDetail({ leadId }: { leadId: string }) {
   const [fieldDefs, setFieldDefs] = useState<CustomFieldDef[]>([]);
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
   const [activity, setActivity] = useState<LeadActivity[]>([]);
-  const [sends, setSends] = useState<{ whatsapp: number; email: number }>({ whatsapp: 0, email: 0 });
   const [copied, setCopied] = useState(false);
 
   // The company summary, asked for rather than fetched on open.
@@ -150,7 +148,6 @@ export function LeadDetail({ leadId }: { leadId: string }) {
     let off = false;
     fetchVoiceNotes(leadId).then((v) => !off && setVoiceNotes(v)).catch(() => {});
     fetchLeadActivity(leadId).then((a) => !off && setActivity(a)).catch(() => {});
-    fetchSendCounts(leadId).then((c) => !off && setSends(c)).catch(() => {});
     return () => {
       off = true;
     };
@@ -314,17 +311,24 @@ export function LeadDetail({ leadId }: { leadId: string }) {
         </View>
 
         <View className="flex-row flex-wrap gap-2 mt-[18px] pt-[16px] border-t border-hairline">
+          {/*
+            No "sent 2" count on WhatsApp or Email, by decision 2026-09-15.
+
+            A fetchSendCounts() was written to put one there and was dropped
+            before it shipped. The count it showed was not the question a rep
+            asks — "have I contacted this person" is answered by the activity
+            list below, which records outcomes rather than button presses, and
+            a number that goes up every time a link is opened counts intentions,
+            not conversations. Call keeps its count because that one comes from
+            recorded activity, not from a tap.
+          */}
           <QuickAction
             label="WhatsApp"
             icon={ICON.whatsapp}
-            count={sends.whatsapp}
             tone="gold"
             href={actions.canWhatsApp ? actions.whatsappHref : undefined}
             disabled={!actions.canWhatsApp}
-            onPress={() => {
-              actions.noteWhatsAppOpened();
-              setSends((s) => ({ ...s, whatsapp: s.whatsapp + 1 }));
-            }}
+            onPress={() => actions.noteWhatsAppOpened()}
           />
           <QuickAction
             label="Call"
@@ -336,10 +340,8 @@ export function LeadDetail({ leadId }: { leadId: string }) {
           <QuickAction
             label="Email"
             icon={ICON.mail}
-            count={sends.email}
             href={lead.email ? `mailto:${lead.email}` : undefined}
             disabled={!actions.canEmail}
-            onPress={() => setSends((s) => ({ ...s, email: s.email + 1 }))}
           />
           <QuickAction label="Save contact" icon={ICON.user} onPress={() => void actions.saveToContacts()} />
           {noteCount ? (
