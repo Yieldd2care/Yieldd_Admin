@@ -51,7 +51,7 @@ Full diagnosis for each is in its numbered section below.
 | 45 | Web dashboard — Leads and Follow-ups showed nothing | `[x]` done 2026-09-14 |
 | 43 | Record where each lead was captured and show it on a map | `[ ]` **decided 2026-09-15: build it, coordinates + address, using the free on-device geocoder first** — Google only for iOS later, and only if real venue addresses come back poor |
 | 46 | Pipeline chart bars should open the leads behind them | `[x]` done 2026-09-14 — leads list now takes a `status` param |
-| 47 | Export CSV carries no deal value | `[ ]` **decided 2026-09-15: two columns, expected and won**, admin-only and enforced on the server |
+| 47 | Export CSV carries no deal value | `[x]` done 2026-09-15 — two columns, Expected and Won, admin-only and **enforced in the database**. The report's premise was wrong in a way that mattered: the column already existed and was ungated, so a rep could tick it and export deal values |
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
 | 49 | "New template" is silent, and creates a default not a draft | `[x]` done 2026-09-15 — web dashboard only; `addNew` now selects the new row and opens its editor, and creates it with `is_default: false` |
 | 50 | Home — all-events analytics with an event picker | `[x]` done 2026-09-14 — `event_set_stats`; no cost-per-lead, ROI covers priced events only |
@@ -787,23 +787,64 @@ purely a link:
 
 ---
 
-### 47. Export CSV has no deal-value column — reported 2026-09-14 `[ ]`
+### 47. Export CSV has no deal-value column — reported 2026-09-14 `[x]` done 2026-09-15
 
 **Asked for:** the export must carry the money — the value on leads that are Qualified or Won.
 
-The exporter is [lib/api/exportLeads.ts](lib/api/exportLeads.ts). The column simply is not in the
-output today, so the file an exhibitor hands their finance team has the pipeline in it but not what
-the pipeline is worth.
+**The report's premise was wrong, and the truth was worse.** It said the column "simply is not in
+the output". It was: `ExportColumns.dealValue` existed, both export screens rendered a "Deal value"
+tick, and `buildLeadsCsv` wrote `deal_value_paisa` straight out of the row with **no admin check
+anywhere in the path**. Neither screen read `role`. So this was never a missing feature, it was a
+live leak, and anyone reading only the report would have shipped the fix without closing it.
 
-**The one rule this cannot break:** `event_stats` returns money as NULL for a rep, deliberately —
-who captured how many is a leaderboard permission, what the deals are worth is not. An export that
-writes `deal_value_paisa` straight from the row would hand a rep exactly the number the RPC spent
-three migrations withholding. The column has to be **admin-only in the export too**, decided on the
-server, not hidden in the client.
+**A rep could reach that tick on three ungated routes**, all confirmed in the code before the fix:
+the phone event dashboard's "Export leads" button (gated only on `totalLeads > 0`), Profile →
+Export leads → [settings/export.tsx](app/(app)/settings/export.tsx) (no gate at all), and the web
+dashboard's Export page (`DashShell`'s `NAV` is not role-filtered). They then got deal values for
+every lead `leads_select_own_or_admin` let them read.
 
-Also settle: one column, or two (expected vs closed)? `expected_value_paisa` sums Qualified + Won
-and `won_value_paisa` sums Won alone, and a single "Deal value" column that mixes a forecast with a
-closed deal is how a finance team is misled. Two columns is the honest answer.
+**The gate ended up in the database, not the client.**
+[20260915130000_export_leads_money.sql](supabase/migrations/20260915130000_export_leads_money.sql)
+adds `public.export_leads(...)`, which returns the rows the CSV writes with the two value columns
+and the close date as NULL unless `public.is_admin()`. `buildLeadsCsv` now calls it instead of
+`.from('leads').select()`.
+
+**It is `security invoker`, and it is the only function in `supabase/migrations/` that is.** That is
+deliberate and should not be "corrected" later. `event_stats` is `security definer` *because it has
+to widen visibility* — a rep must get the event's real total, not their own fraction. The export
+needs the exact opposite: a rep exports their own leads and an admin the organisation's. Under
+definer, RLS is bypassed and `leads_select_own_or_admin` would have to be copied into the body by
+hand, where one mistake turns an export into a whole-organisation leak. Invoker keeps one copy of
+the rule, and `voice_notes_select` goes on applying to the transcript join for free.
+
+**Two columns, never one**, using the definitions
+[20260902140000](supabase/migrations/20260902140000_qualified_deal_value.sql) already sets:
+Expected is Qualified **or** Won, Won is Won alone, Lost is in neither. So a qualified lead fills
+Expected and leaves Won blank; a won lead fills both. "Closed on" moved to sit with Won and is now
+blank for anything else — the deal-value sheet deliberately keeps the old date when a won lead is
+re-qualified, so without that the file printed a closing date beside an empty Won cell.
+
+**`money_visible` is why a rep gets no money columns rather than three empty ones.** The row carries
+it, the server sets it, and the headers are dropped when it is false. That is what makes the outcome
+safe for *every* caller rather than only the two screens — [roi.tsx](app/(dash)/events/[id]/roi.tsx)
+is a third `buildLeadsCsv` caller and was safe before this only by the accident of
+`DEFAULT_COLUMNS.dealValue` being `false`.
+
+The tick is also hidden from a rep on both screens, with the line "Deal values are included for
+admins only." underneath, and `isColumnOffered` / `effectiveColumns` in
+[lib/exportRows.ts](lib/exportRows.ts) are shared by both so the phone and the dashboard cannot
+drift apart.
+
+**What this does NOT do.** A rep can still read `deal_value_paisa` off their own leads directly: the
+leads list shows `₹` per lead and the deal-value sheet is how a rep enters the number in the first
+place. Revoking SELECT on the column would break both screens. What is closed is the export path,
+and the decision now lives in SQL where the next caller cannot forget it. `verify:export-live`
+asserts both halves, including the limitation, so nobody later reads this as airtight.
+
+Covered by `npm run verify:export` (24 checks, offline) and `npm run verify:export-live` (20 checks,
+against the live database, admin and rep). The live one also pins the LATERAL in the transcript
+join: a lead with two voice notes must come back **once**, and a plain left join would have
+duplicated the row silently.
 
 ---
 

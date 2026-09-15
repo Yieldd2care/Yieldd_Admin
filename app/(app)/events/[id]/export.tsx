@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
@@ -14,10 +14,13 @@ import { fetchEventFields } from '../../../../lib/api/eventFields';
 import {
   buildLeadsCsv,
   DEFAULT_COLUMNS,
+  effectiveColumns,
+  isColumnOffered,
   type ExportColumns,
   type ExportScope,
 } from '../../../../lib/api/exportLeads';
 import { csvFilename } from '../../../../lib/csv';
+import { useSessionStore } from '../../../../stores/useSessionStore';
 
 type ScopeKind = 'event' | 'range' | 'won';
 
@@ -25,7 +28,7 @@ const FIELD_ROWS: { key: keyof ExportColumns; label: string }[] = [
   { key: 'identity', label: 'Name, company, designation' },
   { key: 'contact', label: 'Phone & email' },
   { key: 'statusAndFollowUp', label: 'Status, follow-up date & note' },
-  { key: 'dealValue', label: 'Deal value' },
+  { key: 'dealValue', label: 'Deal value (expected and won)' },
   { key: 'transcript', label: 'Voice note transcript' },
   { key: 'customFields', label: 'Your custom fields' },
 ];
@@ -41,6 +44,15 @@ export default function ExportScreen() {
   const [columns, setColumns] = useState<ExportColumns>(DEFAULT_COLUMNS);
   const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({});
   const [isBusy, setIsBusy] = useState(false);
+
+  // Money is admin-only and the database enforces it: `export_leads` returns the
+  // value columns as NULL for a rep. The row is hidden here as well, because a
+  // tick that produces three empty columns is worse than no tick at all.
+  const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
+  const fieldRows = useMemo(
+    () => FIELD_ROWS.filter((row) => isColumnOffered(row.key, isAdmin)),
+    [isAdmin]
+  );
 
   // The labels for the custom-field columns, so a header is "Budget range"
   // rather than a UUID.
@@ -68,7 +80,10 @@ export default function ExportScreen() {
   ];
 
   const rangeReady = scope !== 'range' || (from !== null && to !== null);
-  const anyColumn = Object.values(columns).some(Boolean);
+  // Derived from the effective set, not the raw flags: a column that will not be
+  // written must not be able to enable the button on its own either.
+  const effective: ExportColumns = effectiveColumns(columns, isAdmin);
+  const anyColumn = Object.values(effective).some(Boolean);
 
   const generate = async () => {
     if (isBusy || !rangeReady || !anyColumn) return;
@@ -88,7 +103,7 @@ export default function ExportScreen() {
                 to: new Date((to as Date).setHours(23, 59, 59, 999)).toISOString(),
               };
 
-      const { csv, rowCount } = await buildLeadsCsv(selection, columns, fieldLabels);
+      const { csv, rowCount } = await buildLeadsCsv(selection, effective, fieldLabels);
 
       if (!rowCount) {
         Alert.alert('Nothing to export', 'No leads match that selection.');
@@ -167,11 +182,11 @@ export default function ExportScreen() {
           Fields to include
         </Typography>
         <View className="bg-white border border-hairline rounded-2xl px-4 mb-6">
-          {FIELD_ROWS.map((row, i) => (
+          {fieldRows.map((row, i) => (
             <Pressable
               key={row.key}
               onPress={() => setColumns((c) => ({ ...c, [row.key]: !c[row.key] }))}
-              className={`flex-row items-center justify-between py-[13px] ${i < FIELD_ROWS.length - 1 ? 'border-b border-section' : ''}`}
+              className={`flex-row items-center justify-between py-[13px] ${i < fieldRows.length - 1 ? 'border-b border-section' : ''}`}
             >
               <Typography className="text-[13.5px] font-semibold text-navy">{row.label}</Typography>
               <View
@@ -181,6 +196,11 @@ export default function ExportScreen() {
               </View>
             </Pressable>
           ))}
+          {!isAdmin ? (
+            <Typography className="text-[11.5px] text-slate pb-[13px] leading-[1.45]">
+              Deal values are included for admins only.
+            </Typography>
+          ) : null}
         </View>
 
         <Typography className="text-[10px] font-bold tracking-[0.12em] text-slate mb-3" style={{ textTransform: 'uppercase' }}>

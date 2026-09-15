@@ -1177,6 +1177,38 @@ export type Database = {
           won_value_paisa: number
         }[]
       }
+      export_leads: {
+        Args: {
+          p_event_id?: string
+          p_from?: string
+          p_to?: string
+          p_with_transcript?: boolean
+          p_won_only?: boolean
+        }
+        Returns: {
+          branch_address: string
+          company: string
+          company_address: string
+          company_landline: string
+          company_website: string
+          consent_given: boolean
+          created_at: string
+          custom_field_values: Json
+          deal_closed_at: string
+          designation: string
+          email: string
+          expected_value_paisa: number
+          follow_up_date: string
+          full_name: string
+          money_visible: boolean
+          note: string
+          phone: string
+          status: Database["public"]["Enums"]["lead_status"]
+          voice_summary: string
+          voice_transcript: string
+          won_value_paisa: number
+        }[]
+      }
       find_duplicate_lead: {
         Args: { p_event_id: string; p_phone: string }
         Returns: {

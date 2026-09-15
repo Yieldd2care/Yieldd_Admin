@@ -6,9 +6,17 @@ import { Cap, Empty, GoldButton, Panel, Pill } from '../../components/dash/primi
 import { Typography } from '../../components/ui/Typography';
 import { DateField } from '../../components/app/DateField';
 import { useEvents, useCurrentEvent } from '../../hooks/useEvents';
-import { buildLeadsCsv, DEFAULT_COLUMNS, type ExportColumns, type ExportScope } from '../../lib/api/exportLeads';
+import {
+  buildLeadsCsv,
+  DEFAULT_COLUMNS,
+  effectiveColumns,
+  isColumnOffered,
+  type ExportColumns,
+  type ExportScope,
+} from '../../lib/api/exportLeads';
 import { fetchEventFields } from '../../lib/api/eventFields';
 import { csvFilename } from '../../lib/csv';
+import { useSessionStore } from '../../stores/useSessionStore';
 
 type ScopeKind = 'event' | 'range' | 'won';
 
@@ -20,7 +28,7 @@ const FIELD_ROWS: { key: keyof ExportColumns; label: string; detail: string }[] 
   { key: 'identity', label: 'Name, company, designation', detail: 'Who they are' },
   { key: 'contact', label: 'Phone and email', detail: 'Plus landline, website, address, branch address' },
   { key: 'statusAndFollowUp', label: 'Status, follow-up date and note', detail: 'Where the lead has got to' },
-  { key: 'dealValue', label: 'Deal value', detail: 'And the date it closed' },
+  { key: 'dealValue', label: 'Deal value (expected and won)', detail: 'Two columns, plus the date it closed' },
   { key: 'transcript', label: 'Voice note transcript', detail: 'The largest column, slow on hall wifi' },
   { key: 'customFields', label: 'Your custom fields', detail: 'Headers use the labels you set' },
 ];
@@ -56,6 +64,15 @@ export default function DashExport() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Money is admin-only and the database enforces it: `export_leads` returns the
+  // value columns as NULL for a rep. The row is hidden here as well, because a
+  // tick that produces three empty columns is worse than no tick at all.
+  const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
+  const fieldRows = useMemo(
+    () => FIELD_ROWS.filter((f) => isColumnOffered(f.key, isAdmin)),
+    [isAdmin]
+  );
+
   // Start on whatever the app is pointed at, then let them pick.
   useEffect(() => {
     if (!eventId && current) setEventId(current.id);
@@ -78,7 +95,10 @@ export default function DashExport() {
     };
   }, [eventId]);
 
-  const anyColumn = Object.values(columns).some(Boolean);
+  // Derived from the effective set, not the raw flags: a column that will not be
+  // written must not be able to enable the button on its own either.
+  const effective: ExportColumns = effectiveColumns(columns, isAdmin);
+  const anyColumn = Object.values(effective).some(Boolean);
   const rangeReady = scope !== 'range' || (from !== null && to !== null);
   const canDownload = anyColumn && rangeReady && !busy && (scope !== 'event' || Boolean(eventId));
 
@@ -101,7 +121,7 @@ export default function DashExport() {
                 eventId: eventId ?? undefined,
               };
 
-      const { csv, rowCount } = await buildLeadsCsv(selection, columns, fieldLabels);
+      const { csv, rowCount } = await buildLeadsCsv(selection, effective, fieldLabels);
       if (!rowCount) {
         setMessage('No leads match that selection.');
         return;
@@ -198,7 +218,7 @@ export default function DashExport() {
           <Panel className="p-[22px]">
             <Typography className="text-[17px] font-bold text-navy">Columns</Typography>
             <View className="mt-2">
-              {FIELD_ROWS.map((f) => (
+              {fieldRows.map((f) => (
                 <Check
                   key={f.key}
                   on={columns[f.key]}
@@ -208,6 +228,11 @@ export default function DashExport() {
                 />
               ))}
             </View>
+            {!isAdmin ? (
+              <Typography className="text-[11.5px] text-label mt-1 leading-[1.5]">
+                Deal values are included for admins only.
+              </Typography>
+            ) : null}
             {!anyColumn ? (
               <Typography className="text-[11.5px] text-[#C23B3B] font-semibold mt-2">
                 Pick at least one column.
