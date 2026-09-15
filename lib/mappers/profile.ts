@@ -5,6 +5,7 @@
 // the UI says `name`.
 
 import type { AccountIntent, User } from '../../types/session';
+import { realCompanyName } from '../placeholders';
 
 /** The exact column list refreshProfile() selects. Keep the two in step. */
 export const PROFILE_SELECT =
@@ -59,7 +60,24 @@ export function toSessionUser(row: ProfileRow): User {
     id: row.id,
     email: row.email,
     name: row.full_name,
-    company: org?.name ?? '',
+    /**
+     * Empty while the organisation still has the name the signup trigger gave
+     * it. THIS IS THE ONE PLACE THAT GUARANTEES IT, and it is here rather than
+     * at each screen because there are eleven places that render a company and
+     * only this one seam they all come through.
+     *
+     * Since #58 the company is asked for on the card editor, so an admin can
+     * reach the app — and invite their first rep — before replacing it, and
+     * app/invite.tsx would then put "My workspace" in the largest text on the
+     * screen of someone who does not work there yet. Everything downstream
+     * treats '' as "no company" and drops the line, the separator or the token.
+     *
+     * The dashboard's Company field is the deliberate exception: it reads
+     * organizations.name through useOrganization() instead of coming through
+     * here, because it is the screen for fixing this and must show what is
+     * actually stored.
+     */
+    company: realCompanyName(org?.name) ?? '',
     role: row.role,
     status: row.status,
     organizationId: row.organization_id,

@@ -126,9 +126,16 @@ export default function ProfileScreen() {
           </View>
           <View className="flex-1">
             <Typography className="text-[15px] font-bold text-navy">{user?.name ?? 'there'}</Typography>
+            {/* Joined rather than interpolated. user.company is empty for an
+                organisation nobody has named yet (lib/mappers/profile.ts), and
+                interpolating it left a dangling "Admin · " with nothing after. */}
             <Typography className="text-[12px] text-slate mt-[2px]">
-              {user?.designation?.trim() || (user?.role === 'admin' ? 'Admin' : 'Sales rep')} &middot;{' '}
-              {user?.company ?? ''}
+              {[
+                user?.designation?.trim() || (user?.role === 'admin' ? 'Admin' : 'Sales rep'),
+                user?.company,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </Typography>
           </View>
           {/*
@@ -322,7 +329,7 @@ export default function ProfileScreen() {
                 'Yieldd support',
                 `\n\n---\nSo we can find your account, please leave this below:\n` +
                   `Name: ${user?.name ?? '-'}\n` +
-                  `Company: ${user?.company ?? '-'}\n` +
+                  `Company: ${user?.company || '-'}\n` +
                   `Email: ${user?.email ?? '-'}\n` +
                   `Plan: ${isPro ? 'Pro' : 'Free'}\n` +
                   `App version: ${APP_VERSION}\n`

@@ -66,6 +66,12 @@ export function buildMergeContext(
     event: event?.name,
     stall: event?.stallNumber,
     sender: user?.name,
+    // Empty for an admin who has not named their organisation yet — the
+    // placeholder is stripped at the seam, in lib/mappers/profile.ts. The help
+    // text on the template editor offers "{{sender}}, {{sender_company}}" as
+    // its worked example, so renderTemplate below has to take the joining comma
+    // out with the empty token rather than sign a message to a real prospect
+    // "Priya,".
     senderCompany: user?.company,
   };
 }
@@ -113,7 +119,28 @@ export function renderTemplate(template: string, context: MergeContext): string 
 
   let out = template;
   for (const [token, value] of Object.entries(values)) {
-    out = out.split(token).join(value);
+    if (value) {
+      out = out.split(token).join(value);
+      continue;
+    }
+
+    /**
+     * An empty token takes the separator in FRONT of it with it.
+     *
+     * The template editor's own worked example is "{{sender}}, {{sender_company}}",
+     * and `{{sender_company}}` is empty for anyone who has not named their
+     * organisation yet (#58, stripped in lib/mappers/profile.ts). Plain
+     * substitution leaves "Priya," — a dangling
+     * comma in a message going to a customer, which the tidy-up below cannot
+     * remove because it only strips whitespace before punctuation.
+     *
+     * Only a separator BEFORE the token, which is the only one that was joining
+     * it to something. "Hi {{name}}," keeps its comma, because that comma
+     * belongs to the greeting and not to the placeholder.
+     */
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`[ \\t]*[,;·-][ \\t]*${escaped}`, 'g'), '');
+    out = out.split(token).join('');
   }
 
   return (

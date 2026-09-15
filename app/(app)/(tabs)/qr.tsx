@@ -27,11 +27,17 @@ export default function QrTabScreen() {
   const designation = card?.designation ?? user?.designation ?? '';
   const phone = card?.phone ?? user?.phone ?? '';
   const email = card?.email ?? user?.email ?? '';
-  const role = [designation || 'Your role', card?.companyName ?? user?.company].filter(Boolean).join(' · ');
+  // `||`, not `??`: user.company is the empty string for an admin who has not
+  // named their organisation yet (stripped in lib/mappers/profile.ts), and
+  // filter(Boolean) then drops it — so the card a rep holds up reads
+  // "Your role" rather than "Your role · My workspace".
+  const role = [designation || 'Your role', card?.companyName || user?.company]
+    .filter(Boolean)
+    .join(' · ');
 
   const vCardValue = buildVCard({
     name: card?.displayName ?? user?.name ?? 'Your name',
-    company: card?.companyName ?? user?.company ?? undefined,
+    company: card?.companyName || user?.company || undefined,
     designation,
     phone,
     email,

@@ -1091,44 +1091,80 @@ quietly. The 34dp the labelled button costs buys a control people can actually f
 
 ---
 
-### 58. After the code, ask only for a password — reported 2026-09-14 `[ ]`
+### 58. After the code, ask only for a password — reported 2026-09-14, DONE 2026-09-15
 
-**Wanted.** Signing up should be: **email → code → choose a password → in.** Nothing else.
-Name, company and contact number come later, when the person builds their digital card, because
-that is the moment those details are actually for something.
+**Wanted, as reported.** Signing up should be: **email → code → choose a password → in.** Nothing
+else. Name, company and contact number would come later, when the person builds their digital
+card, because that is the moment those details are actually for something.
 
-**Today** ([complete-profile](app/(app)/onboarding/complete-profile.tsx)) asks for name,
-company, number and password on one screen. Three of those four come off it.
+**Cut back to company-only, by the user's decision 2026-09-15.** Asked directly what should be on
+the screen after the code, the answer was: **full name, mobile number, password, confirm
+password.** So only the **company** moved, to [the card editor](app/(app)/card/edit.tsx) — the
+line printed under your name on the card you hand out. Signup itself was already one email box,
+and the referral and fork steps are untouched, so no routing changed at all.
 
-**This reverses #4, knowingly.** The contact number was made mandatory at account creation on
-2026-08-28 precisely so that nobody reaches the app without the number that goes on their card.
-That reasoning does not disappear; it moves. Whoever builds this has to make the card step
-enforce it instead, or the guarantee is simply gone.
+**The narrower cut is worth more than the tidiness it gave up,** because three of the four things
+this item warned would break were caused by the *name* leaving that screen, and it did not:
 
-**Four things break if this is done naively. None is in the screen itself.**
+1. ~~**The hard redirect loops forever.**~~ Does not arise. `profileNeedsCompletion` is
+   `!phone || name === PLACEHOLDER_NAME` and never looked at the company, so the guard in
+   [app/(app)/_layout.tsx](app/(app)/_layout.tsx) is untouched and #4's enforcement still stands.
+2. ~~**`needsPasswordSetup()` stops working.**~~ Does not arise — it infers "no password yet" from
+   the name still being `'New user'`, and complete-profile still sets the name. No column, no
+   migration. The comment above it now says outright that this holds *only* while that is true.
+3. ~~**The person is called "New user" everywhere.**~~ Does not arise.
+4. **The organisation stays "My workspace"** — this one was real, and it was worse than it looked.
 
-1. **The hard redirect loops forever.** [app/(app)/_layout.tsx](app/(app)/_layout.tsx)
-   redirects to complete-profile for as long as `profileNeedsCompletion(user)` is true, and that
-   function returns true while the phone is missing **or** the name is still the placeholder. If
-   the screen stops collecting either, the guard sends them straight back to it on every render,
-   forever. `profileNeedsCompletion` has to shrink to "has no password" at the same time.
+**#4, and what it actually took.** A team admin reaches Home before the card editor, and their
+first outbound action is inviting a rep. Tracing every place `organizations.name` reaches a screen
+found **eleven render sites, six of which would print the placeholder** — and the worst is not the
+admin's own screen:
 
-2. **`needsPasswordSetup()` stops working.** [lib/auth/emailCode.ts](lib/auth/emailCode.ts)
-   decides whether to show the password fields by checking whether the name is still
-   `'New user'`. That works today only because the same screen sets the name. Leave the name
-   unset and the check stays true forever, so the screen keeps demanding a password from someone
-   who already has one. It needs a different signal.
+| Where | What a person reads | Who sees it |
+|---|---|---|
+| `app/invite.tsx` | "Priya invited you to join **My workspace**", 24px bold hero | the invited rep, first screen, before they have an account |
+| `app/invite.tsx` | "signed in as Priya at **My workspace**" | an invited rep who already has an account |
+| `(tabs)/profile.tsx` | "Admin · **My workspace**" | the admin, every visit to Settings |
+| `(tabs)/qr.tsx` | "Your role · **My workspace**" on the card held up at a stall, and `ORG:` in the downloaded .vcf | the admin, and whoever scans it |
+| `card/scan-confirm.tsx` | prefilled into a field saved to `business_cards.company_name` | **anyone who opens the public `/c/{slug}` page** |
+| template `{{sender_company}}` | "— Priya, **My workspace**" | **a prospect, over WhatsApp** |
 
-3. **The person is called "New user" everywhere until the card step.** Not cosmetic: that name
-   is on the leads they capture, the team list, the leaderboard, and their digital card.
+**Not fixed with a guard.** Forcing the card step would strand an admin on a screen with no Sign
+out link and no copy explaining why they cannot leave, which turns the card editor into an
+onboarding gate. Fixed by making the placeholder **unprintable** instead: `lib/placeholders.ts`
+holds `realCompanyName()`, and [lib/mappers/profile.ts](lib/mappers/profile.ts) — the one seam
+every screen's `user.company` comes through — returns `''` for it. Everything downstream already
+treats empty as "no company" and drops the line, the separator or the token. The dashboard's
+Company field is the deliberate exception: it reads the organisation directly, because it is the
+screen for fixing this and must show what is stored.
 
-4. **The organisation stays "My workspace".** Visible in dashboard settings and on every invite
-   the admin sends. The company name is also what `handle_new_user()` would otherwise have set.
+Two of those six were **pre-existing bugs** this change surfaced rather than caused:
+`scan-confirm.tsx` could already publish the placeholder to a public URL, and the template
+editor's own help text still offers `{{sender}}, {{sender_company}}` as its worked example.
 
-**Decide before building:** is the card step mandatory before reaching Home, or genuinely
-optional? If optional, the app has to read well for a person called "New user" at "My
-workspace" — which is a copy and empty-state problem across several screens, not a one-screen
-change.
+**Also found and fixed while in the file.** complete-profile greeted people with
+`user.name.split(' ')[0]`, and a code signup is called `'New user'` at that point — so **every new
+account was greeted "Welcome, New."** And `renderTemplate` left "Priya," when a token emptied; an
+empty token now takes the separator in front of it with it, while "Hi {{name}}," keeps its comma.
+
+**The measurement worth keeping.** This item asked for a real signal for "this account has no
+password yet" if the name ever moved, and said to investigate the auth user before relying on it.
+Checked against the live project 2026-09-15:
+
+```
+provider  no_password  n
+email     false        7     ← every email account has a password
+google    true         1
+google    false        1
+```
+
+`auth.users.encrypted_password` does separate a code account from a password account cleanly — but
+it is never sent to the client, and `app_metadata.provider` reads `email` for both. **There is no
+client-side signal.** If the name is ever moved off complete-profile, a column on `profiles`
+written when `setPassword()` succeeds is the only honest option, and it needs
+`grant update (…) on public.profiles to authenticated` in the same migration, because column-level
+GRANTs do not extend to new columns here. This is now recorded above `needsPasswordSetup` so it
+does not have to be rediscovered.
 
 ---
 

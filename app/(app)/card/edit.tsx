@@ -27,7 +27,6 @@ import {
   ShareIcon,
 } from '../../../components/ui/icons';
 import { useSessionStore } from '../../../stores/useSessionStore';
-import { PLACEHOLDER_ORG } from '../../../types/session';
 import { useMyCard, useSaveCard } from '../../../hooks/useBusinessCard';
 import {
   isSlugAvailable,
@@ -130,11 +129,10 @@ export default function CardEditScreen() {
     seeded.current = true;
 
     // Before the branch below, because the company name comes off the profile's
-    // organisation and not off the card row. Blanking the placeholder is
-    // deliberate twice over: an admin is asked for a real name instead of
-    // saving "My workspace", and a card whose organisation was never renamed
-    // stops publishing that phrase to everyone who opens the link.
-    setCompany(user.company && user.company !== PLACEHOLDER_ORG ? user.company : '');
+    // organisation and not off the card row. It is already empty for an
+    // organisation nobody has named yet (lib/mappers/profile.ts), which is what
+    // makes the admin type a real one instead of publishing "My workspace".
+    setCompany(user.company);
 
     if (card) {
       setSlug(card.slug);

@@ -39,6 +39,10 @@ export default function ScanOwnCardConfirmScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState(user?.name ?? '');
+  // Empty rather than the database placeholder for an organisation nobody has
+  // named yet (stripped in lib/mappers/profile.ts). It matters more here than
+  // anywhere: saving this screen writes company through to
+  // business_cards.company_name, which is a page anyone with the link can open.
   const [company, setCompany] = useState(user?.company ?? '');
   const [designation, setDesignation] = useState(card?.designation ?? user?.designation ?? '');
   const [mobile, setMobile] = useState(card?.phone ?? user?.phone ?? '');

@@ -4,6 +4,8 @@ import type { Enums } from '../lib/db';
 import type { OAuthOutcome } from '../lib/auth/google';
 import type { ReferralSourceId } from '../lib/referral';
 
+import { PLACEHOLDER_NAME } from '../lib/placeholders';
+
 // Sourced from the generated database enums rather than hand-written unions, so
 // a migration that changes them breaks the build instead of drifting silently.
 export type UserRole = Enums<'user_role'>; // 'admin' | 'rep'
@@ -146,18 +148,25 @@ export interface SessionState {
 }
 
 /**
- * The names handle_new_user() falls back to when signup supplied no metadata.
+ * The names handle_new_user() falls back to when signup supplied no metadata,
+ * and the helper that keeps the organisation's off every screen.
  *
  * Both are written by the database, never typed by a person, and both are now
  * reached routinely: signing up with an emailed code (#33a) sends nothing but
- * the address, so every new account begins as "New user" at "My workspace"
- * until complete-profile replaces them.
+ * the address, so every new account begins as "New user" at "My workspace".
  *
- * Exported so the screen that prefills the fields, the guard below, and
- * lib/auth/emailCode.ts cannot drift to different spellings of the same string.
+ * They are replaced on two different screens since #58 (2026-09-15).
+ * complete-profile replaces the name — the guard below and
+ * lib/auth/emailCode.ts both depend on it doing so. The organisation is renamed
+ * later, on the card editor, and nothing forces that to happen at all, which is
+ * why realCompanyName() exists: see lib/placeholders.ts.
+ *
+ * Re-exported rather than declared here so that lib/messageText.ts can reach
+ * realCompanyName() without importing this file. scripts/verify-messaging.mjs
+ * compiles messageText standalone, and an import chain through here pulls in
+ * lib/supabase.ts and breaks it.
  */
-export const PLACEHOLDER_NAME = 'New user';
-export const PLACEHOLDER_ORG = 'My workspace';
+export { PLACEHOLDER_NAME, PLACEHOLDER_ORG, realCompanyName } from '../lib/placeholders';
 
 /**
  * True when the account is missing something every account is supposed to have.

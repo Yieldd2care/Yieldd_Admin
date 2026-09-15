@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { NavyGlowBackdrop } from '../components/app/NavyGlowBackdrop';
 import { supabase } from '../lib/supabase';
 import { useSessionStore } from '../stores/useSessionStore';
+import { realCompanyName } from '../types/session';
 import { homeRoute } from '../lib/auth/nextRoute';
 
 type Invite = {
@@ -108,17 +109,27 @@ export default function InviteScreen() {
     );
   }
 
+  // Below here the invite is known good, so its organisation name can be read.
+  // Null while the inviting admin has not replaced the placeholder yet — they
+  // are asked for the company on the card editor now (#58), and inviting a rep
+  // is often the first thing they do. The copy below says "their team on
+  // Yieldd" rather than naming an organisation called "My workspace" in 24px to
+  // someone who has never heard of this product.
+  const invitingOrg = realCompanyName(invite.organization_name);
+
   // Signed in already. One person belongs to exactly one organisation, so this
   // cannot be accepted without leaving the current one first.
   if (user) {
     return (
       <Frame>
         <Typography className="text-[22px] font-extrabold text-white text-center tracking-[-0.01em]">
-          {invite.inviter_name} invited you to {invite.organization_name}
+          {invite.inviter_name} invited you to{' '}
+          {invitingOrg ?? 'their team on Yieldd'}
         </Typography>
         <Typography className="mt-3 text-[13.5px] leading-[1.55] text-white/[0.60] text-center">
-          You&rsquo;re currently signed in as {user.name} at {user.company}. An account belongs to
-          one company, so you&rsquo;ll need to sign out before accepting this.
+          You&rsquo;re currently signed in as {user.name}
+          {realCompanyName(user.company) ? ` at ${realCompanyName(user.company)}` : ''}. An account
+          belongs to one company, so you&rsquo;ll need to sign out before accepting this.
         </Typography>
         <Button
           label="Sign out and accept"
@@ -149,7 +160,8 @@ export default function InviteScreen() {
         YOU&rsquo;VE BEEN INVITED
       </Typography>
       <Typography className="mt-4 text-[24px] leading-[1.25] font-extrabold text-white text-center tracking-[-0.01em]">
-        {invite.inviter_name} invited you to join {invite.organization_name}
+        {invite.inviter_name} invited you to join{' '}
+        {invitingOrg ?? 'their team on Yieldd'}
       </Typography>
       <Typography className="mt-3 text-[13.5px] leading-[1.55] text-white/[0.60] text-center">
         {invite.invite_role === 'admin' ? 'As an admin' : 'As a sales rep'}

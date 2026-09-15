@@ -14,24 +14,36 @@ import { isValidPhone } from '../../../lib/phone';
 import { CenterColumn } from '../../../components/shared/CenterColumn';
 import { MIN_PASSWORD } from '../../../components/auth/useAuthForm';
 import { needsPasswordSetup, setPassword } from '../../../lib/auth/emailCode';
-import { PLACEHOLDER_NAME, PLACEHOLDER_ORG } from '../../../types/session';
+import { PLACEHOLDER_NAME } from '../../../types/session';
 
 /**
  * Everything signing up no longer asks for.
  *
  * This used to be the screen that patched up Google sign-ins, which hand over a
- * name and an email and nothing else. Since #33a it is where almost everything
- * is collected: creating an account is one email box, so a new account arrives
- * named "New user" at an organisation called "My workspace" with no number and
- * no password, and this is the screen that replaces all four.
+ * name and an email and nothing else. Since #33a it is also where a code signup
+ * fills itself in: creating an account is one email box, so a new account
+ * arrives named "New user" with no number and no password.
  *
  * Three shapes, decided by where the person came from:
  *
- *   code    — name, company (admins), number, and a password to set. Everything.
- *   Google  — name is already real, so: company (admins) and a number. No
- *             password, ever: they sign in with Google and would be inventing
- *             one they never type.
+ *   code    — name, number, and a password to set. Everything.
+ *   Google  — name is already real, so: a number. No password, ever: they sign
+ *             in with Google and would be inventing one they never type.
  *   older   — accounts predating the mandatory contact number. Number only.
+ *
+ * THE COMPANY NAME IS NOT ASKED HERE (#58, decided 2026-09-15).
+ *
+ * It moved to the card editor, which is the moment it is actually for
+ * something — it is the line printed under your name on the card you hand out.
+ * The organisation therefore stays "My workspace" until then, and that is
+ * visible in dashboard settings and on invites; accepted knowingly. An admin
+ * can set it in three places: the card editor, the dashboard's Company field,
+ * and "scan my own card".
+ *
+ * What did NOT move is the name, and that is load-bearing rather than timid.
+ * lib/auth/emailCode.ts infers "this account has no password yet" from the name
+ * still being the placeholder, and types/session.ts guards on the same thing.
+ * Both stay honest only while this screen is the thing that sets the name.
  *
  * Reached only via nextRouteAfterAuth(), which sends anyone whose profile is
  * incomplete here before anything else.
@@ -58,20 +70,17 @@ export default function CompleteProfileScreen() {
   const user = useSessionStore((s) => s.user);
   const updateProfile = useSessionStore((s) => s.updateProfile);
 
-  const isAdmin = user?.role === 'admin';
-
   // True only for an account created by an emailed code, which has no password
   // yet. A Google account is signed in by Google and must not be made to invent
   // one; an older email+password account already has one. See emailCode.ts.
   const mustSetPassword = needsPasswordSetup(user);
 
-  const [name, setName] = useState(
-    user?.name && user.name !== PLACEHOLDER_NAME ? user.name : ''
-  );
+  // The placeholder is a database default, not something anyone typed, so it
+  // prefills nothing and greets nobody.
+  const realName = user?.name && user.name !== PLACEHOLDER_NAME ? user.name : null;
+
+  const [name, setName] = useState(realName ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
-  const [company, setCompany] = useState(
-    user?.company && user.company !== PLACEHOLDER_ORG ? user.company : ''
-  );
   const [password, setPasswordValue] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +89,6 @@ export default function CompleteProfileScreen() {
   const canSubmit = Boolean(
     name.trim() &&
       phone.trim() &&
-      (!isAdmin || company.trim()) &&
       (!mustSetPassword || (password.trim() && confirm.trim()))
   );
 
@@ -123,11 +131,7 @@ export default function CompleteProfileScreen() {
       }
     }
 
-    const result = await updateProfile({
-      name,
-      phone,
-      ...(isAdmin ? { company } : {}),
-    });
+    const result = await updateProfile({ name, phone });
     setSaving(false);
 
     if (result.error) {
@@ -157,16 +161,14 @@ export default function CompleteProfileScreen() {
             ALMOST THERE
           </Typography>
           <Typography className="mt-4 text-[24px] leading-[1.25] font-extrabold text-white text-center tracking-[-0.01em]">
-            {user?.name ? `Welcome, ${user.name.split(' ')[0]}.` : 'Welcome.'}
+            {/* Not `user.name`: a code signup is called "New user" at this
+                point, which greeted every single one of them "Welcome, New." */}
+            {realName ? `Welcome, ${realName.split(' ')[0]}.` : 'Welcome.'}
           </Typography>
           <Typography className="mt-3 text-[13.5px] leading-[1.55] text-white/[0.60] text-center">
             {mustSetPassword
-              ? isAdmin
-                ? 'Your name, your company, a number people can reach you on, and a password for next time.'
-                : 'Your name, a number people can reach you on, and a password for next time.'
-              : isAdmin
-                ? 'A few details Google doesn’t hand over: your company, and a number people can reach you on.'
-                : 'One detail Google doesn’t hand over: a number people can reach you on.'}
+              ? 'Your name, a number people can reach you on, and a password for next time.'
+              : 'One detail Google doesn’t hand over: a number people can reach you on.'}
           </Typography>
 
           <View className="gap-3 mt-8">
@@ -178,14 +180,6 @@ export default function CompleteProfileScreen() {
               autoComplete="name"
               textContentType="name"
             />
-            {isAdmin ? (
-              <AuthPillInput
-                placeholder="Acme Industries Pvt Ltd"
-                value={company}
-                onChangeText={edit(setCompany)}
-                autoCapitalize="words"
-              />
-            ) : null}
             <AuthPillInput
               placeholder="+91 98765 43210"
               value={phone}

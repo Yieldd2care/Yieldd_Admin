@@ -190,6 +190,26 @@ export async function setPassword(password: string): Promise<AuthResult> {
  *
  * An invited rep who joins by code also lands here, correctly: they have no
  * password either.
+ *
+ * THIS HOLDS ONLY WHILE complete-profile IS THE THING THAT SETS THE NAME.
+ *
+ * Move the name off that screen and the inference breaks in both directions:
+ * the name stays the placeholder after a password is chosen, so this keeps
+ * returning true and the person is asked again on every launch; and whichever
+ * screen does collect the name flips it to false the moment they type, letting
+ * someone who skipped or failed the password step into the app with no password
+ * and no screen left that asks — locked out of every other device.
+ *
+ * #58 proposed exactly that move and was cut back to company-only on
+ * 2026-09-15 partly for this reason. If the name ever does move, this needs a
+ * real column on `profiles`, written when setPassword() succeeds — and note
+ * that column-level GRANTs do not extend to new columns in this project (see
+ * supabase/migrations/20260914170000_profile_tutorial_seen.sql).
+ *
+ * There is no way to do it from the auth user instead; that was measured
+ * against the live project on 2026-09-15, not assumed. `encrypted_password`
+ * does separate a code account from a password account, but it is never sent to
+ * the client, and `app_metadata.provider` reads 'email' for both.
  */
 export function needsPasswordSetup(user: User | null): boolean {
   return Boolean(user && user.name === PLACEHOLDER_NAME);

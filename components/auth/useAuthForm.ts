@@ -26,8 +26,9 @@ export function useAuthForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // No name/company/phone here any more. They are not collected until
-  // complete-profile, which is also why the store's signUp() is no longer
+  // No name/company/phone here any more. Name and phone are not collected
+  // until complete-profile, and the company not until the card editor (#58).
+  // That is also why the store's signUp() is no longer
   // called from anywhere — it is left in place rather than deleted because it
   // carries duplicate-detection work that belongs to the phone field, and that
   // has to be relocated deliberately rather than dropped. See PENDING #33a.
@@ -46,9 +47,10 @@ export function useAuthForm() {
   // one that invited them, so the door is closed rather than left ajar.
   const inviteBlocksGoogle = Boolean(pendingInviteToken);
 
-  // Creating an account is one field now (#33a). Name, company, contact number
-  // and password all moved to complete-profile, which already asked for two of
-  // them — so the first thing a stranger sees is a single box, not five.
+  // Creating an account is one field now (#33a). Name, contact number and
+  // password moved to complete-profile, which already asked for one of them,
+  // and the company to the card editor (#58) — so the first thing a stranger
+  // sees is a single box, not five.
   const canSubmit = Boolean(isCreate ? email.trim() : email.trim() && password.trim());
 
   // Any edit invalidates the last error — leaving it on screen while the user
