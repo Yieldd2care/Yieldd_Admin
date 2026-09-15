@@ -95,8 +95,8 @@ export default function PrivacyScreen() {
         at any time in your phone&apos;s own settings.
       </LegalText>
       <LegalBullet>
-        <LegalStrong>Camera </LegalStrong>&mdash; to photograph a business card. That is its only
-        use; the camera is not opened anywhere else in the app.
+        <LegalStrong>Camera </LegalStrong>&mdash; to photograph a business card, and to take the
+        optional extra photo you can attach to a lead. It is not opened anywhere else in the app.
       </LegalBullet>
       <LegalBullet>
         <LegalStrong>Microphone </LegalStrong>&mdash; to record a voice note about a lead, only
@@ -104,8 +104,10 @@ export default function PrivacyScreen() {
       </LegalBullet>
       <LegalBullet>
         <LegalStrong>Photos </LegalStrong>&mdash; to save a QR code or an event dashboard image to
-        your gallery, and to let you choose a picture for your digital business card. We do not
-        read your gallery for anything else.
+        your gallery, and to let you choose a picture: for your digital business card, for a
+        business card you already photographed, or for the optional extra photo you can attach to
+        a lead. Each of those opens the picker so you choose the one image; we do not read your
+        gallery for anything else.
       </LegalBullet>
       <LegalBullet>
         <LegalStrong>Contacts </LegalStrong>&mdash; two separate things, and only one of them asks
