@@ -375,7 +375,7 @@ export default function DashLeads() {
         return (
           <View className="min-w-0">
             <Typography className="text-[13px] font-medium text-navy" numberOfLines={1}>
-              {lead.company || '—'}
+              {lead.company || '-'}
             </Typography>
             {lead.companyWebsite ? (
               <Typography className="text-[11.5px] text-label mt-[1px]" numberOfLines={1}>
@@ -396,7 +396,7 @@ export default function DashLeads() {
       case 'captured':
         return (
           <View>
-            <Typography className="text-[13px] text-ink-muted">{lead.time || '—'}</Typography>
+            <Typography className="text-[13px] text-ink-muted">{lead.time || '-'}</Typography>
             <Typography className="text-[11px] text-label mt-[1px]">
               {lead.source === 'card_scan' ? 'Card scan' : 'Typed in'}
               {lead.hasVoice ? ' · voice' : ''}
@@ -410,7 +410,7 @@ export default function DashLeads() {
       case 'value':
         return (
           <Typography className="text-[13px] font-bold text-navy">
-            {lead.dealValue != null ? `₹${lead.dealValue.toLocaleString('en-IN')}` : '—'}
+            {lead.dealValue != null ? `₹${lead.dealValue.toLocaleString('en-IN')}` : '-'}
           </Typography>
         );
       default:

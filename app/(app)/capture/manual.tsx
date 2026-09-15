@@ -165,7 +165,7 @@ export default function ManualEntryScreen() {
             <SmallField placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
             <RNTextInput
               className="rounded-md border border-hairline px-4 py-3 text-[14.5px] text-navy bg-white"
-              placeholder="Notes — e.g. their name, spelled out"
+              placeholder="Notes, e.g. their name spelled out"
               placeholderTextColor="#97A3B8"
               value={note}
               onChangeText={setNote}

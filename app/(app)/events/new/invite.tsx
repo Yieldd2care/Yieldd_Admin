@@ -166,7 +166,7 @@ export default function InviteRepsScreen() {
       // The name is still worth having; a blank phone field the admin fills
       // in is honest, where a guessed number would not be.
       updateRep(repId, { name });
-      noteFor(repId, `${name || 'That contact'} has no number saved — type it in.`);
+      noteFor(repId, `${name || 'That contact'} has no number saved. Type it in.`);
       return;
     }
 
@@ -190,7 +190,7 @@ export default function InviteRepsScreen() {
   const chooseNumber = (entry: PickedNumber) => {
     if (!chooser) return;
     updateRep(chooser.repId, { name: chooser.name, phone: entry.number });
-    noteFor(chooser.repId, `${chooser.numbers.length} numbers saved — took the ${entry.label}.`);
+    noteFor(chooser.repId, `${chooser.numbers.length} numbers saved, so we took the ${entry.label}.`);
     setChooser(null);
   };
 
@@ -254,7 +254,7 @@ export default function InviteRepsScreen() {
       {standalone ? (
         <ScreenHeader
           title={
-            editingOne ? (namedEvent?.name ? `${namedEvent.name} — reps` : 'Invite reps') : 'Invite a rep'
+            editingOne ? (namedEvent?.name ? `${namedEvent.name}: reps` : 'Invite reps') : 'Invite a rep'
           }
         />
       ) : (
@@ -265,7 +265,7 @@ export default function InviteRepsScreen() {
           {invites.length ? (
             <View className="mb-5">
               <Typography variant="caption" className="text-slate mb-[10px]">
-                Invited &mdash; each link is personal, so send them one by one
+                Invited. Each link is personal, so send them one by one
               </Typography>
               {invites.map((invite) => (
                 <View
@@ -417,7 +417,7 @@ export default function InviteRepsScreen() {
                 : readyCount > 0
                   ? 'Skip for now'
                   : pendingToSend > 0
-                    ? `Continue — ${pendingToSend} still to send`
+                    ? `Continue, ${pendingToSend} still to send`
                     : 'Skip for now'}
             </Typography>
           </Pressable>

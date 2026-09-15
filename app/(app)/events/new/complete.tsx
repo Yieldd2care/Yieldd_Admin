@@ -93,7 +93,7 @@ export default function EventSetupCompleteScreen() {
           {name ? `You're set up for\n${name}` : "You're all set up"}
         </Typography>
         <Typography className="mt-[10px] text-[14px] text-white/[0.62] text-center leading-[1.5] max-w-[270px]">
-          Your team can start scanning the moment they sign in &mdash; nothing here needs a network.
+          Your team can start scanning the moment they sign in. Nothing here needs a network.
         </Typography>
 
         <View className="w-full bg-white/[0.05] border border-white/[0.12] rounded-lg mt-8 overflow-hidden">

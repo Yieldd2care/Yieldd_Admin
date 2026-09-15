@@ -51,7 +51,7 @@ export default function DeleteAccountScreen() {
 
     const scope =
       preview.mode === 'org'
-        ? `This deletes ${preview.organizationName ?? 'your organisation'} entirely — every event, every lead, and ${preview.membersDeleted} other team ${preview.membersDeleted === 1 ? 'account' : 'accounts'}.`
+        ? `This deletes ${preview.organizationName ?? 'your organisation'} entirely: every event, every lead, and ${preview.membersDeleted} other team ${preview.membersDeleted === 1 ? 'account' : 'accounts'}.`
         : 'This deletes your account. Your leads stay with your organisation.';
 
     Alert.alert('Delete account?', `${scope}\n\nThis cannot be undone.`, [
@@ -142,7 +142,7 @@ export default function DeleteAccountScreen() {
 
               <Typography className="text-[13px] leading-[1.6] text-slate mt-5">
                 {preview.mode === 'org'
-                  ? 'Export your leads first if you want to keep them — once this is done there is nothing to export from.'
+                  ? 'Export your leads first if you want to keep them. Once this is done there is nothing to export from.'
                   : 'This cannot be undone. You would need a fresh invite from your admin to come back.'}
               </Typography>
 

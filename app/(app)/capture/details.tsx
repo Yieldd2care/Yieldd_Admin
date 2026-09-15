@@ -254,7 +254,7 @@ export default function CaptureDetailsScreen() {
             </View>
           )}
           <Typography className="text-[11.5px] text-placeholder mt-2">
-            Optional — the product they asked about, or anything worth remembering.
+            Optional. The product they asked about, or anything worth remembering.
           </Typography>
 
           <Typography

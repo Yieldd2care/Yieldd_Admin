@@ -165,7 +165,7 @@ export default function ShareSheetScreen() {
   const openMessages = () => Linking.openURL(`sms:?body=${encodeURIComponent(shareMessage)}`);
   const openEmail = () =>
     Linking.openURL(
-      `mailto:?subject=${encodeURIComponent(`${card?.displayName ?? 'My'} — business card`)}&body=${encodeURIComponent(shareMessage)}`
+      `mailto:?subject=${encodeURIComponent(card?.displayName ? `${card.displayName}'s business card` : 'My business card')}&body=${encodeURIComponent(shareMessage)}`
     );
   const openMore = () => Share.share({ message: shareMessage });
 
@@ -181,7 +181,7 @@ export default function ShareSheetScreen() {
           <Typography className="text-[12px] text-slate mb-4">{shareUrl?.replace(/^https?:\/\//, '')}</Typography>
         ) : (
           <Typography className="text-[12px] text-slate mb-4 leading-[1.45]">
-            Build and save your card first — there is no link to send yet.
+            Build and save your card first. There is no link to send yet.
           </Typography>
         )}
 

@@ -151,7 +151,7 @@ export default function DashEventRoi() {
           <View className="flex-1 pl-7 border-l border-white/[0.14]">
             <Cap className="text-white/45">Cost per deal won</Cap>
             <Typography className="text-[30px] font-extrabold text-white mt-1 tracking-tight">
-              {stats.dealsWon > 0 ? formatPaise(stats.costPerWonPaise) : '—'}
+              {stats.dealsWon > 0 ? formatPaise(stats.costPerWonPaise) : '-'}
             </Typography>
             <Typography className="text-[12.5px] text-white/55 mt-1">
               {stats.dealsWon} {stats.dealsWon === 1 ? 'deal' : 'deals'} closed

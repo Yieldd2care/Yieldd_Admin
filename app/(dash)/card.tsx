@@ -255,7 +255,7 @@ export default function DashCard() {
                 <Typography className="text-[12.5px] text-slate leading-[1.5] mt-[3px]">
                   {card.isPublished
                     ? 'Anyone with the link or the code can open your card. Nothing else about your account is visible.'
-                    : 'The link returns nothing at all — not even a note that the card once existed. Your QR code still saves contact details offline.'}
+                    : 'The link returns nothing at all, not even a note that the card once existed. Your QR code still saves contact details offline.'}
                 </Typography>
               </View>
               <Pressable
@@ -309,7 +309,7 @@ export default function DashCard() {
 
       <Typography className="text-[12px] text-label leading-[1.55] mt-4 max-w-[620px]">
         Nothing counts how often this card is opened yet. When that lands it will appear here as scans over
-        time, not as a single number — a total with no dates on it cannot tell you whether a show worked.
+        time, not as a single number. A total with no dates on it cannot tell you whether a show worked.
       </Typography>
     </DashShell>
   );

@@ -480,7 +480,7 @@ export function LeadDetail({ leadId }: { leadId: string }) {
                   className="h-[46px] bg-white rounded-md px-4 mt-2 text-[15px] text-navy border border-hairline"
                 />
                 <Typography className="text-[11.5px] text-label mt-2 leading-[1.5]">
-                  Qualified and Won need a value — the database refuses the status without one.
+                  Qualified and Won need a value. The database refuses the status without one.
                 </Typography>
               </View>
             ) : null}

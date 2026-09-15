@@ -70,7 +70,7 @@ function mapAuthError(error: AuthError): string {
       return 'Email or password is incorrect.';
     case 'user_already_exists':
     case 'email_exists':
-      return 'That email already has an account — sign in instead.';
+      return 'That email already has an account. Sign in instead.';
     case 'weak_password':
       return 'Use at least 8 characters.';
     case 'email_address_invalid':
@@ -141,7 +141,7 @@ async function describeSignupFailure(
         return 'This mobile number is already used by another account. Enter a different number, or sign in with the account that has it.';
       }
       if (data.email_taken) {
-        return 'That email already has an account — sign in instead.';
+        return 'That email already has an account. Sign in instead.';
       }
     } else if (__DEV__ && rpcError) {
       console.warn('[session] signup_conflict failed', rpcError.message);

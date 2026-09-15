@@ -12,7 +12,7 @@ const FAQS = [
   },
   {
     q: "What happens to my leads if I don't upgrade?",
-    a: "Nothing. We never delete your data. You keep capturing and you keep what you've captured — export and voice notes are the parts that need Pro.",
+    a: "Nothing. We never delete your data. You keep capturing and you keep what you've captured. Export and voice notes are the parts that need Pro.",
   },
   {
     q: 'Can I add more than 5 users?',

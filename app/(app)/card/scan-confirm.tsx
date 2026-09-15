@@ -136,7 +136,7 @@ export default function ScanOwnCardConfirmScreen() {
             <View className="flex-row items-start gap-2 bg-gold/[0.08] border border-gold/[0.30] rounded-md px-[14px] py-3 mb-4">
               <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
               <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
-                Filled in from your card. Check the spelling and the number &mdash; this is what the
+                Filled in from your card. Check the spelling and the number: this is what the
                 people you meet will see.
               </Typography>
             </View>

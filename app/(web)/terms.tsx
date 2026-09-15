@@ -58,7 +58,7 @@ export default function TermsScreen() {
         If someone asks you to delete their details, do it. Tell us if you need help.
       </LegalBullet>
       <LegalBullet>
-        Follow the law that applies to you — in India, that includes the Digital Personal Data
+        Follow the law that applies to you. In India, that includes the Digital Personal Data
         Protection Act.
       </LegalBullet>
 
@@ -74,7 +74,7 @@ export default function TermsScreen() {
       <LegalHeading>The AI features are assistants, not authorities</LegalHeading>
       <LegalText>
         Card reading, voice-note summaries and company summaries are produced automatically and can
-        be wrong. A misread digit, a mis-heard word, a summary that misses the point — all of these
+        be wrong. A misread digit, a mis-heard word, a summary that misses the point: all of these
         are possible.
       </LegalText>
       <LegalCallout>
@@ -100,7 +100,7 @@ export default function TermsScreen() {
       <LegalText>
         Everything you put into Yieldd remains yours. We use it to run the service for you, as
         described in our privacy policy, and for nothing else. You can export your leads from the
-        app at any time — do that before you close an account, because closing it deletes the data.
+        app at any time. Do that before you close an account, because closing it deletes the data.
       </LegalText>
 
       <LegalHeading>Availability</LegalHeading>
@@ -141,7 +141,7 @@ export default function TermsScreen() {
 
       <LegalHeading>Contact</LegalHeading>
       <LegalText>
-        Anything at all — <LegalMail />.
+        Anything at all, write to <LegalMail />.
       </LegalText>
 
       <LegalText>

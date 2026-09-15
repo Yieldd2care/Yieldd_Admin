@@ -76,7 +76,7 @@ export default function SettingsExportScreen() {
 
         {!isLoading && !exportable.length ? (
           <Typography className="text-[13.5px] text-slate text-center mt-10 leading-[1.5]">
-            Nothing to export yet &mdash; an event appears here as soon as it has its first lead.
+            Nothing to export yet. An event appears here as soon as it has its first lead.
           </Typography>
         ) : null}
       </ScrollView>

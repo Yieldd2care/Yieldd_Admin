@@ -43,7 +43,7 @@ export default function DraftsScreen() {
           <Typography className="text-[11.5px] text-slate mt-[1px]">
             {isOnline
               ? drafts.length > 0
-                ? 'Drafts sync automatically — tap to sync now'
+                ? 'Drafts sync automatically, or tap to sync now'
                 : 'All caught up, nothing pending'
               : 'Scanned leads are saved here until you reconnect'}
           </Typography>

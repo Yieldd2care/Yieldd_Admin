@@ -85,7 +85,7 @@ export default function EventDashboardScreen() {
         <View className="flex-row gap-3">
           <View className="flex-1 rounded-2xl p-4" style={{ backgroundColor: '#101C3E' }}>
             <Typography className="text-[26px] font-extrabold text-white tracking-[-0.01em]">
-              {isLoading ? '—' : stats?.leadsToday ?? 0}
+              {isLoading ? '-' : stats?.leadsToday ?? 0}
             </Typography>
             {/* "Today" is the event's own day in its own timezone, worked out
                 on the server — a show in Bengaluru rolls over at midnight IST
@@ -94,7 +94,7 @@ export default function EventDashboardScreen() {
           </View>
           <View className="flex-1 bg-white border border-hairline rounded-2xl p-4">
             <Typography className="text-[26px] font-extrabold text-navy tracking-[-0.01em]">
-              {isLoading ? '—' : stats?.totalLeads ?? 0}
+              {isLoading ? '-' : stats?.totalLeads ?? 0}
             </Typography>
             <Typography className="text-[11.5px] text-slate mt-[3px]">Cumulative</Typography>
           </View>
@@ -196,7 +196,7 @@ export default function EventDashboardScreen() {
                       rather than deciding who may see money. */}
                   {rep.expectedValuePaise != null ? (
                     <Typography className="text-[11px] font-semibold text-slate mt-[1px]">
-                      {formatPaise(rep.expectedValuePaise, { fallback: '—' })}
+                      {formatPaise(rep.expectedValuePaise, { fallback: '-' })}
                     </Typography>
                   ) : null}
                 </View>

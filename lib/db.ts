@@ -55,7 +55,7 @@ export function formatPaise(
   paise: number | null | undefined,
   opts: { withSymbol?: boolean; fallback?: string } = {}
 ): string {
-  const { withSymbol = true, fallback = '—' } = opts;
+  const { withSymbol = true, fallback = '-' } = opts;
   if (paise == null) return fallback;
 
   const negative = paise < 0;

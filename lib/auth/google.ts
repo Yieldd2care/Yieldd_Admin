@@ -103,7 +103,7 @@ export async function signInWithGoogle(): Promise<OAuthOutcome> {
   if (isExpoGo) {
     return {
       error:
-        'Google sign-in needs the installed Yieldd app — it cannot work inside Expo Go. Use your email and password here.',
+        'Google sign-in needs the installed Yieldd app. It cannot work inside Expo Go. Use your email and password here.',
     };
   }
 

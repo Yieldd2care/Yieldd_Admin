@@ -215,7 +215,7 @@ export default function ROIDashboardScreen() {
               <View className="flex-row items-center justify-between">
                 <Typography className="text-[12.5px] text-slate">Expected deal value</Typography>
                 <Typography className="text-[15px] font-bold text-navy">
-                  {formatPaise(stats.expectedValuePaise, { fallback: '—' })}
+                  {formatPaise(stats.expectedValuePaise, { fallback: '-' })}
                 </Typography>
               </View>
               <Typography className="text-[11px] text-slate mt-[5px] leading-[1.45]">

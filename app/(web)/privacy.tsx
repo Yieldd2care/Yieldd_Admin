@@ -22,12 +22,12 @@ export default function PrivacyScreen() {
     <LegalPage
       title="Privacy policy"
       updated="8 September 2026"
-      intro="Yieldd captures leads at exhibitions. That means we hold information about two different groups of people — the people who use Yieldd, and the people whose business cards they scan. This policy covers both, and is specific about which is which."
+      intro="Yieldd captures leads at exhibitions. That means we hold information about two different groups of people: the people who use Yieldd, and the people whose business cards they scan. This policy covers both, and is specific about which is which."
     >
       <LegalHeading>Who we are</LegalHeading>
       <LegalText>
         Yieldd is a product by Growth Saga. Anything in this policy, and any request about your
-        information, can be raised with us at <LegalMail /> — that address is also our contact for
+        information, can be raised with us at <LegalMail />. That address is also our contact for
         grievances under India&apos;s Digital Personal Data Protection Act.
       </LegalText>
 
@@ -35,7 +35,7 @@ export default function PrivacyScreen() {
       <LegalText>This distinction matters, so it comes first rather than being buried.</LegalText>
       <LegalBullet>
         <LegalStrong>Users. </LegalStrong>
-        People who sign in to Yieldd — an admin who sets up an organisation, and the sales reps on
+        People who sign in to Yieldd: an admin who sets up an organisation, and the sales reps on
         their team. We decide how their information is handled, so this policy governs it directly.
       </LegalBullet>
       <LegalBullet>
@@ -55,7 +55,7 @@ export default function PrivacyScreen() {
         Name, work email, phone number, company name and job title, given at signup.
       </LegalBullet>
       <LegalBullet>
-        Your role in the organisation — admin or rep — and which events you are assigned to.
+        Your role in the organisation, admin or rep, and which events you are assigned to.
       </LegalBullet>
       <LegalBullet>
         If you sign in with Google, we receive your name and email address from Google and nothing
@@ -95,22 +95,22 @@ export default function PrivacyScreen() {
         at any time in your phone&apos;s own settings.
       </LegalText>
       <LegalBullet>
-        <LegalStrong>Camera </LegalStrong>&mdash; to photograph a business card, and to take the
+        <LegalStrong>Camera: </LegalStrong>to photograph a business card, and to take the
         optional extra photo you can attach to a lead. It is not opened anywhere else in the app.
       </LegalBullet>
       <LegalBullet>
-        <LegalStrong>Microphone </LegalStrong>&mdash; to record a voice note about a lead, only
+        <LegalStrong>Microphone: </LegalStrong>to record a voice note about a lead, only
         while you are recording one.
       </LegalBullet>
       <LegalBullet>
-        <LegalStrong>Photos </LegalStrong>&mdash; to save a QR code or an event dashboard image to
+        <LegalStrong>Photos: </LegalStrong>to save a QR code or an event dashboard image to
         your gallery, and to let you choose a picture: for your digital business card, for a
         business card you already photographed, or for the optional extra photo you can attach to
         a lead. Each of those opens the picker so you choose the one image; we do not read your
         gallery for anything else.
       </LegalBullet>
       <LegalBullet>
-        <LegalStrong>Contacts </LegalStrong>&mdash; two separate things, and only one of them asks
+        <LegalStrong>Contacts: </LegalStrong>two separate things, and only one of them asks
         your permission. Saving a lead to your phone book opens your phone&apos;s own new-contact
         screen with the details filled in, and you confirm it there; that needs no permission at
         all. Inviting a team member offers a &ldquo;Pick from my contacts&rdquo; button, and that
@@ -149,7 +149,7 @@ export default function PrivacyScreen() {
       <LegalHeading>Your digital business card is public</LegalHeading>
       <LegalCallout>
         If you publish a digital business card, its page and its photo are readable by anyone with
-        the link, without signing in. That is the point of it — but it means whatever you put on
+        the link, without signing in. That is the point of it, but it means whatever you put on
         that card is public. Do not put anything there you would not hand to a stranger.
       </LegalCallout>
       <LegalText>
@@ -159,18 +159,18 @@ export default function PrivacyScreen() {
 
       <LegalHeading>Who else handles your information</LegalHeading>
       <LegalBullet>
-        <LegalStrong>Supabase </LegalStrong>— hosting, database, sign-in and file storage. This is
+        <LegalStrong>Supabase: </LegalStrong>hosting, database, sign-in and file storage. This is
         where your data lives.
       </LegalBullet>
       <LegalBullet>
-        <LegalStrong>Anthropic </LegalStrong>— reads business card photos, and writes voice-note
+        <LegalStrong>Anthropic: </LegalStrong>reads business card photos, and writes voice-note
         and company summaries.
       </LegalBullet>
       <LegalBullet>
-        <LegalStrong>Deepgram </LegalStrong>— turns voice recordings into text.
+        <LegalStrong>Deepgram: </LegalStrong>turns voice recordings into text.
       </LegalBullet>
       <LegalBullet>
-        <LegalStrong>Google </LegalStrong>— only if you choose to sign in with Google.
+        <LegalStrong>Google: </LegalStrong>only if you choose to sign in with Google.
       </LegalBullet>
       <LegalText>
         Some of these providers operate outside India, so your information may be processed abroad.
@@ -208,7 +208,7 @@ export default function PrivacyScreen() {
       <LegalText>
         You can ask us to show you what we hold about you, or correct it. Email <LegalMail /> and
         we will act within 30 days. If you are a rep, note that leads you captured belong to your
-        organisation&apos;s account, so a request about those goes to your admin &mdash; we will
+        organisation&apos;s account, so a request about those goes to your admin. We will
         help you reach the right person.
       </LegalText>
       <LegalText>

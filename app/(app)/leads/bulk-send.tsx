@@ -185,14 +185,14 @@ export default function BulkSendScreen() {
           <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
           <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
             {channel === 'whatsapp'
-              ? 'These open one at a time in your own WhatsApp, with the message already typed. You press send — nothing goes out on its own.'
+              ? 'These open one at a time in your own WhatsApp, with the message already typed. You press send. Nothing goes out on its own.'
               : 'These open one at a time in your mail app, already written. You press send.'}
           </Typography>
         </View>
 
         {unreachableCount > 0 ? (
           <Typography className="text-[12px] text-slate mb-3 leading-[1.5]">
-            {unreachableCount} lead{unreachableCount === 1 ? '' : 's'} left out &mdash; no{' '}
+            {unreachableCount} lead{unreachableCount === 1 ? '' : 's'} left out: no{' '}
             {channel === 'whatsapp' ? 'phone number' : 'email address'} captured.
           </Typography>
         ) : null}
@@ -243,7 +243,7 @@ export default function BulkSendScreen() {
           <Typography
             className={`text-[16px] font-bold ${selectedIds.length && template ? 'text-navy' : 'text-slate'}`}
           >
-            Start sending &mdash; {selectedIds.length}
+            Start sending ({selectedIds.length})
           </Typography>
         </Pressable>
       </View>

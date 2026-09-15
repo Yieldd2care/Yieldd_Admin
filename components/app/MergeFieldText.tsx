@@ -55,7 +55,7 @@ export function UnknownTokenWarning({ text }: { text: string }) {
       <AlertCircleIcon size={13} color="#C23B3B" strokeWidth={2} />
       <Typography className="flex-1 text-[11.5px] text-navy leading-[1.5]">
         <Typography className="font-bold">{unknown.join(', ')}</Typography>
-        {unknown.length > 1 ? ' are not variables' : ' is not a variable'} &mdash; it will be sent
+        {unknown.length > 1 ? ' are not variables' : ' is not a variable'}. It will be sent
         exactly as written. Use one from the list of variables, or take it out and type the words
         yourself.
       </Typography>

@@ -27,6 +27,7 @@ import {
   ShareIcon,
 } from '../../../components/ui/icons';
 import { useSessionStore } from '../../../stores/useSessionStore';
+import { PLACEHOLDER_ORG } from '../../../types/session';
 import { useMyCard, useSaveCard } from '../../../hooks/useBusinessCard';
 import {
   isSlugAvailable,
@@ -83,8 +84,16 @@ function CardHeader({ title, right, onBack }: { title: string; right?: ReactNode
 
 export default function CardEditScreen() {
   const user = useSessionStore((s) => s.user);
+  const updateProfile = useSessionStore((s) => s.updateProfile);
   const { data: card, isLoading } = useMyCard();
   const save = useSaveCard();
+
+  // The company name is asked here rather than at signup (#58, 2026-09-15),
+  // because this is where it is for something — it is the line under your name
+  // on the card. Only an admin may set it: updateProfile skips an organisation
+  // rename from a rep entirely, so an editable box for them would type into
+  // nothing.
+  const isAdmin = user?.role === 'admin';
 
   // Arriving from "scan my own card": what was read off the photograph, not
   // yet written anywhere. It seeds the form and is saved with everything else.
@@ -96,6 +105,7 @@ export default function CardEditScreen() {
 
   const [slug, setSlug] = useState('');
   const [slugState, setSlugState] = useState<SlugState>({ checking: false, available: null });
+  const [company, setCompany] = useState('');
   const [designation, setDesignation] = useState('');
   const [mobile, setMobile] = useState('');
   const [secondaryEmail, setSecondaryEmail] = useState('');
@@ -118,6 +128,13 @@ export default function CardEditScreen() {
   useEffect(() => {
     if (seeded.current || isLoading || !user) return;
     seeded.current = true;
+
+    // Before the branch below, because the company name comes off the profile's
+    // organisation and not off the card row. Blanking the placeholder is
+    // deliberate twice over: an admin is asked for a real name instead of
+    // saving "My workspace", and a card whose organisation was never renamed
+    // stops publishing that phrase to everyone who opens the link.
+    setCompany(user.company && user.company !== PLACEHOLDER_ORG ? user.company : '');
 
     if (card) {
       setSlug(card.slug);
@@ -181,12 +198,14 @@ export default function CardEditScreen() {
   }, [slug, card?.slug]);
 
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? 'Y';
-  const role = [designation || 'Your role', user?.company].filter(Boolean).join(' · ');
+  // `company`, not `user.company` — the preview has to follow what is being
+  // typed, and the store only catches up after the save.
+  const role = [designation || 'Your role', company].filter(Boolean).join(' · ');
   const shareUrl = slug ? cardShareUrl(slug) : '';
 
   const vCardValue = buildVCard({
     name: user?.name ?? 'Your name',
-    company: user?.company ?? undefined,
+    company: company || undefined,
     designation,
     phone: mobile,
     email: user?.email,
@@ -246,12 +265,31 @@ export default function CardEditScreen() {
       return;
     }
 
+    // Asked for here rather than at signup, so this is the screen that has to
+    // insist. Error on press, like the link rule above, rather than a disabled
+    // button that never says what is wrong with it.
+    if (isAdmin && !company.trim()) {
+      setError('Enter your company name.');
+      return;
+    }
+
+    // The organisation is renamed BEFORE the card is written. The other way
+    // round, a card could go live claiming a company the profile had just
+    // refused to store.
+    if (isAdmin && company.trim() !== (user.company ?? '')) {
+      const profile = await updateProfile({ company });
+      if (profile.error) {
+        setError(profile.error);
+        return;
+      }
+    }
+
     try {
       const { card: saved, slugChanged } = await save.mutateAsync({
         slug,
         displayName: user.name ?? 'Your card',
         designation,
-        companyName: user.company ?? null,
+        companyName: company.trim() || null,
         phone: mobile,
         email: user.email ?? null,
         secondaryEmail,
@@ -336,7 +374,7 @@ export default function CardEditScreen() {
           <View className="w-full bg-white border border-hairline rounded-lg p-5 mt-5 items-center">
             <QRCode value={vCardValue} size={140} color="#0B132B" backgroundColor="#fff" />
             <Typography className="text-[12px] text-slate text-center mt-[14px] leading-[1.45]">
-              Anyone can scan this to save your details straight to their contacts — it works with no signal.
+              Anyone can scan this to save your details straight to their contacts, and it works with no signal.
             </Typography>
             <Typography className="text-[12.5px] font-bold text-navy mt-2">{displayUrl(shareUrl)}</Typography>
             {!isPublished ? (
@@ -401,7 +439,7 @@ export default function CardEditScreen() {
               {photoPreview ? 'Change your photo' : 'Add a photo'}
             </Typography>
             <Typography className="text-[11.5px] text-slate mt-[2px]">
-              Optional &mdash; helps people remember you
+              Optional, and it helps people remember you
             </Typography>
           </View>
         </Pressable>
@@ -423,7 +461,22 @@ export default function CardEditScreen() {
 
         <View className="gap-[18px] mt-[22px]">
           <TextInput label="Full name" value={user?.name ?? ''} editable={false} onChangeText={() => {}} />
-          <TextInput label="Company" value={user?.company ?? ''} editable={false} onChangeText={() => {}} />
+          {isAdmin ? (
+            <TextInput
+              label="Company"
+              placeholder="Acme Industries Pvt Ltd"
+              value={company}
+              onChangeText={setCompany}
+              autoCapitalize="words"
+            />
+          ) : (
+            <View>
+              <TextInput label="Company" value={company} editable={false} onChangeText={() => {}} />
+              <Typography className="text-[11px] text-slate mt-[6px]">
+                Only an admin can change this.
+              </Typography>
+            </View>
+          )}
           <TextInput
             label="Designation"
             placeholder="e.g. Sales Manager"
@@ -603,7 +656,7 @@ function SocialLinksEditor({
         <Typography className="text-[13px] font-bold text-gold">Add a social profile</Typography>
       </Pressable>
       <Typography className="text-[11px] text-slate mt-2 leading-[1.45]">
-        Only web addresses are published — a row without a working link is dropped when you save.
+        Only web addresses are published. A row without a working link is dropped when you save.
       </Typography>
     </View>
   );

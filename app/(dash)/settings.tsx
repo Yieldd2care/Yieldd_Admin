@@ -272,9 +272,9 @@ export default function DashSettings() {
             </View>
           ) : (
             <>
-              <Field label="Company" value={org?.name ?? user?.company ?? '—'} />
+              <Field label="Company" value={org?.name ?? user?.company ?? '-'} />
               <Field label="Category" value={org?.category ?? 'Not set'} />
-              <Field label="Seats" value={org ? String(org.seats) : '—'} />
+              <Field label="Seats" value={org ? String(org.seats) : '-'} />
               <View className="py-4">
                 <Cap>Plan</Cap>
                 <View className="mt-[6px] flex-row">
@@ -317,7 +317,7 @@ export default function DashSettings() {
               />
               <View>
                 <Cap>Email</Cap>
-                <Typography className="text-[14px] font-medium text-navy mt-1">{user?.email ?? '—'}</Typography>
+                <Typography className="text-[14px] font-medium text-navy mt-1">{user?.email ?? '-'}</Typography>
                 <Typography className="text-[11.5px] text-slate mt-[3px]">
                   Your sign-in address cannot be changed here.
                 </Typography>
@@ -333,9 +333,9 @@ export default function DashSettings() {
             </View>
           ) : (
             <>
-              <Field label="Name" value={user?.name ?? '—'} />
+              <Field label="Name" value={user?.name ?? '-'} />
               <Field label="Designation" value={user?.designation ?? 'Not set'} />
-              <Field label="Email" value={user?.email ?? '—'} />
+              <Field label="Email" value={user?.email ?? '-'} />
               <Field label="Phone" value={user?.phone ? formatPhone(user.phone) : 'Not set'} />
               <View className="py-4">
                 <Cap>Role</Cap>
@@ -352,8 +352,8 @@ export default function DashSettings() {
       <Panel className="mt-4 p-[22px]">
         <Typography className="text-[15px] font-bold text-navy">What still lives in the phone app</Typography>
         <Typography className="text-[13px] text-slate leading-[1.6] mt-2">
-          Notifications and the digital card are edited on the phone. Everything else — your profile, the company
-          name and category, message templates and the team — can be changed here, and the phone picks it up on its
+          Notifications and the digital card are edited on the phone. Everything else, including your profile, the company
+          name and category, message templates and the team, can be changed here, and the phone picks it up on its
           next load. Your plan and seat count are set by billing, not by either screen.
         </Typography>
       </Panel>

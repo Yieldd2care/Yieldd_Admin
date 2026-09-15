@@ -138,7 +138,7 @@ eq(
 // ---------------------------------------------------------------------------
 eq('percentages round to whole numbers above 10', roi.formatPercent(142.13), '142%');
 eq('small percentages keep one decimal', roi.formatPercent(2.906), '2.9%');
-eq('an unknown percentage shows a dash', roi.formatPercent(null), '—');
+eq('an unknown percentage shows a dash', roi.formatPercent(null), '-');
 eq('a negative ROI is shown, not hidden', roi.formatPercent(-100), '-100%');
 
 console.log(failed ? `\n${failed} CHECK(S) FAILED` : '\nall checks passed');

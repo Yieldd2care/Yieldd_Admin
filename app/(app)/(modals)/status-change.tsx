@@ -85,7 +85,7 @@ export default function StatusChangeModal() {
       <View className="flex-row items-start gap-2 bg-gold/[0.08] border border-gold/[0.30] rounded-md px-[14px] py-3 mt-4">
         <AlertCircleIcon size={14} color="#8A6100" strokeWidth={2} />
         <Typography className="flex-1 text-[12px] font-medium text-navy" style={{ lineHeight: 17 }}>
-          Marking a lead Won opens a quick screen to enter the deal value &mdash; that&apos;s what turns cost-per-lead into real ROI.
+          Marking a lead Won opens a quick screen to enter the deal value. That&apos;s what turns cost-per-lead into real ROI.
         </Typography>
       </View>
 

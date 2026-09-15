@@ -44,7 +44,7 @@ export function describeEventWriteError(
     }
     return "You don't have permission to change this event.";
   }
-  if (error.code === '23514') return 'One of those values is out of range — check the dates and costs.';
+  if (error.code === '23514') return 'One of those values is out of range. Check the dates and costs.';
   if (__DEV__) console.warn('[events]', error);
   return "That didn't save. Check your connection and try again.";
 }

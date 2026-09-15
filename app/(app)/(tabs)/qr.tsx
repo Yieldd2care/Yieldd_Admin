@@ -85,7 +85,7 @@ export default function QrTabScreen() {
             <QRCode value={vCardValue} size={180} color="#0B132B" backgroundColor="#fff" />
           )}
           <Typography className="text-[12px] text-slate text-center mt-[14px] leading-[1.45]">
-            Anyone can scan this to save your details straight to their contacts — it works with no signal.
+            Anyone can scan this to save your details straight to their contacts, and it works with no signal.
           </Typography>
           {card ? (
             <Typography className="text-[12.5px] font-bold text-navy mt-2">

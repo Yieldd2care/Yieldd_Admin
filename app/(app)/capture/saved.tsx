@@ -79,14 +79,14 @@ export default function SaveConfirmationScreen() {
           className="text-[27px] font-extrabold text-white text-center mt-[26px]"
           style={{ lineHeight: 32 }}
         >
-          {unread ? 'Saved — card not read' : name ? `${name} saved` : 'Lead saved'}
+          {unread ? 'Saved, card not read' : name ? `${name} saved` : 'Lead saved'}
         </Typography>
 
         <Typography className="text-[14px] text-white/[0.60] font-medium mt-2 text-center">
           {unread
             ? 'Everything else was kept'
             : draftSaved
-              ? "Saved offline — will sync once you're back online"
+              ? "Saved offline, will sync once you're back online"
               : 'Enriched, tagged, and ready to follow up'}
         </Typography>
 
@@ -94,7 +94,7 @@ export default function SaveConfirmationScreen() {
           <View className="bg-white/[0.06] border border-white/[0.10] rounded-2xl px-6 py-[16px] mt-[34px]">
             <Typography className="text-[12.5px] text-white/[0.75]" style={{ lineHeight: 18 }}>
               The photo, your voice note and the event fields are all saved. Only the name and
-              number could not be read off the card — add them when you get a minute.
+              number could not be read off the card. Add them when you get a minute.
             </Typography>
           </View>
         ) : draftSaved ? (

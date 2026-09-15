@@ -160,7 +160,7 @@ export function eventEconomics(leads: LeadEconomics[], spendPaise: number): Even
 }
 
 /** `142%`, `-100%`, or the fallback when there is nothing to divide by. */
-export function formatPercent(value: number | null, fallback = '—'): string {
+export function formatPercent(value: number | null, fallback = '-'): string {
   if (value == null) return fallback;
   // One decimal below 10 so a 4.5% conversion rate does not display as 4% or
   // 5%; whole numbers above, where a decimal is noise.

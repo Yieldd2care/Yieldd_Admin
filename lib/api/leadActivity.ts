@@ -83,7 +83,7 @@ const ACTIVITY_LABELS: Record<Enums<'activity_type'>, string> = {
 /** What to show for a row, with the outcome folded in when there is one. */
 export function activityLabel(row: LeadActivity): string {
   const base = ACTIVITY_LABELS[row.type] ?? row.type;
-  return row.outcome ? `${base} — ${OUTCOME_LABELS[row.outcome]}` : base;
+  return row.outcome ? `${base}: ${OUTCOME_LABELS[row.outcome]}` : base;
 }
 
 /**

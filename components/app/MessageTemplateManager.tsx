@@ -51,7 +51,7 @@ function VariableHelp({ channel }: { channel: MessageChannel }) {
 
   const example =
     channel === 'whatsapp'
-      ? 'Hi {{name}}, great meeting you at {{event}}. — {{sender}}, {{sender_company}}'
+      ? 'Hi {{name}}, great meeting you at {{event}}.\n{{sender}}, {{sender_company}}'
       : 'Hi {{name}}, thank you for visiting our stall at {{event}}.';
 
   return (
@@ -199,7 +199,7 @@ function TemplateCard({
           // Capped, or a long message pushes Save and Delete off the bottom of
           // the card and the box grows under the keyboard as you type.
           style={{ minHeight: 96, maxHeight: 220 }}
-          placeholder="Message — use {{name}} and {{event}} to personalise"
+          placeholder="Message: use {{name}} and {{event}} to personalise"
           placeholderTextColor="#97A3B8"
         />
       ) : (

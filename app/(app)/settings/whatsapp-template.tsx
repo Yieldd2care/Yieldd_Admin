@@ -21,7 +21,7 @@ export default function WhatsAppTemplateScreen() {
         >
           <MessageTemplateManager
             channel="whatsapp"
-            intro="This is the default WhatsApp message reps send after a scan. They can still edit it before sending — this just sets what they start with."
+            intro="This is the default WhatsApp message reps send after a scan. They can still edit it before sending. This just sets what they start with."
             addLabel="Add a WhatsApp template"
           />
         </ScrollView>

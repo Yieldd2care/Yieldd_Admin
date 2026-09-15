@@ -321,9 +321,9 @@ export default function ProfileScreen() {
                 SUPPORT_EMAIL,
                 'Yieldd support',
                 `\n\n---\nSo we can find your account, please leave this below:\n` +
-                  `Name: ${user?.name ?? '—'}\n` +
-                  `Company: ${user?.company ?? '—'}\n` +
-                  `Email: ${user?.email ?? '—'}\n` +
+                  `Name: ${user?.name ?? '-'}\n` +
+                  `Company: ${user?.company ?? '-'}\n` +
+                  `Email: ${user?.email ?? '-'}\n` +
                   `Plan: ${isPro ? 'Pro' : 'Free'}\n` +
                   `App version: ${APP_VERSION}\n`
               );

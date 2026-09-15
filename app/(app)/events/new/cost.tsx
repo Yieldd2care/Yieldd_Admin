@@ -127,14 +127,14 @@ export default function EventCostScreen() {
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       {editingOne ? (
-        <ScreenHeader title={event?.name ? `${event.name} — cost` : 'Event cost'} />
+        <ScreenHeader title={event?.name ? `${event.name}: cost` : 'Event cost'} />
       ) : (
         <WizardHeader title="What did this cost?" step={2} />
       )}
       <KeyboardSafe>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-5 pb-5" showsVerticalScrollIndicator={false}>
           <Typography className="text-[13px] leading-[1.55] text-slate mb-5">
-            This is the number the ROI dashboard is built on &mdash; add whatever you know now, adjust later.
+            This is the number the ROI dashboard is built on. Add whatever you know now and adjust later.
           </Typography>
 
           <View className="bg-navy rounded-lg px-5 py-[18px] mb-5">

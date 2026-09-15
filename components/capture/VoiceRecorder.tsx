@@ -98,7 +98,7 @@ function VoiceRecorderImpl({ variant, existing, onChange }: Props) {
         </Typography>
         <Typography className="text-[13.5px] text-slate text-center leading-[1.55]">
           The free plan includes three, so you can hear what they sound like. Upgrade to record one
-          on every lead &mdash; each gets a transcript and a summary you can read before you call
+          on every lead. Each gets a transcript and a summary you can read before you call
           back.
         </Typography>
         <Pressable

@@ -247,7 +247,7 @@ export default function DashTemplates() {
             {selected?.attachment ? (
               <Typography className="text-[11.5px] text-label mt-4 leading-[1.55]">
                 {selected.attachment.name} is attached, but it is not sent with a WhatsApp or email deep
-                link — the message carries text only.
+                link: the message carries text only.
               </Typography>
             ) : null}
           </Panel>

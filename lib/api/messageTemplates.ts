@@ -38,7 +38,7 @@ function toTemplate(row: TemplateRow): MessageTemplate {
 export function describeTemplateError(error: PostgrestError): string {
   if (error.code === '42501') return 'Only an admin can change message templates.';
   if (error.code === '23505') return 'There is already a default template for that channel.';
-  if (error.code === '23514') return 'Check the template — a name is required, and only email templates can have a subject.';
+  if (error.code === '23514') return 'Check the template: a name is required, and only email templates can have a subject.';
   if (__DEV__) console.warn('[messageTemplates]', error);
   return "That template didn't save. Check your connection and try again.";
 }

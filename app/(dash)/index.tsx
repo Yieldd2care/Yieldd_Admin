@@ -752,9 +752,9 @@ export default function DashHome() {
                           ) : null}
                         </View>
                       </Pressable>,
-                      l.company || '—',
+                      l.company || '-',
                       <View>
-                        <Typography className="text-[13px] text-ink-muted">{l.time || '—'}</Typography>
+                        <Typography className="text-[13px] text-ink-muted">{l.time || '-'}</Typography>
                         <Typography className="text-[11px] text-label">
                           {l.source === 'card_scan' ? 'Card scan' : 'Typed in'}
                         </Typography>

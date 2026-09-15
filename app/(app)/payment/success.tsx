@@ -30,7 +30,7 @@ export default function PaymentSuccessScreen() {
         </View>
 
         <Typography className="text-[12px] text-white/[0.45] text-center mt-[22px]" style={{ lineHeight: 18 }}>
-          Receipt and GST invoice sent to your email &mdash; also in{' '}
+          Receipt and GST invoice sent to your email. Also in{' '}
           <Typography className="text-[12px] font-bold text-gold" onPress={() => router.replace('/(app)/(tabs)/profile')}>
             Settings &rsaquo; Billing
           </Typography>

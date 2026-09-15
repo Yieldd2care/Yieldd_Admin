@@ -50,7 +50,7 @@ export default function DashEvents() {
                       <Typography className="text-[11.5px] text-label mt-[2px]">Stall {e.stallNumber}</Typography>
                     ) : null}
                   </Pressable>,
-                  e.city || '—',
+                  e.city || '-',
                   dateRange(e.startDate, e.endDate),
                   <StatusChip value={e.status} />,
                   <Typography className="text-[14px] font-bold text-navy">{e.leads ?? 0}</Typography>,

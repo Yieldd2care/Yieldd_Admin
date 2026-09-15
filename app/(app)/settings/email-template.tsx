@@ -21,7 +21,7 @@ export default function EmailTemplateScreen() {
         >
           <MessageTemplateManager
             channel="email"
-            intro="This is the default email reps send after a scan. They can still edit it before sending — this just sets what they start with."
+            intro="This is the default email reps send after a scan. They can still edit it before sending. This just sets what they start with."
             addLabel="Add an email template"
           />
         </ScrollView>

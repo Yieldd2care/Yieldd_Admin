@@ -73,7 +73,7 @@ function FollowUpRow({
             {lead.phone || 'No number'}
           </Typography>
         </View>,
-        lead.company || '—',
+        lead.company || '-',
         <View className="flex-row items-center gap-[7px]">
           <View className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: w.color }} />
           <Typography className="text-[13px] font-semibold" style={{ color: w.color }}>
@@ -214,7 +214,7 @@ export default function DashFollowUps() {
       <Panel className="px-[22px] py-4 mt-4">
         <Typography className="text-[12.5px] text-slate leading-[1.6]">
           WhatsApp opens a chat with the message already written; you press send there. That is recorded
-          as handed over, never as delivered — nothing here can know whether it was read.
+          as handed over, never as delivered. Nothing here can know whether it was read.
         </Typography>
       </Panel>
     </DashShell>

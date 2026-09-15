@@ -147,7 +147,7 @@ export function EventForm({
       <Panel className="flex-1 p-[22px]">
         <Typography className="text-[17px] font-bold text-navy">What the stall costs</Typography>
         <Typography className="text-[12.5px] text-slate mt-1 leading-[1.55]">
-          Rupees. Leave anything you do not know yet — it can be filled in later, and it is what
+          Rupees. Leave anything you do not know yet. It can be filled in later, and it is what
           makes the ROI real.
         </Typography>
 
@@ -171,7 +171,7 @@ export function EventForm({
         <View className="flex-row items-center justify-between mt-5 pt-4 border-t border-hairline">
           <Cap>Total spend</Cap>
           <Typography className="text-[19px] font-extrabold text-navy">
-            {total > 0 ? formatPaise(total * 100) : '—'}
+            {total > 0 ? formatPaise(total * 100) : '-'}
           </Typography>
         </View>
       </Panel>

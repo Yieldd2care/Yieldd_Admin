@@ -84,7 +84,7 @@ export function summaryLine(row: DigestRow): string {
 function followUpLine(row: DigestRow): string {
   if (row.pending_followups === 0) return 'Nothing is overdue for a follow-up. Well kept.';
   const isOne = row.pending_followups === 1;
-  return `${row.pending_followups} ${isOne ? 'lead is' : 'leads are'} waiting on a follow-up — the ones most likely to still be warm.`;
+  return `${row.pending_followups} ${isOne ? 'lead is' : 'leads are'} waiting on a follow-up. These are the ones most likely to still be warm.`;
 }
 
 function textBody(row: DigestRow, name: string): string {
@@ -99,7 +99,7 @@ function textBody(row: DigestRow, name: string): string {
     '',
     'Open the app to see who: https://yieldd.co',
     '',
-    '—',
+    '---',
     'You are getting this because notifications are on for your Yieldd account.',
     'Turn them off in the app under Settings, Notifications.',
   ].join('\n');

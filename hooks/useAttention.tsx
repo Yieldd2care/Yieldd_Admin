@@ -97,7 +97,7 @@ export function useAttention(): Attention[] {
         icon: <ClockIcon size={17} color="#0B132B" strokeWidth={1.75} />,
         iconBg: 'bg-surface',
         title: `${plural(dueToday.length, 'follow-up', 'follow-ups')} due today`,
-        description: 'Due today rather than overdue — still warm.',
+        description: 'Due today rather than overdue, still warm.',
         weight: 1,
         href: '/(app)/follow-ups',
       });
@@ -144,7 +144,7 @@ export function useAttention(): Attention[] {
           id: `live-${event.id}`,
           icon: <CalendarIcon size={17} color="#1D3F8A" strokeWidth={1.75} />,
           iconBg: 'bg-blue/[0.12]',
-          title: `${event.name} is on — day ${position.dayNumber} of ${position.totalDays}`,
+          title: `${event.name} is on, day ${position.dayNumber} of ${position.totalDays}`,
           description: 'Live figures and the leaderboard are on the dashboard.',
           weight: 1,
           href: { pathname: '/(app)/events/[id]/dashboard', params: { id: event.id } },

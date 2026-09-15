@@ -21,7 +21,7 @@ const FIELD_ROWS: { key: keyof ExportColumns; label: string; detail: string }[] 
   { key: 'contact', label: 'Phone and email', detail: 'Plus landline, website, address, branch address' },
   { key: 'statusAndFollowUp', label: 'Status, follow-up date and note', detail: 'Where the lead has got to' },
   { key: 'dealValue', label: 'Deal value', detail: 'And the date it closed' },
-  { key: 'transcript', label: 'Voice note transcript', detail: 'The largest column — slow on hall wifi' },
+  { key: 'transcript', label: 'Voice note transcript', detail: 'The largest column, slow on hall wifi' },
   { key: 'customFields', label: 'Your custom fields', detail: 'Headers use the labels you set' },
 ];
 
@@ -223,7 +223,7 @@ export default function DashExport() {
             <View className="bg-section rounded-md p-[15px] mt-4">
               <Typography className="text-[12px] text-slate leading-[1.55]">
                 Values starting with = + - @ are escaped so a spreadsheet treats them as text rather than
-                formulas — a phone number beginning +91 is left exactly as it is.
+                formulas. A phone number beginning +91 is left exactly as it is.
               </Typography>
             </View>
             <View className="mt-4 flex-row">

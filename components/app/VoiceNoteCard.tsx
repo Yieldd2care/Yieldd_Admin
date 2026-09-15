@@ -116,7 +116,7 @@ export function VoiceNoteCard({ note }: { note: VoiceNote }) {
       {note.status === 'failed' ? (
         <View className="mt-3">
           <Typography className="text-[12.5px] text-slate leading-[1.5]">
-            The transcript didn&rsquo;t come through. The recording is safe &mdash; play it above.
+            The transcript didn&rsquo;t come through. The recording is safe. Play it above.
           </Typography>
           <Pressable onPress={retry} disabled={retrying} className="mt-2">
             <Typography className="text-[12.5px] font-bold text-gold">

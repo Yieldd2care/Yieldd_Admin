@@ -24,7 +24,7 @@ export function NoEventNotice() {
         <Typography className="text-[13.5px] font-bold text-navy">No event to save this to</Typography>
         <Typography className="text-[12.5px] text-slate mt-[3px] leading-[1.5]">
           {isAdmin
-            ? 'Create an event first — every lead belongs to one, so the ROI and reports add up.'
+            ? 'Create an event first. Every lead belongs to one, so the ROI and reports add up.'
             : 'Ask your admin to add you to the event before you start capturing.'}
         </Typography>
         {isAdmin ? (

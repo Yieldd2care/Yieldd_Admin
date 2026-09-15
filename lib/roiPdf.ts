@@ -64,8 +64,8 @@ export function buildRoiPdfHtml(event: Event, stats: EventStats): string {
 
   const roi = formatPercent(stats.roiPercent, 'Not enough data');
   const spend = formatPaise(stats.spendPaise, { fallback: 'Not recorded' });
-  const wonValue = formatPaise(stats.wonValuePaise, { fallback: '—' });
-  const costPerLead = formatPaise(stats.costPerLeadPaise, { fallback: '—' });
+  const wonValue = formatPaise(stats.wonValuePaise, { fallback: '-' });
+  const costPerLead = formatPaise(stats.costPerLeadPaise, { fallback: '-' });
 
   return `
     <html>

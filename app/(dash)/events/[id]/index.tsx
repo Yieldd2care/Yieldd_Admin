@@ -184,7 +184,7 @@ export default function DashEventDashboard() {
           </View>
           <Typography className="text-[12.5px] text-slate leading-[1.6] mt-2">
             {event.totalCost > 0
-              ? 'Across seven lines — stall, fabrication, furniture, travel, staff, accommodation and marketing.'
+              ? 'Across seven lines: stall, fabrication, furniture, travel, staff, accommodation and marketing.'
               : 'Add it on the edit screen and the return works itself out.'}
           </Typography>
         </Panel>

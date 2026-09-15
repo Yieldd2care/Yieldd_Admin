@@ -17,7 +17,7 @@ import { useEventTemplate } from '../../../../hooks/useMessageTemplates';
 import { ensureTemplate } from '../../../../lib/api/messageTemplates';
 
 const DEFAULT_WHATSAPP =
-  "Hi {{name}}, great meeting you at {{event}}. Sharing our brochure — let us know if you'd like a quote.";
+  "Hi {{name}}, great meeting you at {{event}}. Sharing our brochure. Let us know if you'd like a quote.";
 const DEFAULT_EMAIL_SUBJECT = 'Great meeting you at {{event}}';
 const DEFAULT_EMAIL_BODY =
   "Hi {{name}}, thank you for stopping by our stall. I've attached our brochure and would love to understand your requirement better.";
@@ -146,7 +146,7 @@ export default function MessageTemplatesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       {editingOne ? (
-        <ScreenHeader title={event?.name ? `${event.name} — follow-up` : 'Follow-up message'} />
+        <ScreenHeader title={event?.name ? `${event.name}: follow-up` : 'Follow-up message'} />
       ) : (
         <WizardHeader title="Set your follow-up message" step={5} />
       )}

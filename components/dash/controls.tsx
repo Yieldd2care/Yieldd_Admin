@@ -92,9 +92,9 @@ const TONES = {
 } as const;
 
 export function initialsOf(name: string | null | undefined): string {
-  if (!name?.trim()) return '—';
+  if (!name?.trim()) return '-';
   const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '—';
+  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '-';
 }
 
 /** A square View, so `borderRadius: size / 2` is a true circle rather than a stadium. */

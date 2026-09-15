@@ -282,7 +282,7 @@ export default function CameraScreen() {
         {side === 'back' ? (
           <Pressable onPress={skipBack} disabled={busy}>
             <Typography className="text-[13px] font-semibold text-white/[0.80]">
-              Skip the back &mdash; read the front
+              Skip the back and read the front
             </Typography>
           </Pressable>
         ) : null}
@@ -338,8 +338,8 @@ export default function CameraScreen() {
             {side === 'front'
               ? 'Align the card within the frame'
               : hasFront
-                ? 'Front captured — now the back, or skip'
-                : 'Now the back — or skip if it is blank'}
+                ? 'Front captured, now the back or skip'
+                : 'Now the back, or skip if it is blank'}
           </Typography>
         </View>
         {side === 'back' ? (
@@ -388,7 +388,7 @@ export default function CameraScreen() {
             className="bg-navy/[0.55] border border-white/[0.14] rounded-full px-5 py-[10px] active:scale-95"
           >
             <Typography className="text-[13px] font-bold text-gold">
-              Skip the back &mdash; read the front
+              Skip the back and read the front
             </Typography>
           </Pressable>
         ) : null}

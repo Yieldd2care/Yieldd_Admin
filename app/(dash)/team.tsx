@@ -209,9 +209,9 @@ export default function DashTeam() {
             </Typography>
             <Typography className="text-[12.5px] text-slate mt-[2px]">
               {overSeats
-                ? `${seatsUsed - seatsTotal} over the plan — nobody new can be invited`
+                ? `${seatsUsed - seatsTotal} over the plan, so nobody new can be invited`
                 : seatsFree === 0
-                  ? 'Every seat is taken — free one up before inviting anyone else'
+                  ? 'Every seat is taken. Free one up before inviting anyone else'
                   : `${seatsFree} ${seatsFree === 1 ? 'seat' : 'seats'} free`}
               {pendingInvites ? ` · ${activeMembers} joined, ${pendingInvites} invited` : ''}
             </Typography>
@@ -245,7 +245,7 @@ export default function DashTeam() {
         <Panel className="px-[22px] py-4 mb-4">
           <Typography className="text-[13px] text-[#8A6100] leading-[1.55]">
             {overSeats
-              ? 'You are using more seats than the plan includes. Everyone already here keeps working, and any invite already sent still works — but no new invite can go out until a seat is free.'
+              ? 'You are using more seats than the plan includes. Everyone already here keeps working, and any invite already sent still works, but no new invite can go out until a seat is free.'
               : 'Every seat is in use. Deactivate a member, revoke a pending invite, or add seats before inviting anyone else.'}
           </Typography>
         </Panel>
@@ -259,7 +259,7 @@ export default function DashTeam() {
             {seatsFree != null
               ? seatsFree === 0
                 ? ' You have no free seats, so nothing can be sent right now.'
-                : ` You have ${seatsFree} free ${seatsFree === 1 ? 'seat' : 'seats'} — an invite holds one until it is accepted or revoked.`
+                : ` You have ${seatsFree} free ${seatsFree === 1 ? 'seat' : 'seats'}, and an invite holds one until it is accepted or revoked.`
               : ''}
           </Typography>
 
@@ -319,7 +319,7 @@ export default function DashTeam() {
 
           {created.length ? (
             <View className="gap-3 mt-5 pt-5 border-t border-hairline">
-              <Cap>Created — now send them</Cap>
+              <Cap>Created, now send them</Cap>
               {created.map((inv) => (
                 <InviteResult key={inv.id} invite={inv} from={me?.name} />
               ))}
@@ -352,8 +352,8 @@ export default function DashTeam() {
                       ) : null}
                     </View>
                   </View>,
-                  m.email || '—',
-                  m.phone || '—',
+                  m.email || '-',
+                  m.phone || '-',
                   <StatusChip value={m.badge} />,
                   <StatusChip value={m.status} />,
                   /*
@@ -375,7 +375,7 @@ export default function DashTeam() {
                       <Typography className="text-[14px] font-bold text-blue">{m.leadCount}</Typography>
                     </Pressable>
                   ) : (
-                    <Typography className="text-[14px] font-bold text-navy">—</Typography>
+                    <Typography className="text-[14px] font-bold text-navy">-</Typography>
                   ),
                   isAdmin && !m.isSelf ? (
                     <Pressable
@@ -420,7 +420,7 @@ export default function DashTeam() {
               last={i === invites.length - 1}
               cells={[
                 <Typography className="text-[13.5px] font-semibold text-navy">{inv.name}</Typography>,
-                inv.phone || '—',
+                inv.phone || '-',
                 inv.invitedLabel,
                 <View className="flex-row gap-2 justify-end">
                   <Pressable
