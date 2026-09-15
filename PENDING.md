@@ -40,7 +40,7 @@ Full diagnosis for each is in its numbered section below.
 | 37 | Remove em dashes from app content | `[x]` done 2026-09-15. 128 user-facing occurrences rewritten sentence by sentence, not substituted: app screens, /privacy, /terms, /delete-account, the default WhatsApp and email templates, and the weekly-digest email. The empty-value dash (an empty table cell, `formatPaise`/`formatPercent` fallback) is now a plain hyphen `-`. **Deliberately left alone, do not "finish the job":** ~670 occurrences in code comments, every internal doc (this file, AGENTS.md, MVP_PLAN.md, TASKS.md, DATABASE_SCHEMA.md, migrations), two developer-console strings (`lib/contactPicker.ts`, `lib/supabase.ts`), the model prompts in `extract-card`, and the `mdash` entry in the HTML-entity decode table in `summarise-company` (a decoder, not copy). Proof: the exported web bundle contains zero em dashes. |
 | 38 | Invite reps from the phone's contacts | `[x]` done 2026-09-14 — **that "no permission" note was wrong, see 60**: the picker opens without one but reading the chosen contact needs READ_CONTACTS. It is now requested, which is what created 62 |
 | 39 | Lock icon and explanation on paid features | `[x]` done 2026-09-12 — `lib/plan.ts`; no price and no pay button, asserted in `verify:plan` |
-| 40 | "Needs a note" ignores voice notes | `[ ]` **decided 2026-09-15: a voice note clears the flag** |
+| 40 | "Needs a note" ignores voice notes | `[x]` done 2026-09-15 — a voice note clears the flag. **The filter keeps its label, "Needs a note"** — renaming it was the other option and was NOT chosen. Five sites: one shared helper on the device, plus `event_stats` and `event_set_stats` |
 | 41 | Save-to-contacts icon does nothing | `[ ]` cause unknown, needs a device log |
 | 42 | Show the captured card in the list; make lead details editable | `[x]` done 2026-09-12 — card shown in list and whole on the lead; edit form sends only what moved |
 
@@ -545,17 +545,57 @@ user knows what exists.
 
 ---
 
-### 40. "Needs a note" ignores voice notes — reported 2026-09-11 `[ ]`
+### 40. "Needs a note" ignores voice notes — reported 2026-09-11 `[x]` done 2026-09-15
 
-**Confirmed in the code.** `needsNote` is set from the typed note only:
-`needsNote: !input.note?.trim()` ([stores/useLeadsStore.ts:261](stores/useLeadsStore.ts#L261),
-and the same rule on update at line 154). A voice note does not clear it.
+A rep who records a voice note instead of typing has noted the conversation, and the lead no longer
+counts as needing one. The rule is now "no typed note AND no voice note" everywhere.
 
-So a lead the rep recorded a voice note against still counts as "needs a note", and appears under
-that filter on the Leads screen.
+**The filter keeps its label, "Needs a note".** That was the decision, and the reason this line is
+here: the alternative was to narrow the flag to a TYPED note and rename the filter to say so, and it
+was explicitly not chosen. Do not rename it later on the assumption that it was.
 
-**Decide which is intended:** a voice note satisfies "has a note" and should clear the flag, or the
-flag means a *typed* note specifically and the label should say so.
+Five places computed the old rule and all five now share one helper, `needsNoteFor(note, hasVoice)`
+in [lib/mappers/lead.ts](lib/mappers/lead.ts):
+
+- the mapper, for every lead the server sends back;
+- `addLead`, for a capture made on the device;
+- `applyPatch`, which **used to recompute the flag only inside its `note` branch** — so a voice note
+  arriving on an existing lead left it stale until someone happened to type something. It now derives
+  from the merged lead, so whatever changed, the answer comes from the final state;
+- the sync drain's voice step, both halves. The success half clears the flag; the failure half puts it
+  **back**, which matters more than it looks: `addLead` sets `hasVoice` optimistically the moment a
+  recording exists on the phone, so a lead whose upload is refused by the free-plan cap would otherwise
+  keep "noted" forever while having neither kind of note;
+- `event_stats` and `event_set_stats`, in [20260915120000](supabase/migrations/20260915120000_voice_note_clears_needs_note.sql).
+
+**The server half could not wait.** The web dashboard's "Captured without a note" tile reads the RPC
+while the leads screen it LINKS TO counts on the device. Changing one side alone would have made a
+card contradict its own destination.
+
+**In `event_set_stats`, keep `count(l.id)` and never `count(*)`.** The LEFT join means a lead-less
+event still produces a row, and the new predicate is *more* true of that phantom row than the old one
+was — a null `l.id` matches no voice note, so `not exists` holds. Only `count(l.id)` keeps it out.
+Switch it and every empty event reports one lead needing a note.
+
+**The offline gap, decided rather than discovered.** On the phone a recording counts the moment it
+exists; on the server only once the `voice_notes` row has synced. So between an offline capture and
+its upload the phone says the lead is fine while the server still counts it. That is the right way
+round — the rep did the work and their own screen should say so — and the two converge when the
+outbox drains. The refresh merge was also fixed so the server's "no recording" no longer overwrites a
+recording still sitting in the outbox, which used to strip the microphone icon off a lead mid-show.
+
+Two things left open on purpose:
+
+- [hooks/useAttention.tsx:123](hooks/useAttention.tsx#L123) has its own `needsNote` variable keyed on
+  `reviewedAt`, not on the note, and renders *"N leads from today need a note"*. It is a different
+  concept wearing the same words and was deliberately not touched. It already disagreed with the Leads
+  badge; it now disagrees in a new way. Worth its own item if anyone reports it.
+- The decision note above says voice is Pro-only. It is not quite: `can_use_ai()` allows a **free** org
+  three voice notes, so up to three leads per free org are affected too.
+
+Proven by `npm run verify:stats`, which previously asserted `needs_note === 7` against a fixture
+containing no voice notes at all — it passed while covering none of this. It now gives one note-less
+lead a voice note and expects 6, in both the single-event and the across-events functions.
 
 ---
 
@@ -928,25 +968,34 @@ What is new is `describePhoneProblem` in [lib/phone.ts](lib/phone.ts), **a secon
 sitting beside `isValidPhone`, not a replacement for it.** The two answer different questions.
 `isValidPhone` is a gate: it refuses a value, so it is strict, and its callers
 (`onboarding/complete-profile`, `(dash)/settings`) depend on that. `describePhoneProblem` only ever
-produces a sentence, so it must not object to the shapes a real address book holds and a dialler
-copes with — extensions, dial pauses, a slash between two numbers, unicode hyphens and en dashes,
-every one of which `isValidPhone` rejects. Using the strict one here would have stopped numbers that
-send today, which is exactly what the decision rules out. So it counts digits instead of policing
-characters: fewer than 10 is too short (every reachable Indian number is 10, mobile or landline with
-its STD code, and a wa.me link needs the whole thing), anything holding `*` or `#` is a dial code,
-and there is no upper bound because `98204 41720 / 22 2493 1234` is two real numbers in one box.
+produces a sentence, so it counts digits instead of policing characters, which is what lets a number
+written with brackets, unicode hyphens or a country code be measured at all rather than rejected on
+sight as `isValidPhone` would reject it.
+
+What it counts is what a wa.me link is built from, because that is what decides whether a message
+arrives. Fewer than 10 digits is too short, more than 10 is too long, and `*` or `#` anywhere makes
+it a dial code. The count is taken **after the country code comes off**, by the same rules
+`normalizePhone` uses, or every number typed in full would read as too long — including the
+dashboard's own placeholder. An explicitly overseas number (a `+` that is not `+91`) is measured
+against E.164 alone, 8 to 15 digits: there is no honest way to tell a visiting buyer that their
+national number is the wrong length.
+
+One consequence worth stating plainly, because it reversed an earlier decision. An extension
+(`022 2493 1234 x 204`) and two numbers in one box (`98204 41720 / 22 2493 1234`) are now called
+**too long**. They dial fine, but the invite is not dialled: the digits are run together into the
+link, and the result reaches nobody. Saying so is not refusing it, and nothing here refuses.
 
 Three details that are the difference between a useful warning and a nagging one:
 
 - **It is on the row, never a banner.** With four rows on screen, "one of these is wrong" names
   nobody.
-- **It waits until the number box is left.** A 10-digit mobile is too short for its first nine
-  digits, so a live warning would be up for nearly every keystroke. A number arriving from the
-  contacts picker never focuses the field, so that case is warned about immediately.
-- **It is said again on the created invite**, on both screens. The send button does not blur the
-  field above it (the phone's ScrollView keeps taps), so a dial code could otherwise be sent without
-  the warning ever appearing; and the dashboard's `whatsappUrl` will build `wa.me/123` out of one
-  without a murmur.
+- **It answers while they type** (changed on request, 2026-09-15; it first waited for the field to
+  be left). The tenth digit silences it and the eleventh brings it back, so it reads as a count
+  rather than a scolding, and a number filled in from the contacts picker is judged the instant it
+  lands.
+- **It is said again on the created invite**, on both screens, which is the last thing before the
+  message goes. The dashboard's `whatsappUrl` will build `wa.me/123` out of a dial code without a
+  murmur, and there the copy adds that the link still works and can be sent another way.
 
 Wording is plain and carries no em dashes (37). Cases are asserted in
 [scripts/verify-phone.mjs](scripts/verify-phone.mjs) — the silent half first, because that is the

@@ -91,7 +91,28 @@ export function initialOf(name: string): string {
 
 type RowWithVoice = LeadRow & { voice_notes?: { count: number }[] | null };
 
+/**
+ * "Needs a note" means nobody recorded what the conversation was about, by
+ * either means.
+ *
+ * A rep who held the phone up and talked has noted the lead just as much as one
+ * who typed, so a voice note clears it (PENDING 40, decided 2026-09-15). The
+ * filter keeps the label "Needs a note" by the same decision — the alternative,
+ * narrowing the flag to a TYPED note and renaming the filter, was considered
+ * and not chosen.
+ *
+ * Written here rather than inline because five places derive this — this mapper
+ * and four in the leads store — and a rule copied five times is a rule that
+ * drifts. `null` is accepted alongside `undefined` because the database column
+ * is `string | null` while every in-app caller holds `string | undefined`.
+ */
+export function needsNoteFor(note: string | null | undefined, hasVoice: boolean): boolean {
+  return !note?.trim() && !hasVoice;
+}
+
 export function toLead(row: RowWithVoice): Lead {
+  const hasVoice = (row.voice_notes?.[0]?.count ?? 0) > 0;
+
   return {
     id: row.id,
     initial: initialOf(row.full_name),
@@ -99,10 +120,8 @@ export function toLead(row: RowWithVoice): Lead {
     company: row.company ?? '',
     time: captureTimeLabel(row.created_at),
     status: statusFromDb(row.status),
-    hasVoice: (row.voice_notes?.[0]?.count ?? 0) > 0,
-    // "Needs a note" is a prompt to go back and say something about the
-    // conversation, so it is exactly "there is no note", not a stored flag.
-    needsNote: !row.note?.trim(),
+    hasVoice,
+    needsNote: needsNoteFor(row.note, hasVoice),
     consentGiven: row.consent_given,
     source: row.source,
     capturedAt: row.created_at,

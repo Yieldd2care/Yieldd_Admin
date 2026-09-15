@@ -137,6 +137,26 @@ try {
   const { error: leadsError } = await admin.from('leads').insert(rows);
   if (leadsError) throw new Error(`leads: ${leadsError.message}`);
 
+  /**
+   * One of the note-less leads gets a VOICE note instead.
+   *
+   * Lead 4 is the first row with a null note, so until now it counted towards
+   * needs_note. It is the exact case 40 is about: the rep had no hands free at
+   * the stall, held the phone up and talked, and the prompt telling them to go
+   * back and note the conversation has to come off.
+   *
+   * The row on its own is enough - both functions test only for its existence,
+   * never for the audio behind it, so nothing is uploaded here. And this runs
+   * BEFORE the org is flipped to Pro further down, deliberately: it proves the
+   * rule holds on the free plan too, where can_use_ai() allows three.
+   */
+  const { error: voiceNoteError } = await admin.from('voice_notes').insert({
+    lead_id: rows[3].id,
+    recorded_by: adminId,
+    audio_path: orgId + '/' + rows[3].id + '/note.m4a',
+  });
+  if (voiceNoteError) throw new Error('voice_notes: ' + voiceNoteError.message);
+
   // ---- as the admin ----
   const { data: statsRows, error: statsError } = await admin.rpc('event_stats', { p_event_id: event.id });
   if (statsError) throw new Error(`event_stats: ${statsError.message}`);
@@ -157,7 +177,12 @@ try {
   eq('expected value EXCLUDES the Lost lead',
     Number(st.expected_value_paisa) < 75000000, true);
   eq('spend is the generated event total', Number(st.spend_paisa), 15000000);
-  eq('leads needing a note', Number(st.needs_note), 7);
+  // 7 of the 10 carry no typed note, but Lead 4 has a voice note - and a voice
+  // note counts as having noted the conversation (PENDING 40, decided
+  // 2026-09-15). So 6, not 7. If this ever reads 7 again, the rule has been
+  // lost out of event_stats.
+  eq('a voice note counts as a note, so it is 6 and not 7', Number(st.needs_note), 6);
+  eq('and that voice note is itself counted', Number(st.with_voice_note), 1);
   eq('consent given', Number(st.consent_given), 5);
 
   // The formulas the screen applies to those inputs.
@@ -342,6 +367,11 @@ try {
     [5, 2, 1, 4, 1]);
   eq('won value is summed across events', Number(ss.won_value_paisa), 130000000);
   eq('expected value is summed across events', Number(ss.expected_value_paisa), 170000000);
+  // The same rule has to hold in the set version, which computes it over a LEFT
+  // join rather than a plain scan. All 3 NY leads carry a typed note, so the 6
+  // comes entirely from the first event.
+  eq('a voice note counts as a note across the set too', Number(ss.needs_note), 6);
+  eq('and the voice note is counted once', Number(ss.with_voice_note), 1);
 
   // THE fan-out check. Spend is aggregated apart from the join to leads; summed
   // through it, the ₹1,50,000 event would contribute its cost once per lead.
@@ -460,5 +490,9 @@ try {
   }
 
   console.log(failed ? `\n${failed} CHECK(S) FAILED` : '\nall checks passed');
-  process.exit(failed ? 1 : 0);
+  // process.exitCode, never process.exit(): Node 25 on Windows trips a libuv
+  // assertion when the process is torn down with a just-settled fetch handle
+  // still open - and the cleanup above is exactly that - which would make a
+  // PASSING run report 127. Same reasoning as scripts/rehearse-migration.mjs.
+  process.exitCode = failed ? 1 : 0;
 }

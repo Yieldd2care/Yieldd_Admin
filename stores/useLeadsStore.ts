@@ -10,7 +10,7 @@ import {
   updateLead as pushLeadUpdate,
   type LeadPatch,
 } from '../lib/api/leads';
-import { captureTimeLabel, initialOf } from '../lib/mappers/lead';
+import { captureTimeLabel, initialOf, needsNoteFor } from '../lib/mappers/lead';
 import { cardImagePath, extraPhotoPath, uploadCardImage, uploadExtraPhoto } from '../lib/api/storage';
 import { claimCaptureFiles, discardCaptureFiles } from '../lib/captureFiles';
 import { scanCard } from '../lib/api/cardScan';
@@ -189,14 +189,14 @@ type LeadsState = {
 };
 
 function applyPatch(lead: StoredLead, patch: LeadPatch): StoredLead {
-  return {
+  const next: StoredLead = {
     ...lead,
     ...(patch.name !== undefined ? { name: patch.name, initial: initialOf(patch.name) } : {}),
     ...(patch.company !== undefined ? { company: patch.company } : {}),
     ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
     ...(patch.email !== undefined ? { email: patch.email } : {}),
     ...(patch.designation !== undefined ? { designation: patch.designation } : {}),
-    ...(patch.note !== undefined ? { note: patch.note, needsNote: !patch.note.trim() } : {}),
+    ...(patch.note !== undefined ? { note: patch.note } : {}),
     ...(patch.companyLandline !== undefined ? { companyLandline: patch.companyLandline } : {}),
     ...(patch.companyWebsite !== undefined ? { companyWebsite: patch.companyWebsite } : {}),
     ...(patch.companyAddress !== undefined ? { companyAddress: patch.companyAddress } : {}),
@@ -212,6 +212,20 @@ function applyPatch(lead: StoredLead, patch: LeadPatch): StoredLead {
     ...(patch.assignedToId !== undefined ? { assignedToId: patch.assignedToId ?? undefined } : {}),
     ...(patch.savedToContacts !== undefined ? { savedToContacts: patch.savedToContacts } : {}),
   };
+
+  /**
+   * Derived last, from the MERGED lead, and never from the patch.
+   *
+   * This used to be recomputed inside the `note` branch above, which meant only
+   * a typed note could ever move it — so a voice note landing on an existing
+   * lead left the flag stale until someone happened to type something. Deriving
+   * it here means that whatever changed, the answer is taken from the final
+   * state of the lead.
+   *
+   * Read `next`, never `lead`: `lead` predates the patch, so deriving from it
+   * would silently ignore the very note being set.
+   */
+  return { ...next, needsNote: needsNoteFor(next.note, next.hasVoice) };
 }
 
 export const useLeadsStore = create<LeadsState>()(
@@ -247,8 +261,20 @@ export const useLeadsStore = create<LeadsState>()(
 
             const merged: StoredLead[] = rows.map((row) => {
               const local = unsynced.get(row.id);
+              /**
+               * A recording still sitting in the outbox is a recording.
+               *
+               * The server cannot see it until the upload lands, so taking its
+               * answer wholesale would strip the microphone off a lead the rep
+               * recorded against minutes ago — and, since the prompt is derived
+               * from this, put "needs a note" back on it until the drain runs.
+               * Both keys must come AFTER the spread or `...row` overwrites them.
+               */
+              const hasVoice = row.hasVoice || Boolean(local?.localVoiceUri);
               const base: StoredLead = {
                 ...row,
+                hasVoice,
+                needsNote: needsNoteFor(row.note, hasVoice),
                 syncStatus: 'synced',
                 /**
                  * The server is the authority on who a lead belongs to, and it
@@ -320,6 +346,12 @@ export const useLeadsStore = create<LeadsState>()(
          */
         const rebase = await claimCaptureFiles(id);
 
+        // Derived from whether a recording is actually here. A lead that claims
+        // a voice note it does not have shows a microphone icon that leads
+        // nowhere. Hoisted out of the object below because `needsNote` is
+        // derived from it too.
+        const hasVoice = Boolean(input.voiceUri) || (input.hasVoice ?? false);
+
         const lead: StoredLead = {
           id,
           initial: initialOf(input.name),
@@ -327,11 +359,8 @@ export const useLeadsStore = create<LeadsState>()(
           company: input.company ?? '',
           time: captureTimeLabel(capturedAt),
           status: 'New',
-          // Derived from whether a recording is actually here. A lead that
-          // claims a voice note it does not have shows a microphone icon that
-          // leads nowhere.
-          hasVoice: Boolean(input.voiceUri) || (input.hasVoice ?? false),
-          needsNote: !input.note?.trim(),
+          hasVoice,
+          needsNote: needsNoteFor(input.note, hasVoice),
           phone: input.phone,
           email: input.email,
           designation: input.designation,
@@ -438,6 +467,18 @@ export const useLeadsStore = create<LeadsState>()(
         // invalidated per lead: a rep who captured forty offline would
         // otherwise fire forty refetches of the same two queries on reconnect.
         let serverChanged = false;
+
+        /**
+         * Aggregates moved, but nothing was inserted or patched.
+         *
+         * Kept apart from `serverChanged` deliberately. That flag also feeds the
+         * re-run guard at the bottom of this function, and a re-run can retry a
+         * transiently-failed card read — which is a BILLED call. Attaching a
+         * voice note moves `needs_note` and `with_voice_note` on the server and
+         * so has to invalidate the stats queries, but it must not buy anyone a
+         * second card scan to do it.
+         */
+        let statsChanged = false;
 
         /**
          * Asked once, before the loop, and used only to gate the card reader.
@@ -756,9 +797,19 @@ export const useLeadsStore = create<LeadsState>()(
 
               if (outcome.ok) {
                 void requestTranscription(outcome.voiceNote.id);
+                // The server's needs_note and with_voice_note both just moved.
+                statsChanged = true;
                 set((state) => ({
                   leads: state.leads.map((l) =>
-                    l.id === lead.id ? { ...l, localVoiceUri: undefined, hasVoice: true } : l
+                    l.id === lead.id
+                      ? {
+                          ...l,
+                          localVoiceUri: undefined,
+                          hasVoice: true,
+                          // The recording IS the note now, so the prompt comes off.
+                          needsNote: needsNoteFor(l.note, true),
+                        }
+                      : l
                   ),
                 }));
               } else if (outcome.reason === 'limit' || outcome.reason === 'file') {
@@ -769,7 +820,16 @@ export const useLeadsStore = create<LeadsState>()(
                 set((state) => ({
                   leads: state.leads.map((l) =>
                     l.id === lead.id
-                      ? { ...l, localVoiceUri: undefined, hasVoice: false, voiceError: outcome.message }
+                      ? {
+                          ...l,
+                          localVoiceUri: undefined,
+                          hasVoice: false,
+                          // The recording is never arriving, so the prompt has to
+                          // come BACK. This lead now has neither kind of note,
+                          // which is exactly what the filter exists to catch.
+                          needsNote: needsNoteFor(l.note, false),
+                          voiceError: outcome.message,
+                        }
                       : l
                   ),
                 }));
@@ -828,7 +888,7 @@ export const useLeadsStore = create<LeadsState>()(
           }
         } finally {
           set({ isSyncing: false, lastSyncedAt: new Date().toISOString() });
-          if (serverChanged) eventCountsChanged();
+          if (serverChanged || statsChanged) eventCountsChanged();
         }
 
         /**
