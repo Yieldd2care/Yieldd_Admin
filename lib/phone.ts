@@ -26,6 +26,64 @@ export function isValidPhone(value: string): boolean {
   return digits.length >= 10 && digits.length <= 15;
 }
 
+/** A dial code, not a number: `*123#`, `*99*1#`. No message reaches one. */
+const DIAL_CODE = /[*#]/;
+
+/**
+ * The smallest number a WhatsApp invite can actually reach.
+ *
+ * Every reachable Indian number is 10 digits — a mobile, or a landline with its
+ * STD code — and the invite goes out as a wa.me link, which needs the whole
+ * number. So a landline typed without its STD code (`2493 1234`) is flagged,
+ * which is right: normalizePhone turns it into `+24931234`, a number belonging
+ * to nobody.
+ */
+const REACHABLE_DIGITS = 10;
+
+/**
+ * "Does this look like something a message could reach?", in plain words, or
+ * null when there is nothing to say.
+ *
+ * A SECOND, LOOSER CHECK THAN isValidPhone, deliberately. The two exist side by
+ * side because they answer different questions and are used in different ways:
+ *
+ *   isValidPhone       a gate. It refuses the value, so it is strict: its
+ *                      character set `/^\+?[\d\s().-]+$/` allows only what a
+ *                      keypad produces. Used where the app owns the number and
+ *                      can insist on a clean one (your own profile, settings).
+ *
+ *   describePhoneProblem   a warning, never a gate. The invite sends either
+ *                      way. So it must NOT object to the shapes a real address
+ *                      book holds and a dialler copes with: extensions (`x`,
+ *                      `ext`), dial pauses (`,` `;`), a slash between two
+ *                      numbers, unicode hyphens and en dashes. isValidPhone
+ *                      rejects every one of those, so using it here would stop
+ *                      numbers that send today — precisely what the decision on
+ *                      PENDING 52 rules out.
+ *
+ * Hence counting digits rather than policing characters, and hence no upper
+ * bound: `98204 41720 / 22 2493 1234` is two numbers in one box and both work.
+ *
+ * Do not tighten isValidPhone to cover this, and do not loosen it either — its
+ * callers depend on it refusing things.
+ */
+export function describePhoneProblem(value: string | null | undefined): string | null {
+  const trimmed = (value ?? '').trim();
+  // An empty box is not ready to send, but it is not wrong either, and telling
+  // someone their empty field is empty helps nobody.
+  if (!trimmed) return null;
+
+  if (DIAL_CODE.test(trimmed)) {
+    return 'That looks like a dial code, not a number a message can reach.';
+  }
+
+  const digits = digitsOf(trimmed);
+  if (!digits) return 'There are no digits in that, so no message can reach it.';
+  if (digits.length < REACHABLE_DIGITS) return 'That looks too short for a phone number.';
+
+  return null;
+}
+
 /**
  * To E.164-ish `+<country><number>`. Returns '' for empty input so callers can
  * store NULL rather than an empty string.

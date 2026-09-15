@@ -7,6 +7,13 @@ import { EyeIcon, EyeOffIcon } from './icons';
 interface Props extends TextInputProps {
   label?: string;
   className?: string;
+  /**
+   * Something about this value looks wrong, but it is still accepted — the
+   * border turns amber and nothing else changes. The explanation belongs beside
+   * the field, in the caller's own words; see the invite rows in
+   * `app/(dash)/team.tsx`.
+   */
+  warn?: boolean;
 }
 
 /**
@@ -17,7 +24,7 @@ interface Props extends TextInputProps {
  * reason the two auth forms are separate files: the layouts differ, the
  * behaviour does not.
  */
-export function TextInput({ label, className = '', secureTextEntry, ...rest }: Props) {
+export function TextInput({ label, className = '', secureTextEntry, warn = false, ...rest }: Props) {
   const [revealed, setRevealed] = useState(false);
 
   // Constant per call site, which is what lets the tree branch on it safely.
@@ -32,7 +39,13 @@ export function TextInput({ label, className = '', secureTextEntry, ...rest }: P
       ) : null}
       <View className="relative">
         <RNTextInput
-          className={`h-[52px] bg-white rounded-md px-4 text-[15.5px] font-regular text-navy border border-hairline focus:border-transparent focus:outline focus:outline-2 focus:outline-gold focus:outline-offset-2 ${
+          // The warning colour is swapped INSIDE this string rather than
+          // appended by the caller: two `border-*` classes of equal specificity
+          // are settled by the order Tailwind emits them, not the order they
+          // appear here, so an appended override is a coin toss.
+          className={`h-[52px] bg-white rounded-md px-4 text-[15.5px] font-regular text-navy border ${
+            warn ? 'border-[#E4B44C]' : 'border-hairline'
+          } focus:border-transparent focus:outline focus:outline-2 focus:outline-gold focus:outline-offset-2 ${
             isPassword ? 'pr-[46px]' : ''
           } ${className}`}
           placeholderTextColor="#97A3B8"

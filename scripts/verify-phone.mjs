@@ -103,5 +103,71 @@ eq(
 eq('normalizePhone would call a US number Indian', m.normalizePhone('4155550134'), '+914155550134');
 eq('normalizePhone mangles a short landline', m.normalizePhone('2493 1234'), '+24931234');
 
+// --- describePhoneProblem: the warning on the two invite screens ---
+//
+// A WARNING, NEVER A GATE (PENDING 52, decided 2026-09-15). So the half that
+// matters most is the silent half: every shape below is one a real address book
+// holds and a dialler copes with, and every one of them creates an invite today.
+// If any of these starts warning, the screen is nagging about working numbers.
+const SILENT = [
+  ['a bare Indian mobile', '9820441720'],
+  ['the same with a country code', '+91 98204 41720'],
+  ['an extension written with x', '022 2493 1234 x 204'],
+  ['an extension written with ext', '+91 22 2493 1234 ext 45'],
+  ['a dial pause', '9820441720,,123'],
+  ['a semicolon pause', '9820441720;123'],
+  ['two numbers separated by a slash', '98204 41720 / 22 2493 1234'],
+  ['a unicode non-breaking hyphen', '+91 98204‑41720'],
+  ['an en dash', '+91 98204–41720'],
+  ['a US number', '+1 415-555-0134'],
+  ['brackets and dots', '(0982) 044.1720'],
+  // Empty is not ready to send, but it is not wrong either, and saying so to
+  // someone who has not typed anything yet helps nobody.
+  ['an empty box', ''],
+  ['spaces only', '   '],
+];
+for (const [what, written] of SILENT) {
+  eq(`${what} says nothing`, m.describePhoneProblem(written), null);
+}
+
+// --- and the half that must speak up ---
+const warns = (written) => typeof m.describePhoneProblem(written) === 'string';
+eq('a USSD service code warns', warns('*123#'), true);
+eq('a voicemail shortcut warns', warns('*99*1#'), true);
+eq('three digits warns', warns('982'), true);
+eq('letters with no number warns', warns('call me'), true);
+// 8 digits. normalizePhone turns it into +24931234 (asserted above), which
+// belongs to nobody — so the STD code is genuinely missing, not merely terse.
+eq('a landline without its STD code warns', warns('2493 1234'), true);
+eq('nine digits is still under the floor', warns('982044172'), true);
+eq('ten digits is exactly at the floor', warns('9820441720'), false);
+
+// Plain words, not "invalid" — this text is read by an admin mid-invite.
+eq(
+  'the short warning names the problem',
+  m.describePhoneProblem('982'),
+  'That looks too short for a phone number.'
+);
+eq(
+  'a dial code is called a dial code',
+  m.describePhoneProblem('*123#'),
+  'That looks like a dial code, not a number a message can reach.'
+);
+// Item 37 took em dashes out of everything a user reads; this is new such text.
+for (const written of ['982', '*123#', 'call me']) {
+  eq(`no em dash in the warning for "${written}"`, m.describePhoneProblem(written).includes('—'), false);
+}
+
+// The normalised form is what the created-invite rows re-check, so the same
+// function has to read `+123` the same way it read `*123#`.
+eq('the warning survives normalisation', warns(m.normalizePhone('*123#')), true);
+
+// --- the two checks are deliberately different, and that is the point ---
+// isValidPhone is a gate and stays strict; describePhoneProblem is a warning and
+// stays loose. If these ever agree, one of them has been "tidied up" and invites
+// that send today have started being refused.
+eq('isValidPhone refuses an extension', m.isValidPhone('022 2493 1234 x 204'), false);
+eq('the warning allows the same extension', m.describePhoneProblem('022 2493 1234 x 204'), null);
+
 console.log(`\n${failed === 0 ? 'All checks passed.' : `${failed} check(s) FAILED.`}`);
 process.exit(failed ? 1 : 0);

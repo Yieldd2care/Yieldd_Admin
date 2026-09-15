@@ -56,7 +56,7 @@ Full diagnosis for each is in its numbered section below.
 | 49 | "New template" is silent, and creates a default not a draft | `[x]` done 2026-09-15 — web dashboard only; `addNew` now selects the new row and opens its editor, and creates it with `is_default: false` |
 | 50 | Home — all-events analytics with an event picker | `[x]` done 2026-09-14 — `event_set_stats`; no cost-per-lead, ROI covers priced events only |
 | 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
-| 52 | An invite counts as ready with a number that is not one | `[ ]` **decided 2026-09-15: warn, never block** — nothing that sends today stops sending |
+| 52 | An invite counts as ready with a number that is not one | `[x]` done 2026-09-15 — **both screens**, the phone invite screen and the web dashboard's Team form, since the item was written up as one. Warn, never block: an unreachable number gets an amber border and a sentence under its own row, and still sends. `ready`, the buttons and `createInvites` are all untouched. New `describePhoneProblem` in `lib/phone.ts`, deliberately looser than `isValidPhone`; asserted in `verify:phone` |
 | 53 | iOS ships a contacts permission string it never uses | `[x]` closed 2026-09-15 by 60 — the permission is genuinely requested now, so the string describes something real |
 | 54 | Ask for the event cost when the show ends | `[ ]` **decided 2026-09-15: wizard unchanged; notify the admin after the end date, naming the blank lines** |
 | 55 | "This event cost nothing" is not something you can say | `[ ]` **decided 2026-09-15: free events do happen — build the tick** |
@@ -896,7 +896,7 @@ overlay being a presentation of the same route rather than a second copy of the 
 
 ---
 
-### 52. An invite counts as ready with a number that is not a number — surfaced 2026-09-14 `[ ]`
+### 52. An invite counts as ready with a number that is not a number — surfaced 2026-09-14 `[x]`
 
 The invite screen decides a row is ready to send on `r.name.trim() && r.phone.trim()`
 ([app/(app)/events/new/invite.tsx](<app/(app)/events/new/invite.tsx>)) — any non-empty string
@@ -913,6 +913,44 @@ function's allowed-character set (`/^+?[ds().-]+$/`, [lib/phone.ts](lib/phone.ts
 extensions (`x`), dial pauses (`,` `;`), slashes and unicode hyphens — all of which appear in real
 contacts. So it would also start refusing numbers that work today. Needs a decision on whether to
 widen `ALLOWED`, warn instead of block, or leave it.
+
+**Done 2026-09-15 — warn, never block, on BOTH screens.** The item was written up as one screen and
+is two. [app/(app)/events/new/invite.tsx](<app/(app)/events/new/invite.tsx>) is the phone, where a
+rep can be picked from the device's contacts and most malformed numbers now come from;
+[app/(dash)/team.tsx](<app/(dash)/team.tsx>) is the web dashboard, where a browser cannot read
+contacts so every number is typed. Both warn. Only the phone has a picker, and it stays that way.
+
+Nothing blocks. `ready` still counts a row on `name.trim() && phone.trim()` on both screens, both
+buttons stay enabled, and [lib/api/invites.ts](lib/api/invites.ts) is untouched — that is the
+decision, not an oversight.
+
+What is new is `describePhoneProblem` in [lib/phone.ts](lib/phone.ts), **a second and looser check
+sitting beside `isValidPhone`, not a replacement for it.** The two answer different questions.
+`isValidPhone` is a gate: it refuses a value, so it is strict, and its callers
+(`onboarding/complete-profile`, `(dash)/settings`) depend on that. `describePhoneProblem` only ever
+produces a sentence, so it must not object to the shapes a real address book holds and a dialler
+copes with — extensions, dial pauses, a slash between two numbers, unicode hyphens and en dashes,
+every one of which `isValidPhone` rejects. Using the strict one here would have stopped numbers that
+send today, which is exactly what the decision rules out. So it counts digits instead of policing
+characters: fewer than 10 is too short (every reachable Indian number is 10, mobile or landline with
+its STD code, and a wa.me link needs the whole thing), anything holding `*` or `#` is a dial code,
+and there is no upper bound because `98204 41720 / 22 2493 1234` is two real numbers in one box.
+
+Three details that are the difference between a useful warning and a nagging one:
+
+- **It is on the row, never a banner.** With four rows on screen, "one of these is wrong" names
+  nobody.
+- **It waits until the number box is left.** A 10-digit mobile is too short for its first nine
+  digits, so a live warning would be up for nearly every keystroke. A number arriving from the
+  contacts picker never focuses the field, so that case is warned about immediately.
+- **It is said again on the created invite**, on both screens. The send button does not blur the
+  field above it (the phone's ScrollView keeps taps), so a dial code could otherwise be sent without
+  the warning ever appearing; and the dashboard's `whatsappUrl` will build `wa.me/123` out of one
+  without a murmur.
+
+Wording is plain and carries no em dashes (37). Cases are asserted in
+[scripts/verify-phone.mjs](scripts/verify-phone.mjs) — the silent half first, because that is the
+half that breaks quietly if either function is ever "tidied up" into the other.
 
 ---
 

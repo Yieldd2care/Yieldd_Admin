@@ -14,6 +14,7 @@ import { useSessionStore } from '../../../../stores/useSessionStore';
 import { KeyboardSafe } from '../../../../components/app/KeyboardSafe';
 import { PhoneChoiceSheet } from '../../../../components/app/PhoneChoiceSheet';
 import { pickContact, warmContactPicker, type PickedNumber } from '../../../../lib/contactPicker';
+import { describePhoneProblem } from '../../../../lib/phone';
 import {
   createInvites,
   fetchEventInvites,
@@ -89,6 +90,19 @@ export default function InviteRepsScreen() {
    * later, while the admin is looking at four rows and deciding whether to send.
    */
   const [pickNote, setPickNote] = useState<Record<string, string>>({});
+  /**
+   * Which row's number box is being typed in right now.
+   *
+   * Only so the "that looks too short" warning can hold its tongue while
+   * someone is mid-number: a 10-digit mobile is too short for its first nine
+   * digits, and a warning that is on screen for almost every keystroke is one
+   * people stop reading. It appears when they leave the box and goes the
+   * instant they come back to fix it.
+   *
+   * A number arriving from the contacts picker never focuses the field, so it
+   * is warned about immediately — which is the case most likely to be wrong.
+   */
+  const [typingPhone, setTypingPhone] = useState<string | null>(null);
 
   // Load the contacts module now rather than on the tap. Reported 2026-09-14
   // as "opening contacts takes too long"; this takes the module's first-load
@@ -114,6 +128,14 @@ export default function InviteRepsScreen() {
     };
   }, [eventId]);
 
+  /**
+   * Still "both boxes have something in them", on purpose.
+   *
+   * An odd-looking number is warned about beside the row it is on and sends
+   * anyway (decision on PENDING 52, 2026-09-15). The rule there is that nothing
+   * which sends today stops sending, so this count, the send button and the
+   * database are all left exactly as they were.
+   */
   const ready = reps.filter((r) => r.name.trim() && r.phone.trim());
   const readyCount = ready.length;
 
@@ -135,6 +157,9 @@ export default function InviteRepsScreen() {
     // Prune the note with the row, or a later row minted on the same id
     // inherits an explanation about somebody else.
     noteFor(id, null);
+    // Same reason: a removed row never blurs, so without this its id would stay
+    // "being typed in" and silence the warning on whichever row takes its place.
+    setTypingPhone((current) => (current === id ? null : current));
   };
 
   /**
@@ -267,7 +292,17 @@ export default function InviteRepsScreen() {
               <Typography variant="caption" className="text-slate mb-[10px]">
                 Invited. Each link is personal, so send them one by one
               </Typography>
-              {invites.map((invite) => (
+              {invites.map((invite) => {
+                /*
+                  Said again here, on the created invite, because this row is
+                  where the message actually goes out — and because the send
+                  button does not blur the number field above (the ScrollView
+                  keeps taps), so someone can type a dial code and send it
+                  without the warning on the form ever having been on screen.
+                  `invite.phone` is the normalised form, which reads the same.
+                */
+                const problem = describePhoneProblem(invite.phone);
+                return (
                 <View
                   key={invite.id}
                   className="flex-row items-center gap-3 bg-white border border-hairline rounded-md px-4 py-3 mb-[10px]"
@@ -277,6 +312,11 @@ export default function InviteRepsScreen() {
                       {invite.fullName ?? 'Invited rep'}
                     </Typography>
                     <Typography className="text-[12px] text-slate mt-[1px]">{invite.phone}</Typography>
+                    {problem ? (
+                      <Typography className="text-[11.5px] text-[#8A6100] mt-[3px] leading-[1.4]">
+                        {problem}
+                      </Typography>
+                    ) : null}
                   </View>
                   <Pressable
                     onPress={() => sendOne(invite)}
@@ -296,11 +336,15 @@ export default function InviteRepsScreen() {
                     </Typography>
                   </Pressable>
                 </View>
-              ))}
+                );
+              })}
             </View>
           ) : null}
 
-          {reps.map((rep) => (
+          {reps.map((rep) => {
+            // Silent while this row is the one being typed in; see typingPhone.
+            const problem = typingPhone === rep.id ? null : describePhoneProblem(rep.phone);
+            return (
             <View key={rep.id} className="mb-3">
               <View className="flex-row gap-[10px]">
                 <RNTextInput
@@ -313,7 +357,13 @@ export default function InviteRepsScreen() {
                 />
                 <View className="flex-1">
                   <RNTextInput
-                    className="w-full border border-hairline rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white"
+                    // Only the border colour moves, and both branches carry one.
+                    // A class list that GAINS a variable-backed utility after
+                    // its first render (shadow, ring, transform) is what makes
+                    // NativeWind throw the bogus navigation-context red screen.
+                    className={`w-full border ${
+                      problem ? 'border-[#E4B44C]' : 'border-hairline'
+                    } rounded-md h-[50px] px-[14px] text-[14px] font-regular text-navy bg-white`}
                     placeholder="Phone number"
                     placeholderTextColor="#97A3B8"
                     value={rep.phone}
@@ -324,6 +374,8 @@ export default function InviteRepsScreen() {
                       // in the same tick it was written.
                       noteFor(rep.id, null);
                     }}
+                    onFocus={() => setTypingPhone(rep.id)}
+                    onBlur={() => setTypingPhone((id) => (id === rep.id ? null : id))}
                     keyboardType="phone-pad"
                   />
                 </View>
@@ -334,6 +386,18 @@ export default function InviteRepsScreen() {
                   <CloseIcon />
                 </Pressable>
               </View>
+
+              {/*
+                Under the row it is about, never a banner at the top: with four
+                rows on screen, "one of these numbers looks wrong" tells the
+                admin nothing they can act on. It does not stop anything — the
+                row still counts, the send button still sends.
+              */}
+              {problem ? (
+                <Typography className="text-[11.5px] text-[#8A6100] mt-[6px] ml-[2px] leading-[1.4]">
+                  {problem}
+                </Typography>
+              ) : null}
 
               {/*
                 A LABELLED BUTTON, not an icon tucked inside the phone field.
@@ -372,7 +436,8 @@ export default function InviteRepsScreen() {
                 </Typography>
               ) : null}
             </View>
-          ))}
+            );
+          })}
 
           <Pressable onPress={addRep} className="flex-row items-center gap-2 py-3">
             <PlusIcon />

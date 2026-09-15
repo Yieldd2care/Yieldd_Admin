@@ -13,6 +13,7 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { useSessionStore } from '../../stores/useSessionStore';
 import { inviteMessage, type Invite } from '../../lib/api/invites';
 import { whatsappUrl } from '../../lib/messageText';
+import { describePhoneProblem } from '../../lib/phone';
 
 const COLS = [1.3, 1.3, 1, 0.55, 0.6, 0.45, 0.75];
 
@@ -41,11 +42,23 @@ async function copy(text: string): Promise<boolean> {
 function InviteResult({ invite, from }: { invite: Invite; from?: string }) {
   const [copied, setCopied] = useState<'link' | 'message' | null>(null);
   const message = inviteMessage(invite, { from });
+  /*
+    The number is warned about again here, on the created invite, because
+    `whatsappUrl` below will happily build `wa.me/123` out of a dial code and
+    say nothing. This row is the last thing between the admin and a message
+    addressed to nobody.
+  */
+  const problem = invite.phone ? describePhoneProblem(invite.phone) : null;
 
   return (
     <View className="border border-hairline rounded-md p-4 bg-section">
       <Typography className="text-[13.5px] font-semibold text-navy">{invite.fullName ?? 'Invited'}</Typography>
       <Typography className="text-[12px] text-slate mt-[2px]">{invite.phone ?? invite.email ?? ''}</Typography>
+      {problem ? (
+        <Typography className="text-[12px] font-semibold text-[#8A6100] mt-[4px] leading-[1.45]">
+          {problem} The link still works, so you can send it another way.
+        </Typography>
+      ) : null}
 
       <View className="bg-white border border-hairline rounded-sm px-3 py-2 mt-3">
         <Typography className="text-[11.5px] text-ink-muted" numberOfLines={1}>
@@ -111,6 +124,16 @@ export default function DashTeam() {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<DraftRow[]>([{ name: '', phone: '' }]);
   const [created, setCreated] = useState<Invite[]>([]);
+  /**
+   * Which row's number box is being typed in, so the "looks too short" warning
+   * stays quiet until they leave it. A 10-digit mobile is too short for its
+   * first nine digits, and a warning that is up for almost every keystroke is
+   * one people learn to ignore.
+   *
+   * Every number here is typed: a browser cannot read the phone's contacts, so
+   * this screen has no picker and never will.
+   */
+  const [typingPhone, setTypingPhone] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<
     | { kind: 'deactivate' | 'restore'; id: string; name: string }
@@ -137,6 +160,10 @@ export default function DashTeam() {
   const overSeats = seatsTotal != null && seatsUsed > seatsTotal;
   const seatsFree = seatsTotal != null ? Math.max(0, seatsTotal - seatsUsed) : null;
 
+  // Still "both boxes have something in them". An odd-looking number is warned
+  // about on its own row and created anyway (decision on PENDING 52): nothing
+  // that sends today stops sending, so neither this count nor the Create button
+  // knows about the warning.
   const ready = rows.filter((r) => r.name.trim() && r.phone.trim());
   // The database refuses this too (migration 20260910100000). Checking here as
   // well is not belt-and-braces for its own sake: it turns a round trip and a
@@ -264,33 +291,56 @@ export default function DashTeam() {
           </Typography>
 
           <View className="gap-3 mt-[18px]">
-            {rows.map((r, i) => (
-              <View key={i} className="flex-row gap-3 items-end">
-                <View className="flex-1">
-                  <TextInput
-                    label={i === 0 ? 'Full name' : undefined}
-                    placeholder="Aarti Kulkarni"
-                    value={r.name}
-                    onChangeText={(t) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, name: t } : x)))}
-                  />
+            {rows.map((r, i) => {
+              const problem = typingPhone === i ? null : describePhoneProblem(r.phone);
+              return (
+              <View key={i}>
+                <View className="flex-row gap-3 items-end">
+                  <View className="flex-1">
+                    <TextInput
+                      label={i === 0 ? 'Full name' : undefined}
+                      placeholder="Aarti Kulkarni"
+                      value={r.name}
+                      onChangeText={(t) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, name: t } : x)))}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <TextInput
+                      label={i === 0 ? 'Phone number' : undefined}
+                      placeholder="+91 98204 41720"
+                      value={r.phone}
+                      keyboardType="phone-pad"
+                      warn={problem !== null}
+                      onChangeText={(t) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, phone: t } : x)))}
+                      onFocus={() => setTypingPhone(i)}
+                      onBlur={() => setTypingPhone((at) => (at === i ? null : at))}
+                    />
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      // Rows are identified by position, so dropping one shifts
+                      // every index below it. Forget which row was being typed
+                      // in, or the warning goes quiet on somebody else's row.
+                      setTypingPhone(null);
+                      setRows((rs) => (rs.length === 1 ? rs : rs.filter((_, j) => j !== i)));
+                    }}
+                    className="h-[52px] px-4 items-center justify-center border border-hairline rounded-md bg-white"
+                  >
+                    <Typography className="text-[13px] font-semibold text-slate">Remove</Typography>
+                  </Pressable>
                 </View>
-                <View className="flex-1">
-                  <TextInput
-                    label={i === 0 ? 'Phone number' : undefined}
-                    placeholder="+91 98204 41720"
-                    value={r.phone}
-                    keyboardType="phone-pad"
-                    onChangeText={(t) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, phone: t } : x)))}
-                  />
-                </View>
-                <Pressable
-                  onPress={() => setRows((rs) => (rs.length === 1 ? rs : rs.filter((_, j) => j !== i)))}
-                  className="h-[52px] px-4 items-center justify-center border border-hairline rounded-md bg-white"
-                >
-                  <Typography className="text-[13px] font-semibold text-slate">Remove</Typography>
-                </Pressable>
+
+                {/* On the row it belongs to, not a banner over the form: with
+                    four rows up, a general warning names nobody. It never stops
+                    the invite, it only says what looks wrong. */}
+                {problem ? (
+                  <Typography className="text-[12.5px] font-semibold text-[#8A6100] mt-2 leading-[1.5]">
+                    {problem} You can still invite them.
+                  </Typography>
+                ) : null}
               </View>
-            ))}
+              );
+            })}
           </View>
 
           <View className="flex-row gap-3 mt-4">
