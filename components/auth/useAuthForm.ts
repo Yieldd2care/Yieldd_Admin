@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Platform } from 'react-native';
+import { useRef, useState } from 'react';
+import { Platform, type TextInput } from 'react-native';
 import { router } from 'expo-router';
 
 import { useSessionStore } from '../../stores/useSessionStore';
@@ -38,6 +38,10 @@ export function useAuthForm() {
   const pendingInviteToken = useSessionStore((s) => s.pendingInviteToken);
 
   const [sendingCode, setSendingCode] = useState(false);
+
+  // Enter/return has to sign you in. Both presentations hand this to their
+  // password box so the key lands on the same handler the button does.
+  const passwordRef = useRef<TextInput>(null);
 
   const isCreate = mode === 'create';
 
@@ -135,6 +139,22 @@ export function useAuthForm() {
     );
   };
 
+  /**
+   * Enter/return from the email box.
+   *
+   * On the create tab email is the whole form, so it submits. On sign-in the
+   * password is still empty at that point, and handleSubmit would silently
+   * refuse it — so the key moves to the password instead, which is what every
+   * other login on the web does and what a browser's autofill expects.
+   */
+  const submitFromEmail = () => {
+    if (!isCreate && !password.trim()) {
+      passwordRef.current?.focus();
+      return;
+    }
+    void handleSubmit();
+  };
+
   const handleGoogle = async () => {
     if (isSubmitting || inviteBlocksGoogle) return;
     setError(null);
@@ -176,6 +196,8 @@ export function useAuthForm() {
     sendingCode,
     canSubmit,
     inviteBlocksGoogle,
+    passwordRef,
+    submitFromEmail,
     handleSubmit,
     handleGoogle,
     devEmail,

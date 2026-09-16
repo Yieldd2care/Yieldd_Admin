@@ -127,6 +127,8 @@ export function AuthFormNative(form: AuthFormState) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
+                returnKeyType={form.isCreate ? 'go' : 'next'}
+                onSubmitEditing={form.submitFromEmail}
               />
               {form.isCreate ? null : (
                 <AuthPillInput
@@ -135,6 +137,9 @@ export function AuthFormNative(form: AuthFormState) {
                   onChangeText={form.setPassword}
                   secureTextEntry
                   autoComplete="password"
+                  ref={form.passwordRef}
+                  returnKeyType="go"
+                  onSubmitEditing={() => void form.handleSubmit()}
                 />
               )}
             </View>

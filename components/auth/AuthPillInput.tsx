@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import { Pressable, TextInput as RNTextInput, View, type TextInputProps } from 'react-native';
 
 import { EyeIcon, EyeOffIcon } from '../ui/icons';
@@ -15,8 +15,9 @@ import { EyeIcon, EyeOffIcon } from '../ui/icons';
 export function AuthPillInput({
   className = '',
   secureTextEntry,
+  ref,
   ...rest
-}: TextInputProps & { className?: string }) {
+}: TextInputProps & { className?: string; ref?: Ref<RNTextInput> }) {
   const [revealed, setRevealed] = useState(false);
 
   // Constant for the life of the component — every call site passes a literal.
@@ -26,6 +27,7 @@ export function AuthPillInput({
 
   const field = (
     <RNTextInput
+      ref={ref}
       // `pr-[52px]` keeps the typed text from running under the eye. It is only
       // applied on a password field so the other inputs keep their symmetry.
       className={`w-full h-[52px] rounded-full bg-white px-[22px] text-[14.5px] font-regular text-navy ${

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import { Pressable, TextInput as RNTextInput, View, type TextInputProps } from 'react-native';
 
 import { Typography } from './Typography';
@@ -14,6 +14,8 @@ interface Props extends TextInputProps {
    * `app/(dash)/team.tsx`.
    */
   warn?: boolean;
+  /** So a caller can move focus here — the email box does it on Enter. */
+  ref?: Ref<RNTextInput>;
 }
 
 /**
@@ -24,7 +26,14 @@ interface Props extends TextInputProps {
  * reason the two auth forms are separate files: the layouts differ, the
  * behaviour does not.
  */
-export function TextInput({ label, className = '', secureTextEntry, warn = false, ...rest }: Props) {
+export function TextInput({
+  label,
+  className = '',
+  secureTextEntry,
+  warn = false,
+  ref,
+  ...rest
+}: Props) {
   const [revealed, setRevealed] = useState(false);
 
   // Constant per call site, which is what lets the tree branch on it safely.
@@ -39,6 +48,7 @@ export function TextInput({ label, className = '', secureTextEntry, warn = false
       ) : null}
       <View className="relative">
         <RNTextInput
+          ref={ref}
           // The warning colour is swapped INSIDE this string rather than
           // appended by the caller: two `border-*` classes of equal specificity
           // are settled by the order Tailwind emits them, not the order they
