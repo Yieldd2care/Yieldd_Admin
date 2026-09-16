@@ -44,5 +44,32 @@ export default function DashLayout() {
     return <Redirect href="/(web)" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F5F7FB' } }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F5F7FB' } }}>
+      {/*
+        A lead opens over the list, not instead of it.
+
+        This one option is what makes that possible. The web stack renders every
+        screen absolutely filled and sets `display: none` on all but the focused
+        one — unless the screen above it is presented transparently, which is
+        the case this names. React keeps a hidden screen mounted either way, so
+        the search box and the page number would survive; the scroll position
+        would not, because a browser resets `scrollTop` on a subtree it has
+        stopped laying out. The list has to stay laid out, not merely alive.
+
+        `contentStyle` has to be overridden too: the default above paints every
+        screen's content #F5F7FB, and an opaque background over the list is the
+        whole thing this is trying to avoid.
+
+        `app/(dash)/leads/[id].tsx` decides which presentation to draw. Arriving
+        with nothing underneath — a fresh tab on `/leads/<id>` — it renders a
+        full page, and a transparent screen with a full page inside it looks
+        exactly like a page.
+      */}
+      <Stack.Screen
+        name="leads/[id]"
+        options={{ presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }}
+      />
+    </Stack>
+  );
 }

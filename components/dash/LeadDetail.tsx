@@ -6,7 +6,7 @@ import { Cap, Empty, GhostButton, GoldButton, Panel, Pill, StatusChip, TempChip 
 import { Avatar, Icon, ICON, QuickAction } from '../dash/controls';
 import { Typography } from '../ui/Typography';
 import { DateField } from '../app/DateField';
-import { useLeadsStore } from '../../stores/useLeadsStore';
+import { useLeadsStore, type StoredLead } from '../../stores/useLeadsStore';
 import { useSessionStore } from '../../stores/useSessionStore';
 import { useEvent } from '../../hooks/useEvents';
 import { useTeam } from '../../hooks/useTeam';
@@ -86,11 +86,43 @@ function DetailColumn({
 }
 
 /**
- * Kept out of the route file so it can be rendered on its own.
- * `app/(dash)/leads/[id].tsx` is a three-line wrapper that reads the param —
- * the brackets in that filename make it unimportable from anywhere else.
+ * The copy-message button, shared by both presentations.
+ *
+ * On the page it sits in the title bar; in the overlay it sits in the card's
+ * own header. One component rather than two, so the label, the two-second
+ * "Copied" and the template being copied cannot drift apart.
  */
-export function LeadDetail({ leadId }: { leadId: string }) {
+export function CopyMessageButton({ lead }: { lead: StoredLead }) {
+  const actions = useLeadActions(lead);
+  const [copied, setCopied] = useState(false);
+  return (
+    <GhostButton
+      label={copied ? 'Copied' : 'Copy message'}
+      onPress={async () => {
+        if (await copy(actions.whatsappText)) {
+          setCopied(true);
+          globalThis.setTimeout(() => setCopied(false), 2000);
+        }
+      }}
+    />
+  );
+}
+
+/**
+ * Everything a lead shows, and nothing about the frame it shows in.
+ *
+ * Split out of `LeadDetail` so the same content can be a page or an overlay.
+ * It used to render `DashShell` itself — the sidebar, the title bar and the
+ * breadcrumb — which meant dropping it into a modal drew a whole second
+ * dashboard page inside a popup on top of the one you were already on. There
+ * is one copy of this and two presentations of it: `LeadDetail` below puts it
+ * in a `DashShell` for the standalone route, and `LeadOverlay` puts it in a
+ * card over the list.
+ *
+ * Nothing in here may reach for page chrome. A title, a breadcrumb or a
+ * title-bar action belongs to whichever presentation is wrapping it.
+ */
+export function LeadDetailBody({ leadId }: { leadId: string }) {
   const leads = useLeadsStore((s) => s.leads);
   const lead = useMemo(() => leads.find((l) => l.id === leadId), [leads, leadId]);
 
@@ -105,7 +137,6 @@ export function LeadDetail({ leadId }: { leadId: string }) {
   const [fieldDefs, setFieldDefs] = useState<CustomFieldDef[]>([]);
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
   const [activity, setActivity] = useState<LeadActivity[]>([]);
-  const [copied, setCopied] = useState(false);
 
   // The company summary, asked for rather than fetched on open.
   const [summarising, setSummarising] = useState(false);
@@ -168,14 +199,12 @@ export function LeadDetail({ leadId }: { leadId: string }) {
 
   if (!lead) {
     return (
-      <DashShell title="Lead" breadcrumb={[{ label: 'Leads', href: '/(dash)/leads' }]}>
-        <Panel>
-          <Empty
-            title="Lead not found"
-            body="It may not have synced to this browser yet, or it belongs to someone else."
-          />
-        </Panel>
-      </DashShell>
+      <Panel>
+        <Empty
+          title="Lead not found"
+          body="It may not have synced to this browser yet, or it belongs to someone else."
+        />
+      </Panel>
     );
   }
 
@@ -259,22 +288,7 @@ export function LeadDetail({ leadId }: { leadId: string }) {
     .join(' · ');
 
   return (
-    <DashShell
-      title={lead.name || 'Unnamed lead'}
-      subtitle={[lead.designation, lead.company].filter(Boolean).join(' at ') || undefined}
-      breadcrumb={[{ label: 'Leads', href: '/(dash)/leads' }]}
-      actions={
-        <GhostButton
-          label={copied ? 'Copied' : 'Copy message'}
-          onPress={async () => {
-            if (await copy(actions.whatsappText)) {
-              setCopied(true);
-              globalThis.setTimeout(() => setCopied(false), 2000);
-            }
-          }}
-        />
-      }
-    >
+    <>
       {error ? (
         <Panel className="px-5 py-4 mb-4">
           <Typography className="text-[13px] font-semibold text-[#C23B3B]">{error}</Typography>
@@ -595,6 +609,32 @@ export function LeadDetail({ leadId }: { leadId: string }) {
           </Panel>
         </View>
       </View>
+    </>
+  );
+}
+
+/**
+ * The lead as a page of its own — what `/(dash)/leads/<id>` renders.
+ *
+ * Kept out of the route file because the brackets in `[id].tsx` make it
+ * unimportable from anywhere else. The title bar, the breadcrumb and the
+ * copy-message action live here; the content below them is the same component
+ * the overlay renders.
+ */
+export function LeadDetail({ leadId }: { leadId: string }) {
+  const leads = useLeadsStore((s) => s.leads);
+  const lead = useMemo(() => leads.find((l) => l.id === leadId), [leads, leadId]);
+
+  return (
+    <DashShell
+      title={lead ? lead.name || 'Unnamed lead' : 'Lead'}
+      subtitle={
+        lead ? [lead.designation, lead.company].filter(Boolean).join(' at ') || undefined : undefined
+      }
+      breadcrumb={[{ label: 'Leads', href: '/(dash)/leads' }]}
+      actions={lead ? <CopyMessageButton lead={lead} /> : undefined}
+    >
+      <LeadDetailBody leadId={leadId} />
     </DashShell>
   );
 }

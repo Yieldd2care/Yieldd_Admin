@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Typography } from '../ui/Typography';
@@ -410,7 +410,11 @@ export function Checkbox({
 }: {
   checked: boolean;
   indeterminate?: boolean;
-  onPress: () => void;
+  /**
+   * The event is handed on so a caller inside a pressable row can stop the
+   * click reaching it — ticking a box must not also open what the row opens.
+   */
+  onPress: (e: GestureResponderEvent) => void;
 }) {
   const on = checked || indeterminate;
   return (

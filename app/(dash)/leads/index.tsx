@@ -353,11 +353,11 @@ export default function DashLeads() {
   function cell(key: ColumnKey, lead: StoredLead) {
     switch (key) {
       case 'person':
+        // No Pressable of its own any more — the whole row opens the lead. The
+        // name stays blue because that is how anyone reading this table already
+        // knows the row leads somewhere.
         return (
-          <Pressable
-            onPress={() => router.push(`/(dash)/leads/${lead.id}`)}
-            className="flex-row items-center gap-[10px]"
-          >
+          <View className="flex-row items-center gap-[10px]">
             <Avatar name={lead.name} size={32} tone="surface" />
             <View className="flex-1 min-w-0">
               <Typography className="text-[13.5px] font-semibold text-blue" numberOfLines={1}>
@@ -369,7 +369,7 @@ export default function DashLeads() {
                 </Typography>
               ) : null}
             </View>
-          </Pressable>
+          </View>
         );
       case 'company':
         return (
@@ -550,22 +550,45 @@ export default function DashLeads() {
               ))}
             </View>
 
+            {/*
+              The whole row opens the lead, not just the name.
+
+              Only backgrounds move between the two states here. A conditional
+              class list that gains its first shadow-, ring-, scale- or gradient
+              utility after the first render makes NativeWind try to upgrade the
+              component mid-life, and the app then throws a red screen about a
+              missing navigation context that has nothing to do with navigation.
+              Plain colours carry no variables and are safe.
+
+              The checkbox is the one thing inside a row that has its own press,
+              and it stops the click there — see below. The far end of the row is
+              the deal value, which is text.
+            */}
             {shown.map((lead, i) => (
-              <View
+              <Pressable
                 key={lead.id}
+                onPress={() => router.push(`/(dash)/leads/${lead.id}`)}
                 className={`flex-row items-center px-5 py-[13px] ${
                   i === shown.length - 1 ? '' : 'border-b border-hairline'
                 } ${picked.has(lead.id) ? 'bg-section' : 'bg-white'}`}
               >
                 <View className="w-[34px]">
-                  <Checkbox checked={picked.has(lead.id)} onPress={() => toggleOne(lead.id)} />
+                  <Checkbox
+                    checked={picked.has(lead.id)}
+                    onPress={(e) => {
+                      // Without this the row's own onPress fires too and
+                      // ticking a box also opens the lead.
+                      e.stopPropagation();
+                      toggleOne(lead.id);
+                    }}
+                  />
                 </View>
                 {visible.map((c) => (
                   <View key={c.key} style={{ flex: c.flex }} className="pr-3">
                     {cell(c.key, lead)}
                   </View>
                 ))}
-              </View>
+              </Pressable>
             ))}
 
             <Pagination page={page} pageSize={pageSize} total={matched.length} onPage={setPage} />

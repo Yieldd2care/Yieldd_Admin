@@ -956,7 +956,7 @@ never hold two at once cannot exercise an across-events figure at all.
 
 ---
 
-### 51. Clicking a lead in the list should open it as a popup — reported 2026-09-14 `[ ]`
+### 51. Clicking a lead in the list should open it as a popup — reported 2026-09-14 `[x]`
 
 **Asked for:** clicking a lead row on the Leads screen opens that lead in an overlay — the modal
 Habsy shows, with the person, the company, quick actions, the contact details, the card images and
@@ -974,6 +974,58 @@ the location, over the list rather than instead of it.
 So: make the row itself open it, and render the existing detail in a dismissible overlay. Keep the
 route working — a lead URL has to stay shareable and reloadable, which is an argument for the
 overlay being a presentation of the same route rather than a second copy of the component.
+
+**Done 2026-09-16 — the overlay IS the route.** Not local state on the list with the URL left
+behind. Clicking a row does a real `router.push('/(dash)/leads/<id>')`, so the address bar changes
+as a lead opens, the link can be copied out of it, and browser back closes the lead rather than
+leaving the dashboard.
+
+What makes that possible is one option, in [app/(dash)/_layout.tsx](<app/(dash)/_layout.tsx>):
+`presentation: 'transparentModal'` on the `leads/[id]` screen. The web stack renders every screen
+absolutely filled and sets `display: none` on all but the focused one — unless the screen above it
+is presented transparently. React keeps a hidden screen **mounted** either way, so the search box
+and the page number would have survived regardless; the scroll position would not, because a
+browser resets `scrollTop` on a subtree it has stopped laying out. The list has to stay laid out,
+not merely alive. `contentStyle` is overridden to transparent on the same screen, or the stack's
+default #F5F7FB would paint over the list it is meant to float on.
+
+**The standalone route still renders a full page**, checked in a fresh tab rather than assumed:
+`/leads/<id>` opened cold shows the sidebar, the `Leads ›` breadcrumb, the name and designation in
+the title bar and Copy message beside them, exactly as before.
+[app/(dash)/leads/[id].tsx](<app/(dash)/leads/[id].tsx>) chooses between the two on
+`navigation.canGoBack()` — arrive from somewhere and the lead opens over it, land on it and it is a
+page. Read once into state, because that answer is not reactive and swapping a modal for a page
+under a mounted screen is exactly the mid-life structure change NativeWind handles badly.
+
+**`LeadDetail.tsx` was a page pretending to be a component** and had to be split before any of this
+could work: it rendered `DashShell` itself at two points, so dropping it into a modal would have
+drawn a whole second dashboard — sidebar, title bar, breadcrumb — inside a popup on top of the
+dashboard already on screen. It is now `LeadDetailBody` (the content, which knows nothing about
+page chrome), `LeadDetail` (that body inside a `DashShell`) and
+[components/dash/LeadOverlay.tsx](components/dash/LeadOverlay.tsx) (that body inside a `Modal`).
+One copy of six hundred lines, two presentations of it. `CopyMessageButton` is shared for the same
+reason.
+
+The overlay copies `ConfirmDialog`'s shape rather than inventing one — `Modal`, a full-bleed
+backdrop that closes, an inner `Pressable` with an empty `onPress` so a click in the card does not
+reach it — and `onRequestClose` is wired, which is what gives Escape on web. Being much taller than
+a confirm dialog it also caps its own height, scrolls inside, and carries a close button; a
+backdrop click alone is not enough when the card covers most of the screen.
+
+**The whole row opens the lead now, not just the name.** The name stays blue, because that is how
+anyone reading the table already knows the row leads somewhere, but it is no longer a `Pressable`
+of its own — the row is. The one thing inside a row that still has its own press is the checkbox,
+and it now calls `e.stopPropagation()`, the same fix and the same reason as
+[components/app/LeadRow.tsx](components/app/LeadRow.tsx) on the phone: without it, ticking a box
+also opened the lead. `Checkbox` was widened to hand its caller the event. Nothing else in the row
+is pressable — the far end is the deal value, which is text.
+
+Verified in a browser, because none of this is caught by a typecheck: opening a lead from page 2 of
+a searched list left the search text, the page number and a 250px scroll offset exactly where they
+were, both behind the overlay and after closing it; Escape, the backdrop and browser back each
+close it; the checkbox ticks without navigating; at a 444px-wide viewport the card stays inside the
+window. No console errors, and in particular no NativeWind variable-provider warning — the only
+conditional classes on the row are background colours, which carry no CSS variables.
 
 ---
 
