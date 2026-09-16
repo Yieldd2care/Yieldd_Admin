@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { DashShell } from '../../../components/dash/DashShell';
+import { Hero, HeroMetric, HeroMetrics, HeroTitle } from '../../../components/dash/hero';
 import { EventMultiPicker } from '../../../components/dash/EventMultiPicker';
 import { Cap, Empty, Panel, Pill, StatusChip, TempChip } from '../../../components/dash/primitives';
 import {
@@ -22,7 +23,7 @@ import { useTeam } from '../../../hooks/useTeam';
 import { useEventSelection } from '../../../hooks/useEvents';
 import type { StoredLead } from '../../../stores/useLeadsStore';
 
-type Filter = 'all' | 'hot' | 'warm' | 'cold' | 'due' | 'note' | 'draft';
+type Filter = 'all' | 'hot' | 'warm' | 'cold' | 'due' | 'note' | 'draft' | 'consent';
 type SortKey = 'newest' | 'oldest' | 'name' | 'value';
 
 const SORTS: { key: SortKey; label: string }[] = [
@@ -64,6 +65,7 @@ const FILTER_LABEL: Record<Filter, string> = {
   due: 'Follow-up due',
   note: 'Needs note',
   draft: 'Not synced',
+  consent: 'Consent given',
 };
 
 function isFilter(value: string | undefined): value is Filter {
@@ -118,6 +120,7 @@ export default function DashLeads() {
     rep?: string;
     hour?: string;
     on?: string;
+    events?: string;
     event?: string;
   }>();
 
@@ -179,7 +182,7 @@ export default function DashLeads() {
    * every row exactly where it was. Now it is the scope, and "Every event"
    * genuinely means every event.
    */
-  const { selectedIds, setSelection } = useEventSelection();
+  const { events: visibleEvents, selectedIds, setSelection } = useEventSelection();
 
   /**
    * Arriving from a chart points the picker at that chart's event.
@@ -194,6 +197,21 @@ export default function DashLeads() {
     if (id) setSelection([id]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.event]);
+
+  /**
+   * `?events=all` widens the picker to everything visible.
+   *
+   * The opposite of `?event=<id>`, and needed for the same reason: a figure that
+   * counts every show has to still be true when you land here. Without it a
+   * press on the events page's "Leads captured" dropped into whatever narrower
+   * selection happened to be set, and showed fewer rows than the number pressed.
+   */
+  useEffect(() => {
+    if (one(params.events) !== 'all') return;
+    if (!visibleEvents.length) return;
+    setSelection(visibleEvents.map((e) => e.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.events, visibleEvents.length]);
 
 
   /**
@@ -243,6 +261,7 @@ export default function DashLeads() {
       due: leads.filter((l) => l.followUpDate && l.followUpDate <= today).length,
       note: leads.filter((l) => l.needsNote).length,
       draft: leads.filter((l) => l.syncStatus === 'draft').length,
+      consent: leads.filter((l) => l.consentGiven).length,
     };
   }, [leads]);
 
@@ -265,6 +284,10 @@ export default function DashLeads() {
           return l.needsNote;
         case 'draft':
           return l.syncStatus === 'draft';
+        // Reached from the dashboard's "Consent given" tile. Kept as a pill too
+        // so the narrowing can be cleared and found again without going back.
+        case 'consent':
+          return Boolean(l.consentGiven);
         default:
           return true;
       }
@@ -424,10 +447,48 @@ export default function DashLeads() {
       subtitle={`${counts.all.toLocaleString('en-IN')} captured`}
       scope={<EventMultiPicker />}
     >
+      {/* The shape of the list before the list itself. Each figure selects its
+          own slice rather than navigating — the rows are already on this page,
+          so leaving it to come back to it would be theatre. */}
+      <Hero>
+        <View className="flex-row items-start gap-10">
+          <View className="flex-1 min-w-0">
+            <HeroTitle
+              title={`${counts.all.toLocaleString('en-IN')} ${counts.all === 1 ? 'lead' : 'leads'}`}
+              sub={
+                focus.status || focus.rep || focus.hour !== undefined || focus.on
+                  ? 'Narrowed by what you clicked. Clear it to see everything again.'
+                  : 'Everything captured across the events you can see, newest first.'
+              }
+            />
+          </View>
+          <HeroMetrics>
+            <HeroMetric
+              label="Hot"
+              value={String(counts.hot)}
+              note="Worth a call today"
+              onPress={() => setFilter('hot')}
+            />
+            <HeroMetric
+              label="Follow-up due"
+              value={String(counts.due)}
+              note="Promised on or before today"
+              onPress={() => setFilter('due')}
+            />
+            <HeroMetric
+              label="Needs a note"
+              value={String(counts.note)}
+              note="Captured without context"
+              onPress={() => setFilter('note')}
+            />
+          </HeroMetrics>
+        </View>
+      </Hero>
+
       {/* The toolbar sits outside the Panel on purpose: the Panel is
           `overflow-hidden` so its rounded corners clip the table, and a menu
           opened inside it would be clipped too. */}
-      <View className="flex-row items-center gap-2 mb-3" style={{ zIndex: 20 }}>
+      <View className="flex-row items-center gap-2 mt-6 mb-3" style={{ zIndex: 20 }}>
         <SearchField
           value={query}
           onChange={setQuery}
@@ -496,6 +557,11 @@ export default function DashLeads() {
         <Pill label={`Follow-up due ${counts.due}`} active={filter === 'due'} onPress={() => setFilter('due')} />
         <Pill label={`Needs note ${counts.note}`} active={filter === 'note'} onPress={() => setFilter('note')} />
         <Pill label={`Not synced ${counts.draft}`} active={filter === 'draft'} onPress={() => setFilter('draft')} />
+        <Pill
+          label={`Consent given ${counts.consent}`}
+          active={filter === 'consent'}
+          onPress={() => setFilter('consent')}
+        />
       </View>
 
       {/*

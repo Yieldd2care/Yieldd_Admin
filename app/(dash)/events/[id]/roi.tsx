@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { DashShell } from '../../../../components/dash/DashShell';
-import { Cap, Empty, GhostButton, GoldButton, Panel } from '../../../../components/dash/primitives';
+import { Cap, Empty, GhostButton, GoldButton, Panel, SectionTitle } from '../../../../components/dash/primitives';
+import { Hero, HeroMetric, HeroMetrics } from '../../../../components/dash/hero';
 import { Typography } from '../../../../components/ui/Typography';
 import { useEvent } from '../../../../hooks/useEvents';
 import { useEventStats } from '../../../../hooks/useEventStats';
@@ -54,6 +55,17 @@ export default function DashEventRoi() {
   const { data: stats, isLoading } = useEventStats(eventId || undefined);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  /**
+   * Open the leads behind a figure, always pinned to this event. Built as a
+   * query STRING: the object form of router.push silently drops these keys.
+   */
+  const openLeads = (status?: string) => {
+    const query = new URLSearchParams();
+    if (status) query.set('status', status);
+    query.set('event', eventId);
+    router.push(`/(dash)/leads?${query.toString()}`);
+  };
 
   const crumbs = [
     { label: 'Events', href: '/(dash)/events' },
@@ -131,41 +143,43 @@ export default function DashEventRoi() {
           <GoldButton label="Add costs" onPress={() => router.push(`/(dash)/events/${event.id}/edit`)} />
         </Panel>
       ) : (
-        <View className="rounded-xl bg-navy p-7 flex-row">
-          <View className="flex-1 pr-7">
-            <Cap className="text-white/45">Return on investment</Cap>
-            <Typography className="text-[40px] font-extrabold text-white mt-1 tracking-tight">
-              {formatPercent(stats.roiPercent, 'Not enough data')}
-            </Typography>
-            <Typography className="text-[12.5px] text-white/55 mt-1">
-              {formatPaise(stats.wonValuePaise)} won against {formatPaise(stats.spendPaise)} spent
-            </Typography>
+        <Hero>
+          <View className="flex-row items-start gap-10">
+            <HeroMetric
+              large
+              label="Return on investment"
+              value={formatPercent(stats.roiPercent, 'Not enough data')}
+              note={`${formatPaise(stats.wonValuePaise)} won against ${formatPaise(stats.spendPaise)} spent`}
+            />
+            <HeroMetrics>
+              <HeroMetric
+                label="Cost per lead"
+                value={formatPaise(stats.costPerLeadPaise)}
+                valueClassName="text-gold"
+                note={`${stats.totalLeads} leads captured`}
+                onPress={() => openLeads()}
+              />
+              <HeroMetric
+                label="Cost per deal won"
+                value={stats.dealsWon > 0 ? formatPaise(stats.costPerWonPaise) : '-'}
+                note={`${stats.dealsWon} ${stats.dealsWon === 1 ? 'deal' : 'deals'} closed`}
+                onPress={() => openLeads('Won')}
+              />
+            </HeroMetrics>
           </View>
-          <View className="flex-1 px-7 border-l border-white/[0.14]">
-            <Cap className="text-white/45">Cost per lead</Cap>
-            <Typography className="text-[30px] font-extrabold text-gold mt-1 tracking-tight">
-              {formatPaise(stats.costPerLeadPaise)}
-            </Typography>
-            <Typography className="text-[12.5px] text-white/55 mt-1">{stats.totalLeads} leads captured</Typography>
-          </View>
-          <View className="flex-1 pl-7 border-l border-white/[0.14]">
-            <Cap className="text-white/45">Cost per deal won</Cap>
-            <Typography className="text-[30px] font-extrabold text-white mt-1 tracking-tight">
-              {stats.dealsWon > 0 ? formatPaise(stats.costPerWonPaise) : '-'}
-            </Typography>
-            <Typography className="text-[12.5px] text-white/55 mt-1">
-              {stats.dealsWon} {stats.dealsWon === 1 ? 'deal' : 'deals'} closed
-            </Typography>
-          </View>
-        </View>
+        </Hero>
       )}
 
-      <View className="flex-row gap-4 mt-4">
-        <Panel className="flex-1 px-[22px] py-5">
-          <Typography className="text-[17px] font-bold text-navy">Pipeline by status</Typography>
+      <View className="flex-row gap-6 mt-6 items-stretch">
+        <Panel className="flex-1 px-6 py-6">
+          <SectionTitle
+            title="Pipeline by status"
+            right={<Typography className="text-[12px] text-slate font-medium">{stats.totalLeads} leads</Typography>}
+          />
           <View className="gap-3 mt-4">
             {stats.pipeline.map((p) => (
-              <View key={p.status}>
+              // Every bar opens the leads it counts, pinned to this event.
+              <Pressable key={p.status} disabled={p.count === 0} onPress={() => openLeads(p.status)}>
                 <View className="flex-row justify-between mb-[6px]">
                   <Typography className="text-[13px] text-ink-muted font-medium">{p.status}</Typography>
                   <Typography className="text-[13px] font-bold text-navy">{p.count}</Typography>
@@ -178,14 +192,17 @@ export default function DashEventRoi() {
                     style={{ width: `${p.barWidth}%`, backgroundColor: PIPELINE_STATUS_COLORS[p.status] }}
                   />
                 </View>
-              </View>
+              </Pressable>
             ))}
           </View>
         </Panel>
 
-        <Panel className="flex-1 px-[22px] py-5">
-          <Typography className="text-[17px] font-bold text-navy">Still open</Typography>
+        <Panel className="flex-1 px-6 py-6">
+          <SectionTitle title="Still open" />
           <View className="flex-row gap-3 mt-4">
+            {/* Not pressable on purpose: this sums Qualified AND Won, and the
+                Leads screen narrows to one status at a time — so a press would
+                land on roughly half the money the tile names. */}
             <View className="flex-1 bg-section rounded-md p-4">
               <Cap>Qualified and won</Cap>
               <Typography className="text-[20px] font-extrabold text-navy mt-[5px]">
@@ -193,13 +210,13 @@ export default function DashEventRoi() {
               </Typography>
               <Typography className="text-[11.5px] text-label mt-[2px]">Everything worth chasing</Typography>
             </View>
-            <View className="flex-1 bg-section rounded-md p-4">
+            <Pressable className="flex-1 bg-section rounded-md p-4" onPress={() => openLeads('Won')}>
               <Cap>Conversion</Cap>
               <Typography className="text-[20px] font-extrabold text-navy mt-[5px]">
                 {formatPercent(stats.conversionPercent)}
               </Typography>
               <Typography className="text-[11.5px] text-label mt-[2px]">Leads that became deals</Typography>
-            </View>
+            </Pressable>
           </View>
           {stats.canSeeMoney && hasSpend ? (
             <Typography className="text-[12px] text-slate leading-[1.6] mt-4 pt-4 border-t border-hairline">

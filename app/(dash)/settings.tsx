@@ -68,7 +68,7 @@ function Head({
 }) {
   return (
     <View className="flex-row items-center justify-between pt-4">
-      <Typography className="text-[17px] font-bold text-navy">{title}</Typography>
+      <Typography className="text-[16.5px] font-bold text-navy tracking-tight">{title}</Typography>
       {canEdit && !editing ? (
         <Pressable
           onPress={onEdit}
@@ -208,7 +208,7 @@ export default function DashSettings() {
 
   return (
     <DashShell title="Settings" subtitle="Organisation and profile">
-      <View className="flex-row gap-4 items-start">
+      <View className="flex-row gap-6 items-start">
         {/* ------------------------------------------------- organisation */}
         <Panel className="flex-1 px-[22px] pb-[22px]">
           <Head title="Organisation" editing={orgEditing} canEdit={isAdmin} onEdit={startOrgEdit} />
@@ -349,7 +349,7 @@ export default function DashSettings() {
         </Panel>
       </View>
 
-      <Panel className="mt-4 p-[22px]">
+      <Panel className="mt-6 p-6">
         <Typography className="text-[15px] font-bold text-navy">What still lives in the phone app</Typography>
         <Typography className="text-[13px] text-slate leading-[1.6] mt-2">
           Notifications and the digital card are edited on the phone. Everything else, including your profile, the company

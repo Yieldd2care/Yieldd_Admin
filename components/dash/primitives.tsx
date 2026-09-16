@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { Icon, ICON } from './controls';
 import { Typography } from '../ui/Typography';
 
 /**
@@ -25,25 +26,162 @@ export function Cap({ children, className = '' }: { children: ReactNode; classNa
   );
 }
 
+/**
+ * A headline number.
+ *
+ * Pass `onPress` and the whole tile becomes the way into the rows behind it — a
+ * count is not something you can act on, the records it counts are. A pressable
+ * tile says so with a chevron and a border that answers on hover; a plain one
+ * stays a plain card.
+ *
+ * The two branches are separate elements with static class lists rather than one
+ * element with a conditional className. NativeWind can only set a component up
+ * as a variable provider on its first render, so a class list that gains a
+ * `hover:` or `shadow-*` later triggers a mid-life upgrade whose warning printer
+ * throws the bogus "Couldn't find a navigation context" red screen — see
+ * AGENTS.md.
+ */
 export function Stat({
   label,
   value,
   sub,
   valueClassName = 'text-navy',
+  icon,
+  onPress,
 }: {
   label: string;
   value: string;
   sub?: string;
   valueClassName?: string;
+  /** Sits opposite the label. A quiet marker for what the number is about. */
+  icon?: ReactNode;
+  /** Opens the records this number counts. */
+  onPress?: () => void;
 }) {
-  return (
-    <Panel className="flex-1 px-5 py-[18px]">
-      <Cap>{label}</Cap>
+  const body = (
+    <>
+      <View className="flex-row items-start justify-between gap-3">
+        <Cap>{label}</Cap>
+        {icon ? (
+          <View className="w-[34px] h-[34px] rounded-md bg-surface items-center justify-center shrink-0 -mt-[6px] -mr-[2px]">
+            {icon}
+          </View>
+        ) : null}
+      </View>
       <Typography className={`text-[30px] font-extrabold mt-[6px] tracking-tight ${valueClassName}`}>
         {value}
       </Typography>
-      {sub ? <Typography className="text-[12px] text-slate font-medium mt-[2px]">{sub}</Typography> : null}
-    </Panel>
+      <View className="flex-row items-center justify-between gap-2 mt-[2px]">
+        {sub ? (
+          <Typography className="text-[12px] text-slate font-medium flex-1 min-w-0" numberOfLines={1}>
+            {sub}
+          </Typography>
+        ) : (
+          <View className="flex-1" />
+        )}
+        {onPress ? <Icon d={ICON.chevronRight} size={14} color="#8A98B0" width={2.2} /> : null}
+      </View>
+    </>
+  );
+
+  if (!onPress) {
+    return <Panel className="flex-1 px-5 py-[18px]">{body}</Panel>;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-1 bg-white border border-hairline rounded-lg px-5 py-[18px] hover:border-blue active:opacity-80"
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+/**
+ * A panel heading, with room for a quiet note or control opposite it.
+ *
+ * `onPress` makes the heading itself the way into the thing it names — used
+ * where the panel is about one record, so its title is that record's front door.
+ */
+export function SectionTitle({
+  title,
+  right,
+  onPress,
+}: {
+  title: string;
+  right?: ReactNode;
+  onPress?: () => void;
+}) {
+  return (
+    <View className="flex-row items-center justify-between gap-3">
+      {onPress ? (
+        <Pressable onPress={onPress} className="flex-row items-center gap-[6px] shrink min-w-0 active:opacity-70">
+          <Typography className="text-[16.5px] font-bold text-navy tracking-tight shrink min-w-0" numberOfLines={1}>
+            {title}
+          </Typography>
+          <Icon d={ICON.chevronRight} size={15} color="#5A6B87" width={2.2} />
+        </Pressable>
+      ) : (
+        <Typography className="text-[16.5px] font-bold text-navy tracking-tight shrink-0">{title}</Typography>
+      )}
+      {right}
+    </View>
+  );
+}
+
+/** A text link with the chevron the rest of the dashboard uses. */
+export function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} className="flex-row items-center gap-[5px] self-start">
+      <Typography className="text-[12.5px] font-semibold text-blue">{label}</Typography>
+      <Icon d={ICON.chevronRight} size={13} color="#1D3F8A" width={2.2} />
+    </Pressable>
+  );
+}
+
+/**
+ * One outstanding job, with the number of records waiting behind it.
+ *
+ * A count of leads captured without a note is not a measurement, it is a job —
+ * so the row is a button that opens exactly those records.
+ */
+export function TaskRow({
+  icon,
+  label,
+  body,
+  count,
+  onPress,
+  last = false,
+}: {
+  icon: string;
+  label: string;
+  body: string;
+  count: number;
+  onPress: () => void;
+  last?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`flex-row items-center gap-3 py-[13px] ${last ? '' : 'border-b border-section'}`}
+    >
+      <View className="w-[34px] h-[34px] rounded-md bg-surface items-center justify-center shrink-0">
+        <Icon d={icon} size={16} color="#0B132B" />
+      </View>
+      <View className="flex-1 min-w-0">
+        <Typography className="text-[13.5px] font-semibold text-navy" numberOfLines={1}>
+          {label}
+        </Typography>
+        <Typography className="text-[11.5px] text-slate mt-[2px]" numberOfLines={1}>
+          {body}
+        </Typography>
+      </View>
+      <View className="min-w-[32px] h-6 rounded-full bg-surface px-[9px] items-center justify-center shrink-0">
+        <Typography className="text-[12px] font-bold text-navy">{count}</Typography>
+      </View>
+      <Icon d={ICON.chevronRight} size={14} color="#97A3B8" width={2.2} />
+    </Pressable>
   );
 }
 

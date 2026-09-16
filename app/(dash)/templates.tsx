@@ -98,7 +98,7 @@ export default function DashTemplates() {
       </View>
 
       {templates?.length ? (
-        <View className="flex-row gap-4 items-start">
+        <View className="flex-row gap-6 items-start">
           <View className="flex-1 gap-3">
             {templates.map((t) => {
               const on = t.id === selected?.id;
@@ -155,7 +155,7 @@ export default function DashTemplates() {
               <>
                 <View className="flex-row items-start justify-between">
                   <View className="flex-1 pr-4">
-                    <Typography className="text-[17px] font-bold text-navy">{selected?.name}</Typography>
+                    <Typography className="text-[16.5px] font-bold text-navy tracking-tight">{selected?.name}</Typography>
                     <Typography className="text-[12.5px] text-slate mt-1">
                       {channel === 'whatsapp' ? 'WhatsApp' : 'Email'}
                       {selected?.isDefault ? ' · default for this channel' : ''}

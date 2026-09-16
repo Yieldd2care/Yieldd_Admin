@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router';
 
 import { DashShell } from '../../components/dash/DashShell';
 import { ConfirmDialog } from '../../components/dash/ConfirmDialog';
-import { Cap, Empty, GhostButton, GoldButton, Panel, Row, Stat, StatusChip } from '../../components/dash/primitives';
+import { Cap, Empty, GhostButton, GoldButton, Panel, Row, SectionTitle, StatusChip } from '../../components/dash/primitives';
+import { Hero, HeroMetric, HeroMetrics, HeroTitle } from '../../components/dash/hero';
 import { Avatar, Icon, ICON, ProgressBar } from '../../components/dash/controls';
 import { Typography } from '../../components/ui/Typography';
 import { TextInput } from '../../components/ui/TextInput';
@@ -208,53 +209,53 @@ export default function DashTeam() {
         ) : undefined
       }
     >
-      {/* Seats across the full width, above everything.
-          Two reasons it is a banner rather than one tile in a row of three.
-          It is the only figure on this screen with a ceiling, so it is the
-          only one that can stop you doing something — and the sentence that
-          says how many are left is also the sentence that offers the invite,
-          which is the whole point of putting it here. */}
-      {seatsTotal != null ? (
-        <Panel className="px-[22px] py-[18px] mb-4 flex-row items-center gap-6">
-          <View className="w-[42px] h-[42px] rounded-md bg-surface items-center justify-center shrink-0">
-            <Icon d={ICON.user} size={19} color="#1D3F8A" />
-          </View>
-
+      {/* Seats lead, because they are the only figure on this screen with a
+          ceiling — the only one that can stop you doing something. The sentence
+          that says how many are left is the same sentence that decides whether
+          the invite button will work. */}
+      <Hero>
+        <View className="flex-row items-start gap-10">
           <View className="flex-1 min-w-0">
-            <Typography className="text-[15px] font-bold text-navy">
-              {seatsUsed} of {seatsTotal} seats used
-            </Typography>
-            <Typography className="text-[12.5px] text-slate mt-[2px]">
-              {overSeats
-                ? `${seatsUsed - seatsTotal} over the plan, so nobody new can be invited`
-                : seatsFree === 0
-                  ? 'Every seat is taken. Free one up before inviting anyone else'
-                  : `${seatsFree} ${seatsFree === 1 ? 'seat' : 'seats'} free`}
-              {pendingInvites ? ` · ${activeMembers} joined, ${pendingInvites} invited` : ''}
-            </Typography>
-          </View>
-
-          <View className="w-[220px] shrink-0">
-            <ProgressBar
-              pct={(seatsUsed / Math.max(seatsTotal, 1)) * 100}
-              color={overSeats || seatsFree === 0 ? '#C4392E' : '#F4B000'}
+            <HeroTitle
+              title={seatsTotal != null ? `${seatsUsed} of ${seatsTotal} seats used` : 'Your team'}
+              sub={
+                seatsTotal == null
+                  ? 'Everyone who can capture a lead for this organisation'
+                  : overSeats
+                    ? `${seatsUsed - seatsTotal} over the plan, so nobody new can be invited`
+                    : seatsFree === 0
+                      ? 'Every seat is taken. Free one up before inviting anyone else'
+                      : `${seatsFree} ${seatsFree === 1 ? 'seat' : 'seats'} free${
+                          pendingInvites ? ` · ${activeMembers} joined, ${pendingInvites} invited` : ''
+                        }`
+              }
             />
-            <Typography className="text-[11.5px] text-label mt-[7px] text-right">
-              {Math.round((seatsUsed / Math.max(seatsTotal, 1)) * 100)}%
-            </Typography>
+            {seatsTotal != null ? (
+              <View className="mt-6 w-[340px] max-w-full">
+                <ProgressBar
+                  pct={(seatsUsed / Math.max(seatsTotal, 1)) * 100}
+                  color={overSeats || seatsFree === 0 ? '#FF8A80' : '#F4B000'}
+                  track="rgba(255,255,255,0.15)"
+                />
+                <Typography className="text-[11.5px] text-white/60 mt-[7px]">
+                  {Math.round((seatsUsed / Math.max(seatsTotal, 1)) * 100)}% of the plan in use
+                </Typography>
+              </View>
+            ) : null}
           </View>
-        </Panel>
-      ) : null}
+          <HeroMetrics>
+            <HeroMetric label="Active members" value={String(activeMembers)} note="Signed in and capturing" />
+            <HeroMetric label="Pending invites" value={String(invites?.length ?? 0)} note="Not signed in yet" />
+            <HeroMetric
+              label="Deactivated"
+              value={String(members?.filter((m) => m.status === 'deactivated').length ?? 0)}
+              note="Kept, but cannot capture"
+            />
+          </HeroMetrics>
+        </View>
+      </Hero>
 
-      <View className="flex-row gap-4 mb-4">
-        <Stat label="Active members" value={String(activeMembers)} sub="Signed in and capturing" />
-        <Stat label="Pending invites" value={String(invites?.length ?? 0)} sub="Not signed in yet" />
-        <Stat
-          label="Deactivated"
-          value={String(members?.filter((m) => m.status === 'deactivated').length ?? 0)}
-          sub="Kept, but cannot capture"
-        />
-      </View>
+      <View className="mt-6" />
 
       {/* Was a note saying "nothing is blocked". Since 20260910100000 it is a
           real limit, so the copy says what actually happens. */}
@@ -364,6 +365,16 @@ export default function DashTeam() {
       ) : null}
 
       <Panel className="overflow-hidden">
+        <View className="px-6 py-[18px]">
+          <SectionTitle
+            title="Members"
+            right={
+              <Typography className="text-[12px] text-slate font-medium">
+                A lead count opens what that person captured today
+              </Typography>
+            }
+          />
+        </View>
         {members?.length ? (
           <>
             <Row cols={COLS} header cells={['Member', 'Email', 'Phone', 'Role', 'Status', 'Leads', '']} />

@@ -49,6 +49,10 @@ export const ICON = {
   camera: 'M4 7h3l2-2h6l2 2h3v13H4z|M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   keyboard: 'M3 6h18v12H3z|M7 10h.01|M11 10h.01|M15 10h.01|M8 14h8',
   arrowUpRight: 'M7 17 17 7|M8 7h9v9',
+  arrowUp: 'M12 19V5|M5 12l7-7 7 7',
+  trendUp: 'M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z|M12 16v-4|M12 8h.01',
+  award: 'M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14z|M8.2 13.9 7 22l5-3 5 3-1.2-8.1',
 } as const;
 
 export function Icon({

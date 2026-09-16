@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { DashShell } from '../../components/dash/DashShell';
-import { Empty, Panel, Pill, Row, Stat, TempChip } from '../../components/dash/primitives';
+import { Empty, Panel, Pill, Row, SectionTitle, Stat, TempChip } from '../../components/dash/primitives';
+import { Hero, HeroMetric, HeroMetrics, HeroTitle } from '../../components/dash/hero';
+import { Icon, ICON } from '../../components/dash/controls';
 import { Typography } from '../../components/ui/Typography';
 import { useLeadsStore, type StoredLead } from '../../stores/useLeadsStore';
 import { useSessionStore } from '../../stores/useSessionStore';
@@ -153,18 +155,51 @@ export default function DashFollowUps() {
 
   return (
     <DashShell title="Follow-ups" subtitle={due.length ? `${due.length} scheduled` : undefined}>
-      <View className="flex-row gap-4 mb-4">
-        <Stat
-          label="Overdue"
-          value={String(overdue.length)}
-          sub={overdue.length ? 'Chase these first' : 'Nothing late'}
-          valueClassName={overdue.length ? 'text-[#C4392E]' : 'text-navy'}
-        />
-        <Stat label="Due today" value={String(today.length)} sub="Before the day ends" />
-        <Stat label="Scheduled" value={String(due.length)} sub="Across all events" />
-      </View>
+      {/* The day's workload, before the list of it. Each number selects its own
+          slice rather than navigating away — the rows are already on this page. */}
+      <Hero>
+        <View className="flex-row items-start gap-10">
+          <View className="flex-1 min-w-0">
+            <HeroTitle
+              title={
+                overdue.length
+                  ? `${overdue.length} ${overdue.length === 1 ? 'promise is' : 'promises are'} late`
+                  : due.length
+                    ? 'Nothing is late'
+                    : 'Nothing to chase'
+              }
+              sub={
+                due.length
+                  ? 'A follow-up is a promise with a date on it. Oldest first, because the oldest is the one going cold.'
+                  : 'Set a follow-up date on a lead and it appears here.'
+              }
+            />
+          </View>
+          <HeroMetrics>
+            <HeroMetric
+              label="Overdue"
+              value={String(overdue.length)}
+              valueClassName={overdue.length ? 'text-[#FF8A80]' : 'text-white'}
+              note={overdue.length ? 'Chase these first' : 'Nothing late'}
+              onPress={() => setFilter('overdue')}
+            />
+            <HeroMetric
+              label="Due today"
+              value={String(today.length)}
+              note="Before the day ends"
+              onPress={() => setFilter('today')}
+            />
+            <HeroMetric
+              label="Scheduled"
+              value={String(due.length)}
+              note="Across all events"
+              onPress={() => setFilter('all')}
+            />
+          </HeroMetrics>
+        </View>
+      </Hero>
 
-      <View className="flex-row gap-2 mb-4">
+      <View className="flex-row gap-2 mt-6 mb-4">
         <Pill label={`All ${due.length}`} active={filter === 'all'} onPress={() => setFilter('all')} />
         <Pill
           label={`Overdue ${overdue.length}`}
@@ -187,6 +222,16 @@ export default function DashFollowUps() {
       ) : null}
 
       <Panel className="overflow-hidden">
+        <View className="px-6 py-[18px]">
+          <SectionTitle
+            title={filter === 'overdue' ? 'Overdue' : filter === 'today' ? 'Due today' : 'Everything scheduled'}
+            right={
+              <Typography className="text-[12px] text-slate font-medium">
+                {shown.length} {shown.length === 1 ? 'lead' : 'leads'}
+              </Typography>
+            }
+          />
+        </View>
         {shown.length ? (
           <>
             <Row cols={COLS} header cells={['Lead', 'Company', 'When', 'Temp', '']} />
@@ -211,8 +256,9 @@ export default function DashFollowUps() {
         )}
       </Panel>
 
-      <Panel className="px-[22px] py-4 mt-4">
-        <Typography className="text-[12.5px] text-slate leading-[1.6]">
+      <Panel className="px-6 py-[18px] mt-6 flex-row items-center gap-3">
+        <Icon d={ICON.info} size={18} color="#5A6B87" />
+        <Typography className="flex-1 text-[12.5px] text-slate leading-[1.6]">
           WhatsApp opens a chat with the message already written; you press send there. That is recorded
           as handed over, never as delivered. Nothing here can know whether it was read.
         </Typography>

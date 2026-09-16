@@ -155,10 +155,10 @@ export default function DashExport() {
 
   return (
     <DashShell title="Export" subtitle="Download your leads as a spreadsheet">
-      <View className="flex-row gap-4 items-start">
-        <View className="flex-1 gap-4">
-          <Panel className="p-[22px]">
-            <Typography className="text-[17px] font-bold text-navy">Which event</Typography>
+      <View className="flex-row gap-6 items-start">
+        <View className="flex-1 gap-6">
+          <Panel className="p-6">
+            <Typography className="text-[16.5px] font-bold text-navy tracking-tight">Which event</Typography>
             <View className="flex-row flex-wrap gap-2 mt-4">
               {events.map((e) => (
                 <Pill key={e.id} label={e.name} active={e.id === eventId} onPress={() => setEventId(e.id)} />
@@ -171,8 +171,8 @@ export default function DashExport() {
             ) : null}
           </Panel>
 
-          <Panel className="p-[22px]">
-            <Typography className="text-[17px] font-bold text-navy">What to include</Typography>
+          <Panel className="p-6">
+            <Typography className="text-[16.5px] font-bold text-navy tracking-tight">What to include</Typography>
             <View className="gap-2 mt-4">
               {(
                 [
@@ -214,9 +214,9 @@ export default function DashExport() {
           </Panel>
         </View>
 
-        <View className="flex-1 gap-4">
-          <Panel className="p-[22px]">
-            <Typography className="text-[17px] font-bold text-navy">Columns</Typography>
+        <View className="flex-1 gap-6">
+          <Panel className="p-6">
+            <Typography className="text-[16.5px] font-bold text-navy tracking-tight">Columns</Typography>
             <View className="mt-2">
               {fieldRows.map((f) => (
                 <Check
@@ -240,7 +240,7 @@ export default function DashExport() {
             ) : null}
           </Panel>
 
-          <Panel className="p-[22px]">
+          <Panel className="p-6">
             <Cap>Ready</Cap>
             <Typography className="text-[13.5px] text-navy font-semibold mt-[6px]">
               {chosen?.name ?? 'Choose an event'}

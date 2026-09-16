@@ -130,7 +130,7 @@ export default function DashCard() {
         </Panel>
       ) : null}
 
-      <View className="flex-row gap-4 items-start">
+      <View className="flex-row gap-6 items-start">
         <Panel className="flex-1 overflow-hidden">
           <LinearGradient
             colors={['#1D3F8A', '#0B132B']}
@@ -276,9 +276,9 @@ export default function DashCard() {
         </Panel>
       </View>
 
-      <Panel className="mt-4 px-[22px] py-5">
+      <Panel className="mt-6 px-6 py-6">
         <View className="flex-row items-center justify-between">
-          <Typography className="text-[17px] font-bold text-navy">Card details</Typography>
+          <Typography className="text-[16.5px] font-bold text-navy tracking-tight">Card details</Typography>
           <Typography className="text-[12px] text-slate font-medium">Edited in the phone app</Typography>
         </View>
         <View className="flex-row flex-wrap gap-x-6 mt-2">

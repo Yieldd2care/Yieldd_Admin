@@ -49,6 +49,10 @@ const NAV: { heading: string | null; items: { href: string; label: string; d: st
     items: [
       { href: '/(dash)/leads', label: 'Leads', d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0' },
       { href: '/(dash)/events', label: 'Events', d: 'M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z|M16 2v4|M8 2v4|M3 10h18' },
+      // Return across every show. The per-event version lives inside an event;
+      // this one had nowhere to be reached from except a figure on the
+      // dashboard, which is not somewhere you can go back to on purpose.
+      { href: '/(dash)/roi', label: 'Return', d: ICON.trendUp },
     ],
   },
   {
