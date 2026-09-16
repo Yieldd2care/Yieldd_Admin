@@ -55,7 +55,7 @@ Full diagnosis for each is in its numbered section below.
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
 | 49 | "New template" is silent, and creates a default not a draft | `[x]` done 2026-09-15 — web dashboard only; `addNew` now selects the new row and opens its editor, and creates it with `is_default: false` |
 | 50 | Home — all-events analytics with an event picker | `[x]` done 2026-09-14 — `event_set_stats`; no cost-per-lead, ROI covers priced events only |
-| 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
+| 51 | Clicking a lead should open it as a popup over the list | `[x]` done 2026-09-16 — `components/dash/LeadOverlay.tsx`; the overlay IS the route, so the URL still changes and browser back closes it |
 | 52 | An invite counts as ready with a number that is not one | `[x]` done 2026-09-15 — **both screens**, the phone invite screen and the web dashboard's Team form, since the item was written up as one. Warn, never block: an unreachable number gets an amber border and a sentence under its own row, and still sends. `ready`, the buttons and `createInvites` are all untouched. New `describePhoneProblem` in `lib/phone.ts`, deliberately looser than `isValidPhone`; asserted in `verify:phone` |
 | 53 | iOS ships a contacts permission string it never uses | `[x]` closed 2026-09-15 by 60 — the permission is genuinely requested now, so the string describes something real |
 | 54 | Ask for the event cost when the show ends | `[ ]` **decided 2026-09-15: wizard unchanged; notify the admin after the end date, naming the blank lines** — ⚠ **its premise is false, see the section: there are no blank lines to find** |
