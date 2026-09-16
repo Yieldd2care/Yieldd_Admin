@@ -58,8 +58,8 @@ Full diagnosis for each is in its numbered section below.
 | 51 | Clicking a lead should open it as a popup over the list | `[ ]` detail component exists; it is a page, not an overlay |
 | 52 | An invite counts as ready with a number that is not one | `[x]` done 2026-09-15 — **both screens**, the phone invite screen and the web dashboard's Team form, since the item was written up as one. Warn, never block: an unreachable number gets an amber border and a sentence under its own row, and still sends. `ready`, the buttons and `createInvites` are all untouched. New `describePhoneProblem` in `lib/phone.ts`, deliberately looser than `isValidPhone`; asserted in `verify:phone` |
 | 53 | iOS ships a contacts permission string it never uses | `[x]` closed 2026-09-15 by 60 — the permission is genuinely requested now, so the string describes something real |
-| 54 | Ask for the event cost when the show ends | `[ ]` **decided 2026-09-15: wizard unchanged; notify the admin after the end date, naming the blank lines** |
-| 55 | "This event cost nothing" is not something you can say | `[ ]` **decided 2026-09-15: free events do happen — build the tick** |
+| 54 | Ask for the event cost when the show ends | `[ ]` **decided 2026-09-15: wizard unchanged; notify the admin after the end date, naming the blank lines** — ⚠ **its premise is false, see the section: there are no blank lines to find** |
+| 55 | "This event cost nothing" is not something you can say | `[x]` **DROPPED 2026-09-16 by the user** — a free event is recorded by typing 0 into a line, which is enough. No tick will be built |
 | 56 | Abandoned signups leave an empty organisation behind | `[ ]` surfaced by 33a; the account is made when the code is sent |
 | 57 | Code email's subject still said "Your sign-in link" | `[x]` done 2026-09-14 |
 | 58 | After the code, ask ONLY for a password | `[ ]` 2026-09-14 — name, company and number move to the digital-card step |
@@ -1064,6 +1064,36 @@ is the natural place to assert whichever is chosen.
 ---
 
 ### 54. Ask for the event cost when the show ends — surfaced 2026-09-14 `[ ]`
+
+> **⚠ READ THIS BEFORE BUILDING IT. Found 2026-09-16 while checking 55.**
+>
+> The agreed design is a notification naming **which cost lines are still
+> blank**. There are none, and there never will be under the current code.
+>
+> `costsToColumns` ([lib/mappers/event.ts:65](lib/mappers/event.ts#L65)) writes
+> `rupeesToPaise(costs[key] || 0)` for all seven columns — a number every time,
+> never null. `toAmount` in the cost screen returns 0 for an empty box. And
+> **"Skip for now" calls the same `commitAndContinue`** as the primary button
+> ([app/(app)/events/new/cost.tsx:184](<app/(app)/events/new/cost.tsx#L184>)),
+> so skipping the step writes seven zeros just as surely as filling it in.
+>
+> Consequences, both of which need settling before 54 starts:
+>
+> 1. **Every event created through the wizard is already "priced"** — all seven
+>    columns are 0, so `is_priced` (`coalesce(...) is not null`) is true. A
+>    notification looking for null lines would fire for nothing.
+> 2. **The unpriced warning built for 50 is therefore near-dead too.** Home's
+>    "add the missing cost" list reads `unpricedEventIds` from the same
+>    `is_priced`. It can only ever name an event created some other way. Worth
+>    confirming against live data rather than assuming it works.
+>
+> So 54 has to start one level down: either the write path stops collapsing
+> "empty" to 0, or "blank" has to be defined some other way. Changing the write
+> path is the honest fix and is a behaviour change on a live column, so it needs
+> deciding, not patching.
+>
+> This is also exactly why 55 was droppable: typing 0 and skipping are already
+> indistinguishable, so a tick would have added nothing.
 
 **Surfaced by 50, not caused by it.** The event wizard asks for seven cost lines while the event is
 being *created*, which is the one moment an exhibitor genuinely does not know them — stall invoices,
