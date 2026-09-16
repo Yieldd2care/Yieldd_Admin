@@ -22,6 +22,7 @@ import { fetchEventFields } from '../../../lib/api/eventFields';
 import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldValue } from '../../../data/leads';
 import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
+import { primeCaptureLocation } from '../../../lib/location';
 
 function BigField({ label, ...rest }: { label: string } & TextInputProps) {
   return (
@@ -78,6 +79,20 @@ export default function ManualEntryScreen() {
 
   // Information, not a gate: `canSave` below is untouched by this.
   const duplicate = useDuplicateLead(event?.id, phone);
+
+  /**
+   * Start looking for the device's position, once, on the way in.
+   *
+   * This screen is a ScrollView of TextInputs, which is exactly the shape
+   * AGENTS.md warns against putting a location watch on. This is not a watch:
+   * `primeCaptureLocation` fires one read, sets no state and subscribes to
+   * nothing, so the form never re-renders because of it. The answer is picked
+   * up synchronously by `addLead` when the rep presses save, and whatever has
+   * not arrived by then is attached afterwards.
+   */
+  useEffect(() => {
+    primeCaptureLocation();
+  }, []);
 
   useEffect(() => {
     if (!event?.id) return;

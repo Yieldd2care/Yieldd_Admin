@@ -177,6 +177,18 @@ export type LeadCaptureInput = {
   consentGiven?: boolean;
   source?: 'card_scan' | 'manual';
   capturedAt?: string;
+  /**
+   * Where the device was at capture. Whatever fix the phone already had in
+   * hand when the rep pressed save - never one this insert waited for.
+   *
+   * The address usually arrives later than the coordinates do, and lands as a
+   * patch rather than here. Both are optional and a lead carrying neither is
+   * an ordinary lead.
+   */
+  captureLatitude?: number;
+  captureLongitude?: number;
+  captureAccuracyMetres?: number;
+  captureAddress?: string;
 };
 
 function toInsert(input: LeadCaptureInput): Inserts<'leads'> {
@@ -204,6 +216,12 @@ function toInsert(input: LeadCaptureInput): Inserts<'leads'> {
     consent_given: input.consentGiven ?? false,
     consent_at: input.consentGiven ? (input.capturedAt ?? new Date().toISOString()) : null,
     source: input.source ?? 'manual',
+    // Half a fix is not a location - the check constraint refuses one without
+    // the other - so the pair is written together or not at all.
+    capture_latitude: input.captureLongitude == null ? null : (input.captureLatitude ?? null),
+    capture_longitude: input.captureLatitude == null ? null : (input.captureLongitude ?? null),
+    capture_accuracy_m: input.captureAccuracyMetres ?? null,
+    capture_address: input.captureAddress?.trim() || null,
     // The device's clock, not the server's: a lead captured offline at 3pm and
     // synced at 7pm belongs at 3pm in the day's timeline.
     created_at: input.capturedAt ?? new Date().toISOString(),
@@ -250,6 +268,19 @@ export type LeadPatch = {
   reviewedAt?: string | null;
   savedToContacts?: boolean;
   /**
+   * The capture location, arriving late.
+   *
+   * A patch rather than part of the insert because the two halves settle at
+   * different speeds: the fix is usually already in hand when the rep presses
+   * save, while the address has to be geocoded afterwards. Nothing else ever
+   * sets these - there is no screen that lets a lead be moved to a place it
+   * was not captured, and there should not be.
+   */
+  captureLatitude?: number;
+  captureLongitude?: number;
+  captureAccuracyMetres?: number;
+  captureAddress?: string;
+  /**
    * Only the "read the card again" retry sets this, and only to `completed`.
    *
    * Everything else about extraction is decided before the insert, where it
@@ -287,6 +318,10 @@ export function toUpdate(patch: LeadPatch): Updates<'leads'> {
   if (patch.reviewedAt !== undefined) row.reviewed_at = patch.reviewedAt;
   if (patch.extractionStatus !== undefined) row.extraction_status = patch.extractionStatus;
   if (patch.savedToContacts !== undefined) row.saved_to_contacts = patch.savedToContacts;
+  if (patch.captureLatitude !== undefined) row.capture_latitude = patch.captureLatitude;
+  if (patch.captureLongitude !== undefined) row.capture_longitude = patch.captureLongitude;
+  if (patch.captureAccuracyMetres !== undefined) row.capture_accuracy_m = patch.captureAccuracyMetres;
+  if (patch.captureAddress !== undefined) row.capture_address = patch.captureAddress.trim() || null;
   return row;
 }
 

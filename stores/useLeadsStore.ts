@@ -15,6 +15,7 @@ import { cardImagePath, extraPhotoPath, uploadCardImage, uploadExtraPhoto } from
 import { claimCaptureFiles, discardCaptureFiles } from '../lib/captureFiles';
 import { scanCard } from '../lib/api/cardScan';
 import { isOnline } from '../lib/connectivity';
+import { currentCaptureFix, settledCaptureLocation } from '../lib/location';
 import { findDuplicateLead } from '../lib/api/leads';
 import { attachVoiceNote, requestTranscription } from '../lib/api/voiceNotes';
 import { queryClient } from '../lib/queryClient';
@@ -180,6 +181,14 @@ type LeadsState = {
   /** Records that this lead was put into the phone's contacts, and pushes it. */
   markSavedToContacts: (leadId: string) => void;
   /**
+   * Waits for the capture location to settle and attaches whatever arrived.
+   *
+   * Fired by `addLead` and never awaited by it. This is the "attach it
+   * afterwards if it arrives late" half of the rule: the capture itself only
+   * ever uses a fix that was already in hand.
+   */
+  attachCaptureLocation: (leadId: string) => Promise<void>;
+  /**
    * Pushes everything unsynced. Safe to call repeatedly and concurrently.
    * Pass the signed-in user's id to skip captures belonging to anyone else.
    */
@@ -211,6 +220,12 @@ function applyPatch(lead: StoredLead, patch: LeadPatch): StoredLead {
     ...(patch.dealClosedAt !== undefined ? { dealClosedAt: patch.dealClosedAt ?? undefined } : {}),
     ...(patch.assignedToId !== undefined ? { assignedToId: patch.assignedToId ?? undefined } : {}),
     ...(patch.savedToContacts !== undefined ? { savedToContacts: patch.savedToContacts } : {}),
+    ...(patch.captureLatitude !== undefined ? { captureLatitude: patch.captureLatitude } : {}),
+    ...(patch.captureLongitude !== undefined ? { captureLongitude: patch.captureLongitude } : {}),
+    ...(patch.captureAccuracyMetres !== undefined
+      ? { captureAccuracyMetres: patch.captureAccuracyMetres }
+      : {}),
+    ...(patch.captureAddress !== undefined ? { captureAddress: patch.captureAddress } : {}),
   };
 
   /**
@@ -352,6 +367,20 @@ export const useLeadsStore = create<LeadsState>()(
         // derived from it too.
         const hasVoice = Boolean(input.voiceUri) || (input.hasVoice ?? false);
 
+        /**
+         * Whatever fix the phone ALREADY has. There is no `await` on this line
+         * and there must never be one.
+         *
+         * A GPS fix takes seconds and fails indoors, and an exhibition hall is
+         * indoors, so a capture is not allowed to wait for one - the same rule
+         * the card reader and the transcription already work under. The capture
+         * screens call `primeCaptureLocation()` when they open, which is
+         * seconds to minutes before this runs, so in the ordinary case the fix
+         * is sitting there and rides the insert for nothing. When it is not,
+         * this is `undefined` and the lead is saved without it.
+         */
+        const here = currentCaptureFix();
+
         const lead: StoredLead = {
           id,
           initial: initialOf(input.name),
@@ -396,6 +425,9 @@ export const useLeadsStore = create<LeadsState>()(
           consentGiven: input.consentGiven ?? false,
           source: input.source ?? 'manual',
           capturedAt,
+          captureLatitude: here?.latitude,
+          captureLongitude: here?.longitude,
+          captureAccuracyMetres: here?.accuracyMetres,
         };
 
         // Local first, always. The screen advances on this line; the network
@@ -413,6 +445,16 @@ export const useLeadsStore = create<LeadsState>()(
          * database gets an opinion.
          */
         void get().syncDrafts(input.capturedBy);
+
+        /**
+         * The slow half, off the capture path entirely.
+         *
+         * `void`, after the return value is already settled: the screen has
+         * advanced, the lead is in the list, and this may take as long as it
+         * likes or never finish at all. It is what turns a fix that arrived
+         * late into a located lead, and coordinates into an address.
+         */
+        void get().attachCaptureLocation(id);
         return lead;
       },
 
@@ -457,6 +499,49 @@ export const useLeadsStore = create<LeadsState>()(
       markSavedToContacts: (leadId) => {
         get().editLead(leadId, { savedToContacts: true });
         void get().syncDrafts();
+      },
+
+      /**
+       * The capture location, once it has finished settling.
+       *
+       * Two things can still be missing by the time `addLead` has returned: a
+       * fix, if none had arrived yet, and the address, which always takes a
+       * round trip through the geocoder. This waits for both and writes only
+       * what actually moved.
+       *
+       * ONLY FILLS BLANKS, and that is deliberate rather than defensive. If the
+       * insert already carried the coordinates - the ordinary case - resending
+       * them would cost a request per capture to say nothing. And a lead that
+       * somehow already has a location must not have it overwritten by wherever
+       * the rep happens to be standing several seconds later.
+       *
+       * Every exit is silent. A capture that never got a fix, a geocode that
+       * failed, a lead deleted while this was in flight: none of these is
+       * something a rep needs to hear about.
+       */
+      attachCaptureLocation: async (leadId) => {
+        const settled = await settledCaptureLocation();
+        if (!settled) return;
+
+        const lead = get().leads.find((l) => l.id === leadId);
+        if (!lead) return;
+
+        const patch: LeadPatch = {};
+        if (lead.captureLatitude === undefined || lead.captureLongitude === undefined) {
+          patch.captureLatitude = settled.latitude;
+          patch.captureLongitude = settled.longitude;
+          if (settled.accuracyMetres !== undefined) {
+            patch.captureAccuracyMetres = settled.accuracyMetres;
+          }
+        }
+        if (settled.address && lead.captureAddress === undefined) {
+          patch.captureAddress = settled.address;
+        }
+
+        // `saveLeadEdits` is a no-op on an empty patch, but returning here also
+        // saves the sync pass it would otherwise kick off for nothing.
+        if (Object.keys(patch).length === 0) return;
+        get().saveLeadEdits(leadId, patch);
       },
 
       syncDrafts: async (currentUserId?: string) => {
@@ -694,6 +779,13 @@ export const useLeadsStore = create<LeadsState>()(
                   : undefined,
                 extractionStatus: forInsert.extractionStatus,
                 duplicateOfLeadId: forInsert.duplicateOfLeadId,
+                // Read from `forInsert` like everything else here, so a fix or
+                // an address that landed while this lead was waiting its turn
+                // goes in the insert instead of costing a second request.
+                captureLatitude: forInsert.captureLatitude,
+                captureLongitude: forInsert.captureLongitude,
+                captureAccuracyMetres: forInsert.captureAccuracyMetres,
+                captureAddress: forInsert.captureAddress,
               });
 
               if (!outcome.ok) {
@@ -901,8 +993,19 @@ export const useLeadsStore = create<LeadsState>()(
          * Guarded on `serverChanged`, so this only runs again when the last
          * pass made progress. Every pass either turns a draft into a row or
          * clears a patch, both finite, so it cannot spin.
+         *
+         * A QUEUED PATCH COUNTS TOO, not just a queued capture. The capture
+         * location is the case that made this matter: it is attached seconds
+         * after the lead is saved, which is very often while this very pass is
+         * still running, and a patch on a lead the loop has already walked past
+         * would otherwise sit on the device until the next app foreground.
+         * Excluding `syncError` is what keeps that finite - a patch the server
+         * refuses permanently sets it and stops being retried.
          */
-        if (serverChanged && get().leads.some((l) => l.syncStatus === 'draft' && !l.syncError)) {
+        const unfinished = (l: StoredLead) =>
+          !l.syncError &&
+          (l.syncStatus === 'draft' || Boolean(l.pendingPatch && Object.keys(l.pendingPatch).length));
+        if (serverChanged && get().leads.some(unfinished)) {
           void get().syncDrafts(currentUserId);
         }
       },

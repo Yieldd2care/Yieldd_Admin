@@ -113,6 +113,25 @@ export type Lead = {
    */
   assignedToId?: string;
   /**
+   * Where the phone was standing when this lead was captured.
+   *
+   * All four are optional and independently so, because every one of them can
+   * legitimately be missing. A capture never waits for a GPS fix - a fix takes
+   * seconds and fails indoors, and an exhibition hall is indoors - so a lead
+   * with no coordinates is a normal lead, and so is every lead captured before
+   * this existed. A fix can also arrive and the geocode fail on its own, which
+   * is why `captureAddress` is separate rather than derived.
+   *
+   * This is the DEVICE's position, not the company address on the card. That
+   * one is `companyAddress`.
+   */
+  captureLatitude?: number;
+  captureLongitude?: number;
+  /** Metres of uncertainty, as the OS reported it. */
+  captureAccuracyMetres?: number;
+  /** Resolved once at capture and stored. Never re-resolved on render. */
+  captureAddress?: string;
+  /**
    * Whether this lead has been put into the rep's phone contacts.
    *
    * Per-lead in the database, not per-device — so a lead saved on one phone

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Image, Linking, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -23,6 +23,7 @@ import { scanCardFromUrl } from '../../../lib/api/cardScan';
 import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldDef } from '../../../stores/useEventFieldsStore';
 import { formatDateRange } from '../../../lib/dates';
+import { captureLocationLine, mapsUrl } from '../../../lib/captureLocation';
 
 /** `Follow up tomorrow`, `Follow up 4 Mar 2026`, `Follow-up overdue`. */
 function followUpLabel(date: string | undefined): string | null {
@@ -248,6 +249,23 @@ export default function LeadDetailScreen() {
   const assignedLabel = !assignee || assignee.isSelf ? 'Assigned to you' : `Assigned to ${assignee.name}`;
 
   const followUp = followUpLabel(lead.followUpDate);
+
+  /**
+   * The one line this screen shows about where the lead was captured: the
+   * address when there is one, the coordinates when the geocode failed, and
+   * null when there is no fix at all - which hides the whole block.
+   */
+  const whereCaptured = captureLocationLine(lead);
+
+  const openInMaps = () => {
+    if (lead.captureLatitude === undefined || lead.captureLongitude === undefined) return;
+    void Linking.openURL(
+      mapsUrl(lead.captureLatitude, lead.captureLongitude, whereCaptured ?? undefined, Platform.OS === 'ios')
+    ).catch(() => {
+      Alert.alert("Couldn't open Maps", 'No map app on this phone could open that place.');
+    });
+  };
+
   const answered = fieldDefs.filter((def) => {
     const value = lead.customFieldValues?.[def.id];
     return value !== undefined && value !== '' && value !== false;
@@ -558,6 +576,39 @@ export default function LeadDetailScreen() {
             />
           </View>
         </View>
+
+        {/*
+          Where the rep was standing when they captured this - PENDING.md 43.
+
+          THE WHOLE BLOCK IS ABSENT when there is no location, rather than
+          present and empty. A capture never waits for a GPS fix, so a lead
+          without one is ordinary rather than incomplete, and so is every lead
+          captured before this feature existed - nothing is ever backfilled. A
+          row reading "Not captured" on all of them would turn a normal lead
+          into a reproach.
+
+          `captureLocationLine` also covers the middle case: a fix arrived and
+          the geocode failed on its own, so the coordinates are shown instead of
+          the address. That is a normal lead too and looks like one.
+        */}
+        {whereCaptured ? (
+          <View className="bg-white border border-hairline rounded-2xl p-4 mt-[18px]">
+            <Typography className="text-[12.5px] font-bold text-navy mb-2">
+              Where this was captured
+            </Typography>
+            <Typography className="text-[12.5px] font-medium text-navy" style={{ lineHeight: 19 }}>
+              {whereCaptured}
+            </Typography>
+            {/*
+              The phone's own map app, which costs nothing and needs no library,
+              no key and no billing. That is the whole reason this screen shows
+              an address and not an embedded map.
+            */}
+            <Pressable onPress={openInMaps} className="mt-2" hitSlop={6}>
+              <Typography className="text-[12px] font-bold text-gold">Open in Maps</Typography>
+            </Pressable>
+          </View>
+        ) : null}
 
         {/*
           Reassigning is an admin action (PENDING.md #6). A rep sees who the

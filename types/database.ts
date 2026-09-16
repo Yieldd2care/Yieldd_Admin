@@ -441,6 +441,10 @@ export type Database = {
         Row: {
           assigned_to: string | null
           branch_address: string | null
+          capture_accuracy_m: number | null
+          capture_address: string | null
+          capture_latitude: number | null
+          capture_longitude: number | null
           captured_by: string
           card_image_path: string | null
           company: string | null
@@ -477,6 +481,10 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           branch_address?: string | null
+          capture_accuracy_m?: number | null
+          capture_address?: string | null
+          capture_latitude?: number | null
+          capture_longitude?: number | null
           captured_by: string
           card_image_path?: string | null
           company?: string | null
@@ -513,6 +521,10 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           branch_address?: string | null
+          capture_accuracy_m?: number | null
+          capture_address?: string | null
+          capture_latitude?: number | null
+          capture_longitude?: number | null
           captured_by?: string
           card_image_path?: string | null
           company?: string | null

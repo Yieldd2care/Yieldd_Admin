@@ -85,6 +85,14 @@ export default function PrivacyScreen() {
         summary.
       </LegalBullet>
       <LegalBullet>
+        <LegalStrong>Where the lead was captured. </LegalStrong>
+        If the rep has allowed location access, we record the position of their phone at the
+        moment they capture the lead, and the postal address for it, so the organisation can see
+        which venue and city a lead came from. This is where the rep was standing, not where the
+        lead lives or works. Nothing is recorded if the rep refuses the permission, and nothing is
+        recorded between captures.
+      </LegalBullet>
+      <LegalBullet>
         Files an organisation attaches to its own follow-up message templates.
       </LegalBullet>
 
@@ -119,6 +127,16 @@ export default function PrivacyScreen() {
         number on the invite in front of you. Yieldd never reads the rest of your contact list,
         and never uploads or stores it. Refuse the permission and everything else still works;
         you type the number instead.
+      </LegalBullet>
+
+      <LegalBullet>
+        <LegalStrong>Location: </LegalStrong>to note where a lead was captured, read once at
+        the moment the rep saves it and stored on that lead. The app asks only for
+        &ldquo;while using the app&rdquo; access and never for background access, so it cannot
+        read your position when it is closed. It does not follow you between captures, and a
+        capture never waits for it: if no position is available the lead is saved without one and
+        works exactly the same. Refuse the permission and every lead is simply saved without a
+        location.
       </LegalBullet>
 
       <LegalHeading>How we use AI, and what leaves our systems</LegalHeading>
@@ -214,7 +232,7 @@ export default function PrivacyScreen() {
       <LegalText>
         <LegalStrong>Withdrawing your consent. </LegalStrong>
         Where we rely on your consent, you can take it back, and doing so is as easy as giving it
-        was. Turn off the camera, microphone or photo permission in your phone&apos;s settings, or
+        was. Turn off the camera, microphone, photo or location permission in your phone&apos;s settings, or
         write to <LegalMail /> to withdraw consent for anything else. We will stop the processing
         that depended on it; that may mean a feature no longer works, and it does not undo what
         was lawfully done before you withdrew.

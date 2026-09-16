@@ -63,7 +63,8 @@
       "package": "co.yieldd.app",
       "versionCode": 1,
       "blockedPermissions": [
-        "android.permission.WRITE_CONTACTS"
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
       ],
       "intentFilters": [
         {
@@ -114,6 +115,12 @@
         }
       ],
       "expo-contacts",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to note where you are when you capture a lead, so the lead records which venue and city you met them at. It is read only while you are capturing and never in the background."
+        }
+      ],
       "expo-web-browser",
       [
         "expo-audio",

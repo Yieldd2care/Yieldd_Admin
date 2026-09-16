@@ -150,5 +150,10 @@ export function toLead(row: RowWithVoice): Lead {
     temperature: row.temperature ? TEMPERATURE_FROM_DB[row.temperature] : undefined,
     assignedToId: row.assigned_to ?? undefined,
     savedToContacts: row.saved_to_contacts ?? undefined,
+    // Independently optional, all four. See the comment on `Lead`.
+    captureLatitude: row.capture_latitude ?? undefined,
+    captureLongitude: row.capture_longitude ?? undefined,
+    captureAccuracyMetres: row.capture_accuracy_m ?? undefined,
+    captureAddress: row.capture_address ?? undefined,
   };
 }

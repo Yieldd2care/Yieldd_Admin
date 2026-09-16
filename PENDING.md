@@ -49,7 +49,7 @@ Full diagnosis for each is in its numbered section below.
 | # | Item | Status |
 |---|---|---|
 | 45 | Web dashboard — Leads and Follow-ups showed nothing | `[x]` done 2026-09-14 |
-| 43 | Record where each lead was captured and show it on a map | `[ ]` **decided 2026-09-15: build it, coordinates + address, using the free on-device geocoder first** — Google only for iOS later, and only if real venue addresses come back poor |
+| 43 | Record where each lead was captured and show it | `[x]` done 2026-09-16 — address on the phone's lead screen, a free OpenStreetMap map on the dashboard. No key and no billing anywhere. **43a is open and is yours: the Play data safety form and the Apple privacy labels** |
 | 46 | Pipeline chart bars should open the leads behind them | `[x]` done 2026-09-14 — leads list now takes a `status` param |
 | 47 | Export CSV carries no deal value | `[x]` done 2026-09-15 — two columns, Expected and Won, admin-only and **enforced in the database**. The report's premise was wrong in a way that mattered: the column already existed and was ungated, so a rep could tick it and export deal values |
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
@@ -624,70 +624,119 @@ Two parts, reported together.
 
 ---
 
-### 43. Record where each lead was captured and show it on a map — reported 2026-09-14 `[ ]`
+### 43. Record where each lead was captured and show it — reported 2026-09-14 `[x]` done 2026-09-16
 
-**Asked for:** when a lead is captured, record the Google location it was captured from, and map
-every lead back to that place.
+**Asked for:** when a lead is captured, record the location it was captured from, and be able to
+see where every lead came from.
 
-**Extended 2026-09-14 — store both halves, not just the fix.** The request is now explicit that a
-lead carries *both* the raw coordinates and the human address for them, the way the Habsy card
-detail shows it:
+Built, and both open questions were answered by the user on 2026-09-16 before anything was written:
 
->     Coordinates   21.132694, 72.796357
->     Address       Mansarovar Bungalows, Majura Taluka, Surat, Gujarat, 394518, India
+**Q1 — what is the map for? "Across events and cities."** Not a per-event map. At one trade show
+every lead is captured in the same hall, so a single event is one cloud of dots on your own stall
+and answers nothing. The dashboard map follows the event picker and defaults to All events, which
+is the reading that makes it worth having.
 
-That settles part of decision 2 below — it is the **device's position at capture**, resolved to a
-postal address — and it adds a second, separate cost that is easy to miss when reading this as one
-feature. Turning a fix into that address is **reverse geocoding**: a billed Google API call, per
-lead, with its own key, its own quota and its own failure mode. It is not something the GPS hands
-over for free.
+**Q2 — where is it shown?** Two different things in two places, in the user's own words:
 
-Consequences to price in rather than discover:
+- **On the phone, the address only, on the lead detail screen, at the bottom.** No map on the
+  phone. There is a "Where this was captured" card under Activity on
+  [app/(app)/leads/[id].tsx](app/(app)/leads/[id].tsx), with an **Open in Maps** link that hands the
+  coordinates to the phone's own map app — free, no library. Say the word and that link comes off;
+  it is one block.
+- **On the web dashboard, a map.** [components/dash/CaptureMap.tsx](components/dash/CaptureMap.tsx)
+  on Home, under Team today and Recent leads. One dot per place, numbered with how many leads came
+  from it, biggest place first, and the five busiest places listed underneath. A dot holding a
+  single lead opens that lead.
 
-- **Resolve once, store the string.** The address is written to the lead when it is captured, not
-  looked up each time a screen renders it. Re-resolving on render turns one list of 60 leads into
-  60 billed calls every time somebody scrolls.
-- **The address can fail on its own.** A fix can arrive and the geocode still fail — no network, no
-  quota, a point in the sea. Coordinates present with no address is a normal lead and must render
-  as such, the same way a lead with neither is normal.
-- **It is a second privacy surface.** Coordinates are a data type on both stores; a stored postal
-  address of where a person was standing is the same data in a form anyone can read at a glance.
-  Both belong in the policy review under item 27.
+**Nothing is billed, and no API key exists anywhere in this feature.**
 
-Nothing for this exists yet. This is not a wiring job:
+- The address comes from `expo-location`'s own `reverseGeocodeAsync`, which resolves **on the
+  device**: Android's geocoder is Google underneath already, iOS uses Apple's. No Google Cloud
+  account, no key, no quota. If iPhone venue addresses ever come back poor, Google is a drop-in for
+  iOS alone and stays a one-function change, because the address is resolved once at capture and
+  stored: 10,000 free calls a month, then about $5 per 1,000.
+- The web map is **not** the Google Maps JavaScript API and so is not billed per load. The tiles are
+  OpenStreetMap's own, positioned by hand in [lib/mapTiles.ts](lib/mapTiles.ts) — about 150 lines of
+  Web Mercator, no package, no key. A dashboard panel drawing a dozen tiles when somebody opens Home
+  is inside OSM's usage policy, and the attribution it asks for is rendered under the map. Swapping
+  to any other `{z}/{x}/{y}` provider, Google included, is the single `tileUrl` function.
 
-- **No columns.** `leads` has no latitude, longitude, accuracy or resolved address. A migration adds
-  them — four columns, all nullable, none of them ever backfilled.
-- **No library.** `expo-location` is not in `package.json`.
-- **No permission.** Foreground location has to be requested and declared in `app.json` for both
-  platforms, with a purpose string iOS will reject if it is vague.
-- **New privacy surface.** Location is a declared data type on both stores, so the Play data-safety
-  form, the App Store privacy labels and the privacy policy at
-  [app/(web)/privacy.tsx](app/(web)/privacy.tsx) all change. Item 27 already covers a policy review
-  before submission; this makes it bigger.
+**What the address falls back to when the geocode fails.** Three outcomes, and all three are
+ordinary leads that look ordinary:
 
-**The one rule that must not be broken:** a GPS fix takes seconds and fails indoors, and an
-exhibition hall is indoors. Capture cannot wait for it. Same rule as OCR and transcription — take
-the fix if one is already available, attach it afterwards if it arrives late, and never let it
-block the 4-second capture or hold up a save. A lead with no coordinates is a normal lead, not an
-error.
+| What is stored | What the lead screen shows |
+|---|---|
+| Coordinates and an address | the address |
+| Coordinates, geocode failed | the coordinates, `21.132694, 72.796357` |
+| Neither | **nothing — the whole block is left off the screen** |
 
-**Three things to decide before any of it is built:**
+The last row is every lead captured before 2026-09-16, because nothing is backfilled and never will
+be. A row reading "Not captured" on all of them would turn a normal lead into a reproach. All three
+are asserted in `npm run verify:capture-location`.
 
-1. **What the map is actually for.** At one trade show every lead is captured in the same hall,
-   so a map of capture points at a single event is a cloud of dots on one stall. It earns its place
-   across events and cities, or for field visits away from a show. Which of those is wanted?
-2. **Whose location.** The rep's device position at capture time, or the lead's company address
-   geocoded from the card? Habsy's screen offers both as a toggle, and they answer different
-   questions. Geocoding an address off a card needs no device permission at all, which makes it
-   much cheaper to ship.
-3. **Which map.** Google Maps needs an API key with billing attached, per map load. The screenshots
-   show Habsy's own map failing on every tile with an OpenStreetMap policy block, which is what
-   free tiles do at product scale. Budget this before designing around it.
+**The rule that was not broken.** A GPS fix takes seconds and fails indoors, and an exhibition hall
+is indoors, so a capture never waits for one. `primeCaptureLocation()` starts looking when the
+camera or the manual screen opens — seconds to minutes before the rep presses save — and `addLead`
+reads only whatever is already in hand, through a **synchronous** function that cannot be awaited by
+mistake. Whatever has not arrived by then, which is the address almost every time, is attached
+afterwards by `attachCaptureLocation` and rides the existing sync drain. There is no `await` on a
+location call anywhere between `camera.tsx` and `addLead()`.
 
-**Note:** option 2's second half — geocode the company address, no device permission, no new
-store declarations — delivers most of the visible result for a fraction of the work. Worth pricing
-that separately before committing to device capture.
+**What this cost elsewhere.** The sync drain's tail only re-ran itself for a queued *capture*, so a
+patch queued while a pass was already running sat on the device until the next app foreground. The
+capture location is queued seconds after a save, which is very often exactly then, so the guard now
+counts a queued patch too. That was a latent bug for every other late patch as well.
+
+**Not in the CSV export, deliberately.** `export_leads` is unchanged and there are no location
+columns in the file. Three reasons, and the first is the one that decides it: a spreadsheet of where
+each person was standing, emailed around, is a materially different thing from the same data sitting
+on a lead in the app, and nobody asked for it. Second, the answers above scoped this to two screens.
+Third, `export_leads` returns a table, so widening it means dropping and recreating the function and
+moving `verify:export` with it. Adding two columns later is small and self-contained — say so and it
+gets done.
+
+**Database.**
+[supabase/migrations/20260916100000_lead_capture_location.sql](supabase/migrations/20260916100000_lead_capture_location.sql),
+rehearsed and pushed 2026-09-16. Four nullable columns, no backfill, no index — nothing queries by
+location. **No GRANT was needed and that was checked, not assumed:** the 20260827130400 trap is
+column-level ACLs, and `leads` has none. `pg_attribute.attacl` is null for every one of its columns,
+so a new column inherits the table-level grants. Probed against the live database before the file
+was written and again inside the rehearsal, after the ALTER.
+
+---
+
+#### 43a. What you now have to declare on the two stores — NOT done, and only you can do it `[ ]`
+
+This is the item-62 trap. That was a release blocker created by adding the contacts permission while
+the published policy still said the app never asked for one. The policy half is done here:
+[app/(web)/privacy.tsx](app/(web)/privacy.tsx) now states what is collected, why, and that refusing
+changes nothing else — **and that goes live the moment this reaches master.** The two store forms
+are not something anyone but you can submit.
+
+**Google Play — Data safety form.** Add, under **Location**:
+
+- Data type: **Approximate location**. Not Precise — captures are taken at Balanced accuracy, about
+  100 metres.
+- Collected: **Yes.** Shared: **No.**
+- Processed ephemerally: **No** — it is stored on the lead.
+- Required or optional: **Optional.** The rep can refuse and everything still works.
+- Purpose: **App functionality** only. Not analytics, not advertising, not personalisation.
+- Encrypted in transit: **Yes.** Users can request deletion: **Yes.**
+
+**Apple — App Store Connect privacy labels.** Add under **Data Linked to You**:
+
+- Data type: **Location → Coarse Location.**
+- Purpose: **App Functionality.**
+- Used for tracking: **No.**
+
+The iOS purpose string is already in [app.json](app.json) and names the feature rather than waving
+at it, which is what gets a vague one rejected. Android ships `ACCESS_BACKGROUND_LOCATION` in
+`blockedPermissions`, so the app cannot ask for background access and you must not declare it.
+
+**Also still to do, and also only you:** test on a real handset **indoors**, which is the case this
+feature lives or dies on. A simulator always hands over a fix, so it proves nothing. Outdoors should
+give an address within a few seconds; indoors expect the last known fix, or no location at all — and
+the lead must save at exactly the same speed either way.
 
 ---
 

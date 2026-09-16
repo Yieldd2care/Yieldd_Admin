@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Platform, Pressable, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -10,6 +10,7 @@ import { RadialGlow } from '../../../components/ui/RadialGlow';
 import { GUIDE_BOX, cropToGuideBox, normaliseCardPhoto } from '../../../lib/cardPhoto';
 import { persistCapture } from '../../../lib/captureFiles';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
+import { primeCaptureLocation } from '../../../lib/location';
 
 export default function CameraScreen() {
   const [flashOn, setFlashOn] = useState(false);
@@ -223,6 +224,26 @@ export default function CameraScreen() {
    * honest: the badge says a front is held, so it must not survive the decision
    * to replace it.
    */
+  /**
+   * Start looking for the device's position, and carry straight on.
+   *
+   * Here rather than in the details screen for two reasons. The first is time:
+   * the rep still has a card to photograph, maybe two sides of it, and a form
+   * to fill, which is the difference between a fix that is waiting when they
+   * press save and one that is not. The second is that the details screen is a
+   * ScrollView of TextInputs, and AGENTS.md is explicit that a location watch
+   * does not belong on a screen like that.
+   *
+   * Gated on the camera permission having already been granted, so the two
+   * prompts arrive one after the other on a first capture instead of stacking
+   * on top of each other. `primeCaptureLocation` sets no state and subscribes
+   * to nothing - it is one read, fired and forgotten - so this effect can never
+   * re-render anything.
+   */
+  useEffect(() => {
+    if (permission?.granted) primeCaptureLocation();
+  }, [permission?.granted]);
+
   const retakeFront = () => {
     if (busy) return;
     setCaptureError(null);
