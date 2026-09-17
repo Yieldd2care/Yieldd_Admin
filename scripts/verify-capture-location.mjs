@@ -300,9 +300,7 @@ if (captureLocation && mapTiles && captureConsent) {
     decideLocationAccess,
     parseLocationChoice,
     LOCATION_CHOICE_KEY,
-    LOCATION_NOTICE_TITLE,
-    LOCATION_NOTICE_WHY,
-    LOCATION_NOTICE_SCOPE,
+    LOCATION_NOTICE,
   } = captureConsent;
 
   /** The ordinary state of a fresh install: nothing granted, the OS willing to ask. */
@@ -368,44 +366,33 @@ if (captureLocation && mapTiles && captureConsent) {
     'it shares a namespace with the zustand persist keys and must not collide with one'
   );
 
-  // The two sentences the policy is actually about. A redesign that quietly
-  // dropped one would otherwise be invisible until a review rejected the build.
-  ok(
-    'the disclosure says what is collected',
-    /location|where you are/i.test(LOCATION_NOTICE_TITLE),
-    LOCATION_NOTICE_TITLE
-  );
-  ok(
-    'the disclosure says why',
-    LOCATION_NOTICE_WHY.trim().length > 20,
-    LOCATION_NOTICE_WHY
-  );
-  ok(
-    'the disclosure rules out background collection',
-    /never in the background/i.test(LOCATION_NOTICE_SCOPE),
-    'app.json blocks ACCESS_BACKGROUND_LOCATION and the published policy says so too'
-  );
-
   /**
-   * And it stays short.
+   * The disclosure, held to both edges at once.
    *
-   * The opposite failure from the one above, and the likelier one: every future
-   * edit to a permission screen wants to add one more reassuring sentence, and
-   * the result reads as a screen with something to hide rather than a screen
-   * asking for a postcode. Google Play wants what and why; past that this is our
-   * own prose, arguing a case in front of somebody who only wants to scan a
-   * card. The ceiling is what keeps that from creeping back one line at a time.
+   * Google Play asks for two things and only two: name the data, and say what
+   * it is used for. Everything below is one of those two, or the ceiling that
+   * keeps the rest from creeping back.
+   *
+   * The ceiling is the likelier failure from here. The floor was the risk on
+   * the first pass and it is now a single sentence; what happens next is that
+   * somebody adds one more reassuring line, and then another, until the screen
+   * reads as a permission request with something to hide. That is not a style
+   * regression, it is the thing the rep reacts to.
    */
-  const shown = [LOCATION_NOTICE_TITLE, LOCATION_NOTICE_WHY, LOCATION_NOTICE_SCOPE];
   ok(
-    'the whole disclosure stays short enough to read at a glance',
-    shown.join(' ').length <= 200,
-    `${shown.join(' ').length} characters - a wall of reassurance in front of a permission reads as a catch`
+    'the disclosure names the data it is about',
+    /location/i.test(LOCATION_NOTICE),
+    'talking around the data type is what gets a disclosure rejected as vague'
   );
   ok(
-    'it is three lines, not a policy page',
-    shown.every((line) => line.length <= 80),
-    shown.map((line) => `${line.length}: ${line}`).join(' | ')
+    'the disclosure gives a purpose, not just a fact',
+    /\bso\b/i.test(LOCATION_NOTICE),
+    'Play requires what the data is USED for, not only that it is collected'
+  );
+  ok(
+    'it is one sentence, not a policy page',
+    LOCATION_NOTICE.length <= 120 && (LOCATION_NOTICE.match(/\./g) || []).length <= 1,
+    `${LOCATION_NOTICE.length} chars - a wall of reassurance in front of a permission reads as a catch`
   );
 }
 
