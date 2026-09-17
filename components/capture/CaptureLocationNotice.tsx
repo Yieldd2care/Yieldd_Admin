@@ -1,11 +1,7 @@
 import { memo, useEffect, useState } from 'react';
-import { Modal, Platform, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Modal, Platform, Pressable, View } from 'react-native';
 
 import { Typography } from '../ui/Typography';
-import { Button } from '../ui/Button';
-import { MapPinIcon } from '../ui/icons';
-import { NavyGlowBackdrop } from '../app/NavyGlowBackdrop';
 import { LOCATION_NOTICE } from '../../lib/captureConsent';
 import {
   captureLocationDisclosure,
@@ -22,11 +18,26 @@ import {
  * carried its purpose string since this feature shipped; Android had nothing,
  * and that is the thing a reviewer can reject for.
  *
+ * A SMALL CENTRED DIALOG, not a full screen, and that is the point of it.
+ *
+ * This was a full-bleed takeover first, which was a mistake: a screen that
+ * stops everything to explain itself reads as a bigger, stranger request than
+ * it is, and the rep meeting it is standing in a hall wanting to scan a card.
+ * Play asks the disclosure to be prominent - in the app, in front of the
+ * prompt, needing an affirmative tap - and a dialog is all of that, which is
+ * why Play's own guidance draws one. The ordinary shape is what makes an
+ * ordinary request look ordinary. Modelled on components/dash/ConfirmDialog.
+ *
  * A <Modal> rather than an absolutely positioned overlay, for the reason
  * FirstRunTutorial gives: something the rep can tap straight past has not been
  * shown, it has been ignored. Deliberately NOT SheetShell - that is for
  * `(modals)` routes and its backdrop calls router.back(), which from inside a
  * capture flow would drop the rep out of the capture instead of closing this.
+ *
+ * The card is white against the dark capture screens on purpose: the Android
+ * permission dialog that follows a Continue is light, so this reads as the
+ * first half of one exchange rather than a screen of ours in front of one of
+ * theirs.
  *
  * NOTHING HERE IS ON THE CAPTURE PATH. The screens behind this keep their own
  * `primeCaptureLocation()` call untouched and go on saving leads at the same
@@ -115,38 +126,43 @@ function CaptureLocationNoticeInner({ enabled = true }: Props) {
   if (Platform.OS === 'web') return null;
 
   return (
-    <Modal
-      visible={phase === 'show'}
-      animationType="fade"
-      transparent={false}
-      onRequestClose={dismiss}
-    >
-      <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
-        <NavyGlowBackdrop />
-
-        {/* One sentence, and nothing else on the screen. See the note on the
-            copy in lib/captureConsent.ts for what is deliberately absent and
-            why - the short version is that past naming the data and its
-            purpose, every further line of reassurance is ours, and reads as a
-            reason to distrust the ask rather than accept it. */}
-        <View className="flex-1 justify-center px-8">
-          <View className="w-16 h-16 rounded-full bg-gold/[0.14] items-center justify-center self-center">
-            <MapPinIcon size={28} color="#F4B000" strokeWidth={1.75} />
-          </View>
-
-          <Typography className="mt-8 text-[19px] leading-[1.45] font-bold text-white text-center tracking-[-0.01em]">
+    <Modal visible={phase === 'show'} transparent animationType="fade" onRequestClose={dismiss}>
+      {/* A plain View, NOT a Pressable that cancels.
+          ConfirmDialog's backdrop calls onCancel, and copying that here would
+          make a stray tap beside the card a PERMANENT opt-out - this dialog's
+          no is remembered forever, where a confirm dialog's is not. The rep
+          picks one of the two buttons, or backs out with the hardware key,
+          which records nothing. */}
+      <View
+        className="flex-1 items-center justify-center px-6"
+        style={{ backgroundColor: 'rgba(11,19,43,0.55)' }}
+      >
+        <View className="w-full max-w-[400px] bg-white rounded-lg px-6 py-[22px]">
+          <Typography className="text-[15px] leading-[1.55] text-navy">
             {LOCATION_NOTICE}
           </Typography>
-        </View>
 
-        {/* Both buttons carry their full class list from the first render - the
-            shared Button's variants are constant and only opacity moves. See
-            AGENTS.md on what a shadow appearing later costs. */}
-        <View className="px-8 pb-6 gap-2">
-          <Button label="Continue" onPress={accept} shape="pill" className="w-full" />
-          <Button label="No thanks" variant="ghost" onPress={decline} shape="pill" className="w-full" />
+          {/* Every class here is static - no state toggles a shadow, ring or
+              scale into existence after the first render. See AGENTS.md. */}
+          <View className="flex-row gap-3 mt-[22px]">
+            <Pressable
+              onPress={accept}
+              accessibilityRole="button"
+              className="flex-1 rounded-md py-[13px] items-center bg-gold shadow-[0_10px_26px_rgba(244,176,0,0.34)]"
+            >
+              <Typography className="text-[13.5px] font-bold text-navy">Continue</Typography>
+            </Pressable>
+
+            <Pressable
+              onPress={decline}
+              accessibilityRole="button"
+              className="flex-1 rounded-md py-[13px] items-center border border-hairline bg-white"
+            >
+              <Typography className="text-[13.5px] font-semibold text-navy">No thanks</Typography>
+            </Pressable>
+          </View>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
