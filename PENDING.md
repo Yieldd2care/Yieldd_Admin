@@ -753,10 +753,15 @@ The iOS purpose string is already in [app.json](app.json) and names the feature 
 at it, which is what gets a vague one rejected. Android ships `ACCESS_BACKGROUND_LOCATION` in
 `blockedPermissions`, so the app cannot ask for background access and you must not declare it.
 
-**Also still to do, and also only you:** test on a real handset **indoors**, which is the case this
-feature lives or dies on. A simulator always hands over a fix, so it proves nothing. Outdoors should
-give an address within a few seconds; indoors expect the last known fix, or no location at all — and
-the lead must save at exactly the same speed either way.
+**Testing is still to do, and we are doing it together — none of it has been run yet.** Nothing
+below has been confirmed on a real device; it is verified only by `npm run verify:capture-location`,
+the typecheck and the web and Android bundles, none of which can see a GPS radio or a permission
+dialog.
+
+Test on a real handset **indoors**, which is the case this feature lives or dies on. A simulator
+always hands over a fix, so it proves nothing. Outdoors should give an address within a few seconds;
+indoors expect the last known fix, or no location at all — and the lead must save at exactly the
+same speed either way.
 
 On the same handset, on a **fresh install**, the disclosure is worth five minutes because the two
 buttons fail in opposite directions and neither shows up in a simulator:
