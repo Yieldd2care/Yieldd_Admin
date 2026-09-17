@@ -111,6 +111,10 @@ export default function DashEventRoi() {
   }
 
   const hasSpend = stats.spendPaise != null && stats.spendPaise > 0;
+  // `spendPaise` is `total_cost_paisa`, generated as `coalesce(component, 0) + …`,
+  // so it reads 0 both for an event nobody has costed AND for one genuinely
+  // costed at zero. Only the components can tell those apart.
+  const isPriced = event.isPriced;
 
   return (
     <DashShell
@@ -135,12 +139,19 @@ export default function DashEventRoi() {
       ) : !hasSpend ? (
         <Panel className="p-[22px] flex-row items-center justify-between">
           <View className="flex-1 pr-4">
-            <Typography className="text-[15px] font-bold text-navy">Add what this stall cost</Typography>
+            <Typography className="text-[15px] font-bold text-navy">
+              {isPriced ? 'This show is recorded as costing nothing' : 'Add what this stall cost'}
+            </Typography>
             <Typography className="text-[13px] text-slate leading-[1.6] mt-1">
-              Return cannot be worked out until the spend is recorded. Seven lines, on the edit screen.
+              {isPriced
+                ? 'Every cost line is zero, so there is no spend to work a return out against. Change it on the edit screen if that is not right.'
+                : 'Return cannot be worked out until the spend is recorded. Seven lines, on the edit screen.'}
             </Typography>
           </View>
-          <GoldButton label="Add costs" onPress={() => router.push(`/(dash)/events/${event.id}/edit`)} />
+          <GoldButton
+            label={isPriced ? 'Edit costs' : 'Add costs'}
+            onPress={() => router.push(`/(dash)/events/${event.id}/edit`)}
+          />
         </Panel>
       ) : (
         <Hero>

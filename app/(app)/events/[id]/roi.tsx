@@ -92,6 +92,15 @@ export default function ROIDashboardScreen() {
   }
 
   const hasSpend = stats.spendPaise != null && stats.spendPaise > 0;
+  /**
+   * Whether anyone has RECORDED a cost, which `spendPaise` cannot answer.
+   *
+   * It is `total_cost_paisa`, a generated column — `coalesce(component, 0) + …`
+   * — so an event nobody has costed arrives here as 0 rather than null. Taking
+   * that 0 at face value made this screen say "won against ₹0 spent" and print
+   * ₹0 beside "Event cost", both of which read as "the stall was free".
+   */
+  const isPriced = event?.isPriced ?? false;
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
@@ -150,7 +159,9 @@ export default function ROIDashboardScreen() {
                   <Typography className="text-[22px] font-extrabold text-gold pb-[6px]">%</Typography>
                 </View>
                 <Typography className="text-[12.5px] text-white/[0.55] mt-2">
-                  {formatPaise(stats.wonValuePaise)} won against {formatPaise(stats.spendPaise)} spent
+                  {isPriced
+                    ? `${formatPaise(stats.wonValuePaise)} won against ${formatPaise(stats.spendPaise)} spent`
+                    : `${formatPaise(stats.wonValuePaise)} won · no cost recorded yet`}
                 </Typography>
                 <View className="h-px bg-white/[0.12] my-[18px]" />
                 <View className="flex-row items-center justify-between">
@@ -199,7 +210,7 @@ export default function ROIDashboardScreen() {
               <Typography className="text-[12.5px] text-slate">Event cost</Typography>
               <View className="flex-row items-center gap-2">
                 <Typography className="text-[15px] font-bold text-navy">
-                  {formatPaise(stats.spendPaise, { fallback: 'Not added' })}
+                  {isPriced ? formatPaise(stats.spendPaise) : 'Not added'}
                 </Typography>
                 <Typography className="text-[12px] font-bold text-gold">Edit</Typography>
               </View>

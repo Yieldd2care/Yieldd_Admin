@@ -272,5 +272,34 @@ ok(
   eventForm.includes('values.costs[key] != null ? String(values.costs[key]) : \'\'')
 );
 
+// ---------------------------------------------------------------------------
+// The two per-event ROI screens.
+//
+// These read `stats.spendPaise`, which is `total_cost_paisa` — GENERATED as
+// `coalesce(component, 0) + ...`, so it is 0 for an uncosted event and never
+// null. Both screens took that 0 at face value and said "won against Rs 0
+// spent", which on an ROI screen reads as a claim that the stall was free. They
+// were missed in the first pass of this change and found by opening a real
+// uncosted event.
+// ---------------------------------------------------------------------------
+
+const fsMod = await import('node:fs');
+const phoneRoi = fsMod.readFileSync('app/(app)/events/[id]/roi.tsx', 'utf8');
+const dashRoi = fsMod.readFileSync('app/(dash)/events/[id]/roi.tsx', 'utf8');
+
+ok(
+  'the phone ROI screen does not claim zero spent on an uncosted show',
+  phoneRoi.includes('no cost recorded yet') && phoneRoi.includes('isPriced')
+);
+ok(
+  'the phone ROI cost row asks isPriced rather than an unreachable fallback',
+  phoneRoi.includes("isPriced ? formatPaise(stats.spendPaise) : 'Not added'") &&
+    !phoneRoi.includes("formatPaise(stats.spendPaise, { fallback: 'Not added' })")
+);
+ok(
+  'the dashboard ROI screen tells a free show apart from an uncosted one',
+  dashRoi.includes('This show is recorded as costing nothing') && dashRoi.includes('event.isPriced')
+);
+
 console.log(failed ? `\n${failed} failed` : '\nall checks passed');
 process.exitCode = failed ? 1 : 0;
