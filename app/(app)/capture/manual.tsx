@@ -23,6 +23,7 @@ import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldValue } from '../../../data/leads';
 import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 import { primeCaptureLocation } from '../../../lib/location';
+import { CaptureLocationNotice } from '../../../components/capture/CaptureLocationNotice';
 
 function BigField({ label, ...rest }: { label: string } & TextInputProps) {
   return (
@@ -323,6 +324,13 @@ export default function ManualEntryScreen() {
         </Pressable>
       </View>
       </KeyboardSafe>
+
+      {/* Outside KeyboardSafe and outside the ScrollView, deliberately. A Modal
+          portals to its own window so it has no layout of its own here, but a
+          NativeWind gap- container above would still reserve a gap for it, and
+          opening one inside KeyboardSafe with the keyboard up forces the whole
+          form to reflow. */}
+      <CaptureLocationNotice />
     </SafeAreaView>
   );
 }

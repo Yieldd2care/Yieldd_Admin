@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   composeAddress,
@@ -6,6 +7,12 @@ import {
   type CaptureFix,
   type CaptureLocation,
 } from './captureLocation';
+import {
+  decideLocationAccess,
+  parseLocationChoice,
+  LOCATION_CHOICE_KEY,
+  type LocationChoice,
+} from './captureConsent';
 
 /**
  * Taking the device's position at capture, without ever making a capture wait
@@ -25,6 +32,22 @@ import {
  * `GeocoderError` unconditionally, and `getCurrentPositionAsync` would put a
  * browser permission prompt in front of somebody looking at a dashboard. Web
  * takes neither path: every function here returns nothing on web.
+ *
+ * NOTE ON ASKING: the OS permission prompt is never the first thing the rep
+ * sees. Google Play requires a prominent disclosure - our own explanation of
+ * what is taken and why - before the system dialog, and `readPosition` below
+ * will not reach `requestForegroundPermissionsAsync` until that has been
+ * accepted. The rule lives in `lib/captureConsent.ts`, the screen that shows it
+ * in `components/capture/CaptureLocationNotice.tsx`. The answer is kept on the
+ * device rather than on the profile, because the permission it is about is a
+ * property of the handset: the same rep on a new phone is asked again, which is
+ * right, and a second rep on this phone is not, because the OS permission they
+ * would be answering for is already settled device-wide.
+ *
+ * NOTE ON THE AsyncStorage IMPORT: top-level, unlike expo-location below, and
+ * that is fine - the package ships a localStorage-backed web build and is
+ * already in the web bundle through lib/supabase.ts. Reading it never happens
+ * on web regardless, because every entry point here returns early there.
  *
  * NOTE ON THE GEOCODER: `reverseGeocodeAsync` resolves on the device using the
  * platform's own geocoder - Android's is Google underneath already, iOS uses
@@ -56,14 +79,106 @@ let lastFix: TimedFix | undefined;
 let inFlight: Promise<CaptureFix | undefined> | null = null;
 
 /**
- * Whether the rep let us have it. `null` means nobody has looked yet.
+ * Whether the OS let us have it, for this run. `null` means nobody has looked.
  *
- * Asked at most once per app run. A rep who says no is never asked again by
- * this code - the OS takes over refusing on iOS after the first denial, and
- * re-prompting on Android would be nagging somebody for a field they have
- * already declined.
+ * Only ever written once the answer is real - see the switch in `readPosition`,
+ * which returns without touching this when the rep has not answered the
+ * disclosure yet. Caching a `false` while the answer is merely pending would
+ * silently kill location for the rest of the run at the exact moment the rep
+ * tapped Continue, which is the one bug this whole file is shaped to avoid.
  */
 let permitted: boolean | null = null;
+
+/**
+ * The rep's answer to our own disclosure, read once and kept as a promise.
+ *
+ * A PROMISE RATHER THAN A VALUE, deliberately. `readPosition` is already async
+ * and already off the capture path, so it can await this; and because the read
+ * always settles, it can never wedge the in-flight guard the way awaiting a
+ * human's answer would. This is the distinction the timeout note above is
+ * about: await the storage read, never await the person.
+ *
+ * Holding it here rather than in the component that shows the disclosure means
+ * location does not depend on any screen having mounted. The leads store calls
+ * `settledCaptureLocation()` after a lead is saved, and that has to work on a
+ * cold start whether or not a capture screen ever rendered.
+ */
+let storedChoice: Promise<LocationChoice | null> | null = null;
+
+function choice(): Promise<LocationChoice | null> {
+  storedChoice ??= AsyncStorage.getItem(LOCATION_CHOICE_KEY)
+    .then(parseLocationChoice)
+    // Storage unavailable reads as "not asked yet", not as a refusal. The rep
+    // sees the disclosure once more, which is recoverable; the other direction
+    // would be a permanent opt-out caused by a glitch.
+    .catch(() => null);
+  return storedChoice;
+}
+
+/**
+ * Whether the disclosure still has to be shown, for whoever is asking.
+ *
+ * TRUE AT MOST ONCE PER APP RUN, which is what the `offered` flag is for.
+ * `router.replace` keeps the outgoing screen mounted for the length of the
+ * transition, so camera and manual are both alive for a few hundred
+ * milliseconds on the way between them - without this, both would put a dialog
+ * up and the rep would answer one into the back of the other.
+ *
+ * The flag is set when the disclosure is handed out, not when it is answered,
+ * so backing out of it also settles the question for the run.
+ *
+ * Here rather than in the component so that every expo-location call in the app
+ * stays behind this file's platform guard and its lazy import.
+ */
+let offered = false;
+
+export async function captureLocationDisclosure(): Promise<boolean> {
+  if (Platform.OS === 'web' || offered) return false;
+  try {
+    const Location = await import('expo-location');
+    const current = await Location.getForegroundPermissionsAsync();
+    const access = decideLocationAccess({
+      choice: await choice(),
+      granted: current.granted,
+      canAskAgain: current.canAskAgain,
+    });
+    if (access !== 'disclose') return false;
+  } catch {
+    // No location provider, services off, the module failing to load at all:
+    // there is nothing to disclose if there is nothing that could be read.
+    return false;
+  }
+  offered = true;
+  return true;
+}
+
+/**
+ * Record what the rep answered, and let them get on with it.
+ *
+ * SYNCHRONOUS WHERE IT MATTERS. The in-memory answer is replaced with an
+ * already-resolved promise before this returns, so the `primeCaptureLocation()`
+ * fired immediately afterwards sees the new answer. Were the memo only updated
+ * once the write came back, that prime would read the stale `null`, decide the
+ * rep still had to be shown a disclosure they had just accepted, and never
+ * reach the OS prompt at all - a disclosure that looked like it worked and
+ * quietly did nothing.
+ *
+ * `permitted` is cleared for the same reason: the run may already have looked
+ * at the OS and found nothing while the answer was pending.
+ *
+ * The write itself is optimistic and unawaited, the way dismissing the tutorial
+ * is in lib/auth/tutorial.ts. A failed write costs one more sighting of the
+ * disclosure on the next cold start, which is not worth a message on screen.
+ */
+export function setCaptureLocationChoice(answer: LocationChoice): void {
+  if (Platform.OS === 'web') return;
+  storedChoice = Promise.resolve(answer);
+  permitted = null;
+  offered = true;
+  AsyncStorage.setItem(LOCATION_CHOICE_KEY, answer).catch((err) => {
+    if (__DEV__) console.warn('[location] could not record the disclosure answer', err);
+  });
+}
 
 /**
  * Addresses already resolved, keyed by place rather than by fix.
@@ -103,13 +218,41 @@ async function readPosition(): Promise<CaptureFix | undefined> {
 
     if (permitted === null) {
       const current = await Location.getForegroundPermissionsAsync();
-      // Only actually prompt when the OS still allows one. Otherwise take the
-      // answer it has already recorded.
-      const answer =
-        current.granted || !current.canAskAgain
-          ? current
-          : await Location.requestForegroundPermissionsAsync();
-      permitted = answer.granted;
+      /**
+       * The OS prompt is reachable from exactly one branch of this switch, and
+       * that branch requires the rep to have accepted the disclosure first.
+       * That is the store policy, expressed as control flow - see
+       * `decideLocationAccess` in lib/captureConsent.ts for the rule and the
+       * order its clauses have to be read in.
+       */
+      switch (
+        decideLocationAccess({
+          choice: await choice(),
+          granted: current.granted,
+          canAskAgain: current.canAskAgain,
+        })
+      ) {
+        case 'use':
+          permitted = true;
+          break;
+        case 'request':
+          permitted = (await Location.requestForegroundPermissionsAsync()).granted;
+          break;
+        default:
+          /**
+           * `disclose` or `refuse`, and NOTHING IS CACHED on the way out.
+           *
+           * `disclose` means the rep has not answered yet and may be about to;
+           * writing `permitted = false` here would outlive that answer and take
+           * location down for the rest of the run. `refuse` is not cached
+           * either, and costs nothing to re-derive - the dynamic import is
+           * module-cached after the first call and reading the permission is
+           * cheap - while buying the thing the cache would break: a rep who
+           * turns location on in their phone's own settings is picked up on the
+           * very next capture, rather than whenever the app next restarts.
+           */
+          return undefined;
+      }
     }
     if (!permitted) return undefined;
 

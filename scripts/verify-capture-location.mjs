@@ -1,9 +1,9 @@
 /**
- * Checks the two pure halves of "where was this lead captured" - PENDING.md 43.
+ * Checks the pure halves of "where was this lead captured" - PENDING.md 43.
  *
  *   npm run verify:capture-location
  *
- * Two things are asserted here because both are easy to get wrong in a way no
+ * Three things are asserted here because each is easy to get wrong in a way no
  * screen would show you:
  *
  *   1. WHAT A LEAD SHOWS. Three outcomes, and the middle one is the trap. A fix
@@ -18,8 +18,16 @@
  *      arithmetic is ours and nothing else would catch it being wrong. A map
  *      whose dots are all slightly in the wrong place still looks like a map.
  *
- * Pure - no network, no database, no device. Compiles the two TypeScript
- * modules on their own the same way `verify:export` compiles lib/exportRows.ts.
+ *   3. WHEN THE APP MAY ASK FOR LOCATION. This one is a Google Play policy
+ *      rather than a preference: the rep has to be shown what is taken and why
+ *      BEFORE the system permission dialog, and a rep who declines must never
+ *      be asked again. Both of those are invisible from the outside - an app
+ *      that asks too early looks identical to one that asks correctly until a
+ *      reviewer rejects the build - so the rule lives in one pure function and
+ *      is asserted here rather than read back off a screen.
+ *
+ * Pure - no network, no database, no device. Compiles the TypeScript modules on
+ * their own the same way `verify:export` compiles lib/exportRows.ts.
  */
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -55,6 +63,7 @@ const near = (name, actual, expected, tolerance) => {
 const dir = mkdtempSync(join(tmpdir(), 'yieldd-capture-location-'));
 let captureLocation;
 let mapTiles;
+let captureConsent;
 try {
   execFileSync(
     process.execPath,
@@ -64,8 +73,12 @@ try {
       // naming files on the command line. This compile is deliberately
       // standalone - the flag says so instead of letting tsc refuse.
       '--ignoreConfig',
+      // Every input stays inside lib/. There is no --rootDir, so tsc infers
+      // the common root from this list - a file from anywhere else would move
+      // that root up to the repo and change where all three emit to.
       'lib/captureLocation.ts',
       'lib/mapTiles.ts',
+      'lib/captureConsent.ts',
       '--outDir', dir,
       '--module', 'esnext',
       '--target', 'es2022',
@@ -78,12 +91,13 @@ try {
   );
   captureLocation = await import(pathToFileURL(join(dir, 'captureLocation.js')).href);
   mapTiles = await import(pathToFileURL(join(dir, 'mapTiles.js')).href);
-  ok('lib/captureLocation.ts and lib/mapTiles.ts compile with nothing else', true);
+  captureConsent = await import(pathToFileURL(join(dir, 'captureConsent.js')).href);
+  ok('the three pure modules compile with nothing else', true);
 } catch (error) {
-  ok('lib/captureLocation.ts and lib/mapTiles.ts compile with nothing else', false, String(error));
+  ok('the three pure modules compile with nothing else', false, String(error));
 }
 
-if (captureLocation && mapTiles) {
+if (captureLocation && mapTiles && captureConsent) {
   const { captureLocationLine, composeAddress, formatCoordinates, isUsableFix, mapsUrl } = captureLocation;
   const { fitToPoints, project, tilesFor, toWorld, tileUrl, TILE_SIZE } = mapTiles;
 
@@ -272,6 +286,110 @@ if (captureLocation && mapTiles) {
     'the tile URL needs no API key',
     /^https:\/\/[^?]+\.png$/.test(tileUrl({ x: 1, y: 2, z: 3, left: 0, top: 0 })),
     'a query string here is where a billed map provider would have crept in'
+  );
+
+  // -------------------------------------------------------------------------
+  // When the app is allowed to ask for location at all
+  //
+  // Google Play requires a prominent disclosure - our own explanation of what
+  // is taken and why - in front of the system permission dialog. The rule is a
+  // single pure function so it can be checked here; every assertion below is a
+  // sentence from that policy, or a promise made to the rep on top of it.
+  // -------------------------------------------------------------------------
+  const {
+    decideLocationAccess,
+    parseLocationChoice,
+    LOCATION_CHOICE_KEY,
+    LOCATION_NOTICE_TITLE,
+    LOCATION_NOTICE_WHY,
+    LOCATION_NOTICE_SCOPE,
+    LOCATION_NOTICE_OPTIONAL,
+  } = captureConsent;
+
+  /** The ordinary state of a fresh install: nothing granted, the OS willing to ask. */
+  const fresh = { granted: false, canAskAgain: true };
+
+  eq(
+    'a rep who has not answered gets the disclosure, not the OS popup',
+    decideLocationAccess({ choice: null, ...fresh }),
+    'disclose'
+  );
+
+  eq(
+    'accepting the disclosure is what reaches the OS prompt',
+    decideLocationAccess({ choice: 'allowed', ...fresh }),
+    'request'
+  );
+
+  ok(
+    'declining never reaches the OS prompt',
+    decideLocationAccess({ choice: 'declined', ...fresh }) === 'refuse',
+    'nagging somebody for a field they have already turned down is worse than the missing field'
+  );
+
+  ok(
+    'an OS grant is honoured even after the rep declined the notice',
+    decideLocationAccess({ choice: 'declined', granted: true, canAskAgain: false }) === 'use',
+    'turning location on in the phone settings is a more deliberate yes than any tap in here'
+  );
+
+  eq(
+    'an OS that will not ask again is never asked, whatever the rep answered',
+    [
+      decideLocationAccess({ choice: 'allowed', granted: false, canAskAgain: false }),
+      decideLocationAccess({ choice: null, granted: false, canAskAgain: false }),
+    ],
+    ['refuse', 'refuse']
+  );
+
+  ok(
+    'a granted permission never puts the disclosure in front of the rep',
+    ['allowed', 'declined', null].every(
+      (choice) => decideLocationAccess({ choice, granted: true, canAskAgain: true }) === 'use'
+    ),
+    'there is nothing to disclose in front of a prompt that is not going to appear'
+  );
+
+  eq('both answers round-trip', 
+    [parseLocationChoice('allowed'), parseLocationChoice('declined')],
+    ['allowed', 'declined']
+  );
+
+  ok(
+    'a junk or missing stored value reads as never answered',
+    ['', 'yes', 'true', 'ALLOWED', null, undefined].every(
+      (raw) => parseLocationChoice(raw) === null
+    ),
+    'reading a glitch as a refusal would be a permanent opt-out nobody could undo'
+  );
+
+  ok(
+    'the stored key stays in the yieldd- family',
+    LOCATION_CHOICE_KEY.startsWith('yieldd-'),
+    'it shares a namespace with the zustand persist keys and must not collide with one'
+  );
+
+  // The two sentences the policy is actually about. A redesign that quietly
+  // dropped one would otherwise be invisible until a review rejected the build.
+  ok(
+    'the disclosure says what is collected',
+    /location|where you are/i.test(LOCATION_NOTICE_TITLE),
+    LOCATION_NOTICE_TITLE
+  );
+  ok(
+    'the disclosure says why',
+    LOCATION_NOTICE_WHY.trim().length > 20,
+    LOCATION_NOTICE_WHY
+  );
+  ok(
+    'the disclosure rules out background collection',
+    /never in the background/i.test(LOCATION_NOTICE_SCOPE),
+    'app.json blocks ACCESS_BACKGROUND_LOCATION and the published policy says so too'
+  );
+  ok(
+    'the disclosure says refusing costs the rep nothing',
+    /no|not/i.test(LOCATION_NOTICE_OPTIONAL) && LOCATION_NOTICE_OPTIONAL.trim().length > 20,
+    LOCATION_NOTICE_OPTIONAL
   );
 }
 

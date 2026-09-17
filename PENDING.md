@@ -713,6 +713,26 @@ the published policy still said the app never asked for one. The policy half is 
 changes nothing else — **and that goes live the moment this reaches master.** The two store forms
 are not something anyone but you can submit.
 
+**The in-app prominent disclosure is now done too, and it was the last thing here that was code.**
+Google Play requires the rep to be shown what is taken and why *before* the system permission
+dialog, not after it, whenever the use is not obvious from the context — standing in a camera
+screen is not obvious. Until now Android showed its bare popup with no explanation at all, which
+is a rejection on its own. The screen lives in
+[components/capture/CaptureLocationNotice.tsx](components/capture/CaptureLocationNotice.tsx), the
+rule that decides when it appears is
+[lib/captureConsent.ts](lib/captureConsent.ts), and `npm run verify:capture-location` asserts the
+rule directly: a rep who has not answered gets the explanation rather than the OS popup, declining
+never reaches the OS prompt again, and the wording still says what is collected, why, and that
+refusing costs them nothing. It is shown once per install; a rep who declines is never asked again,
+but location turned on later in the phone's own settings is still honoured, because that is a more
+deliberate yes than any tap in the app.
+
+Nothing about capture changed. A capture still never waits for a fix, the disclosure never blocks a
+save, and a lead with no location is still a normal lead.
+
+**What is left below is the part only you can do.** Both store forms still have to be filled in by
+hand, and neither can be submitted from here.
+
 **Google Play — Data safety form.** Add, under **Location**:
 
 - Data type: **Approximate location**. Not Precise — captures are taken at Balanced accuracy, about
@@ -737,6 +757,20 @@ at it, which is what gets a vague one rejected. Android ships `ACCESS_BACKGROUND
 feature lives or dies on. A simulator always hands over a fix, so it proves nothing. Outdoors should
 give an address within a few seconds; indoors expect the last known fix, or no location at all — and
 the lead must save at exactly the same speed either way.
+
+On the same handset, on a **fresh install**, the disclosure is worth five minutes because the two
+buttons fail in opposite directions and neither shows up in a simulator:
+
+- Open the camera. The explanation appears once, *after* the camera permission and never stacked on
+  top of it, and Continue is what brings up the Android location popup.
+- Reinstall and press No thanks. No popup appears, then or ever, and reopening capture does not ask
+  again. Then turn location on in Android's own settings for Yieldd — the next capture should record
+  one without any popup or explanation reappearing.
+- A lead must save instantly in every one of those states, including with the explanation still on
+  screen behind you.
+- Scan your own card (the QR tab's card scanner, `mode=profile`) and confirm the explanation does
+  **not** appear there. That flow creates no lead and reads no location, and showing it there would
+  spend the one-time explanation on the wrong feature.
 
 ---
 

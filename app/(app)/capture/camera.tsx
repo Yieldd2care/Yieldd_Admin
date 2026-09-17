@@ -11,6 +11,7 @@ import { GUIDE_BOX, cropToGuideBox, normaliseCardPhoto } from '../../../lib/card
 import { persistCapture } from '../../../lib/captureFiles';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { primeCaptureLocation } from '../../../lib/location';
+import { CaptureLocationNotice } from '../../../components/capture/CaptureLocationNotice';
 
 export default function CameraScreen() {
   const [flashOn, setFlashOn] = useState(false);
@@ -244,6 +245,26 @@ export default function CameraScreen() {
     if (permission?.granted) primeCaptureLocation();
   }, [permission?.granted]);
 
+  /**
+   * When the location disclosure may appear.
+   *
+   * Two separate guards, both load-bearing.
+   *
+   * The permission half keeps two dialogs from stacking: either the camera is
+   * granted and its prompt is behind us, or the OS has stopped offering one, in
+   * which case nothing can arrive on top of ours. `canAskAgain` counts as ready
+   * because the branch below is a live capture route - the rep can still work
+   * from saved photos - and gating on `granted` alone would leave anyone who
+   * turned the camera off unable to reach this at all.
+   *
+   * The profile half keeps it off the wrong feature entirely. `mode=profile` is
+   * the rep photographing their OWN card, which goes to the card editor and
+   * creates no lead and reads no location. Showing a location disclosure there
+   * would spend the one-time explanation on a flow it does not describe.
+   */
+  const locationNoticeReady =
+    !isProfileScan && permission != null && (permission.granted || !permission.canAskAgain);
+
   const retakeFront = () => {
     if (busy) return;
     setCaptureError(null);
@@ -267,6 +288,7 @@ export default function CameraScreen() {
      */
     const canAsk = permission.canAskAgain;
     return (
+      <>
       <View className="flex-1 bg-[#05070d] items-center justify-center px-8 gap-5">
         <Typography className="text-[15px] font-semibold text-white text-center">
           Camera access is needed to scan business cards
@@ -317,6 +339,13 @@ export default function CameraScreen() {
           <Typography className="text-[13px] font-semibold text-white/[0.80]">Enter manually instead</Typography>
         </Pressable>
       </View>
+      {/* A sibling of that View rather than a child of it: the column above is
+          a NativeWind gap- container, which would reserve a gap for a Modal
+          that draws nothing inline. This branch still reaches a saved lead
+          through the photo picker, so it needs the disclosure as much as the
+          live camera does. */}
+      <CaptureLocationNotice enabled={locationNoticeReady} />
+      </>
     );
   }
 
@@ -493,6 +522,8 @@ export default function CameraScreen() {
           )}
         </View>
       </View>
+
+      <CaptureLocationNotice enabled={locationNoticeReady} />
     </View>
   );
 }
