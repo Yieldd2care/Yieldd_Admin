@@ -132,11 +132,21 @@ export default function ROIDashboardScreen() {
               </Typography>
             ) : !hasSpend ? (
               <>
+                {/*
+                  Zero spend has two causes and they need different words. An
+                  uncosted event has nothing recorded; an event costed entirely
+                  at zero was recorded, and telling its owner to "add what this
+                  cost" calls them wrong. `hasSpend` cannot separate them — it
+                  reads total_cost_paisa, which is 0 either way — so this asks
+                  isPriced, the same way the dashboard's ROI screen does.
+                */}
                 <Typography className="text-[20px] font-extrabold text-white mt-3 leading-[1.35]">
-                  Add what this event cost
+                  {isPriced ? 'This event is recorded as costing nothing' : 'Add what this event cost'}
                 </Typography>
                 <Typography className="text-[12.5px] text-white/[0.55] mt-2 leading-[1.5]">
-                  ROI and cost per lead need the event cost. Without it there is nothing to divide by.
+                  {isPriced
+                    ? 'Every cost line is zero, so there is no spend to work a return out against.'
+                    : 'ROI and cost per lead need the event cost. Without it there is nothing to divide by.'}
                 </Typography>
                 <Pressable
                   onPress={() =>
@@ -144,7 +154,9 @@ export default function ROIDashboardScreen() {
                   }
                   className="self-start bg-gold rounded-full px-[14px] py-[9px] mt-4"
                 >
-                  <Typography className="text-[12.5px] font-bold text-navy">Add event cost</Typography>
+                  <Typography className="text-[12.5px] font-bold text-navy">
+                    {isPriced ? 'Edit event cost' : 'Add event cost'}
+                  </Typography>
                 </Pressable>
               </>
             ) : (
