@@ -17,6 +17,7 @@ import { scanCard } from '../lib/api/cardScan';
 import { isOnline } from '../lib/connectivity';
 import { currentCaptureFix, settledCaptureLocation } from '../lib/location';
 import { findDuplicateLead } from '../lib/api/leads';
+import { fetchSentLeadIds } from '../lib/api/messageSends';
 import { attachVoiceNote, requestTranscription } from '../lib/api/voiceNotes';
 import { queryClient } from '../lib/queryClient';
 import { eventKeys } from '../hooks/useEvents';
@@ -167,6 +168,21 @@ type LeadsState = {
   isRefreshing: boolean;
   loadError: string | null;
   lastSyncedAt: string | null;
+  /**
+   * Leads this person has already handed a WhatsApp draft to, which is what
+   * "WhatsApp N pending" counts the other side of.
+   *
+   * Kept as a plain array rather than a Set because it is persisted, and a Set
+   * serialises to `{}`. Screens build their own Set from it.
+   *
+   * It is a UNION of the server's answer and whatever this device has done
+   * since, never a replacement. A rep on a show floor with no signal still
+   * opens WhatsApp and still messages the customer; `recordSend` drops that row
+   * on the floor, and if a later refresh overwrote this list the lead would
+   * come back as "pending" after the rep had already messaged them. Nothing is
+   * ever removed from it either: a message that was sent stays sent.
+   */
+  whatsappSentIds: string[];
 
   /** Pulls the server's rows in and merges them over the local cache. */
   refresh: (opts?: { eventId?: string }) => Promise<void>;
@@ -180,6 +196,15 @@ type LeadsState = {
   reassignLead: (leadId: string, memberId: string | null) => void;
   /** Records that this lead was put into the phone's contacts, and pushes it. */
   markSavedToContacts: (leadId: string) => void;
+  /**
+   * Records that a WhatsApp draft was handed to the rep for this lead.
+   *
+   * Local only, and deliberately: the database row is written by `recordSend`
+   * on the same tap. This is what makes the count drop the instant the rep
+   * taps, rather than after the next refresh, and what keeps it right when
+   * that insert never reaches the server.
+   */
+  markWhatsAppSent: (leadId: string) => void;
   /**
    * Waits for the capture location to settle and attaches whatever arrived.
    *
@@ -251,11 +276,19 @@ export const useLeadsStore = create<LeadsState>()(
       isRefreshing: false,
       loadError: null,
       lastSyncedAt: null,
+      whatsappSentIds: [],
 
       refresh: async (opts = {}) => {
         set({ isRefreshing: true });
         try {
-          const rows = await fetchLeads(opts);
+          // The sends come back alongside the leads rather than in a request of
+          // their own, and its failure is swallowed on purpose: a "WhatsApp
+          // pending" figure that could not be recomputed is a stale number, not
+          // a reason to leave the rep looking at no leads at all.
+          const [rows, whatsappSent] = await Promise.all([
+            fetchLeads(opts),
+            fetchSentLeadIds('whatsapp').catch(() => new Set<string>()),
+          ]);
           set((state) => {
             // Anything still in the queue wins over the server's copy of it.
             // The server has not seen those edits yet, so taking its version
@@ -329,6 +362,7 @@ export const useLeadsStore = create<LeadsState>()(
 
             return {
               leads: [...notYetSent, ...merged],
+              whatsappSentIds: Array.from(new Set([...state.whatsappSentIds, ...whatsappSent])),
               loadError: null,
               isRefreshing: false,
               lastSyncedAt: new Date().toISOString(),
@@ -500,6 +534,13 @@ export const useLeadsStore = create<LeadsState>()(
         get().editLead(leadId, { savedToContacts: true });
         void get().syncDrafts();
       },
+
+      markWhatsAppSent: (leadId) =>
+        set((state) =>
+          state.whatsappSentIds.includes(leadId)
+            ? state
+            : { whatsappSentIds: [...state.whatsappSentIds, leadId] }
+        ),
 
       /**
        * The capture location, once it has finished settling.
@@ -1010,12 +1051,23 @@ export const useLeadsStore = create<LeadsState>()(
         }
       },
 
-      clear: () => set({ leads: [], loadError: null, lastSyncedAt: null }),
+      // `whatsappSentIds` goes with the leads: it is a list of lead ids from an
+      // account that is signing out, and leaving it behind would carry one
+      // person's sends into the next person's counts.
+      clear: () => set({ leads: [], whatsappSentIds: [], loadError: null, lastSyncedAt: null }),
     }),
     {
       name: 'yieldd-leads',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ leads: state.leads, lastSyncedAt: state.lastSyncedAt }),
+      partialize: (state) => ({
+        leads: state.leads,
+        lastSyncedAt: state.lastSyncedAt,
+        // Persisted so an offline send is still known after a restart. A cache
+        // written before this key existed simply has none, and zustand's merge
+        // leaves the initial `[]` in place — no version bump is needed for an
+        // added key, only for one whose meaning changed.
+        whatsappSentIds: state.whatsappSentIds,
+      }),
       // v2: leads are real database rows now. A v1 cache is the seven fake
       // "Rajesh Menon / Northline Engineering" rows and must not be pushed to
       // anyone's account.
@@ -1031,7 +1083,12 @@ export const useLeadsStore = create<LeadsState>()(
        * all optional, so an untouched v2 lead is already a valid v3 lead.
        */
       version: 3,
-      migrate: (persisted) => persisted as { leads: StoredLead[]; lastSyncedAt: string | null },
+      migrate: (persisted) =>
+        persisted as {
+          leads: StoredLead[];
+          lastSyncedAt: string | null;
+          whatsappSentIds?: string[];
+        },
     }
   )
 );

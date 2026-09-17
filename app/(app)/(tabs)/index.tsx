@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -25,6 +26,7 @@ import { useCurrentEvent, useEvents } from '../../../hooks/useEvents';
 import { AttentionDot } from '../../../hooks/useAttention';
 import { useProGate } from '../../../hooks/usePlan';
 import { useCardImages } from '../../../hooks/useCardImages';
+import { whatsappDigits } from '../../../lib/messaging';
 
 function timeGreeting() {
   const hour = new Date().getHours();
@@ -44,9 +46,6 @@ export default function HomeScreen() {
   // Only the three on screen. Home shows a preview, so signing the whole
   // event's cards here would pay for a hundred links to draw three rows.
   const cardImageUri = useCardImages(RECENT_LEADS);
-  const NEEDS_NOTE_COUNT = syncedLeads.filter((l) => l.needsNote).length;
-  const WHATSAPP_PENDING_COUNT = syncedLeads.filter((l) => l.status === 'New').length;
-
   const { data: events } = useEvents();
   const { event } = useCurrentEvent();
 
@@ -64,6 +63,29 @@ export default function HomeScreen() {
   );
   const capturedSinceNoon = capturedToday.filter(
     (l) => new Date(l.capturedAt).getTime() >= noon.getTime()
+  ).length;
+
+  /**
+   * Scoped to this event and to synced leads, which is what the leads screen
+   * shows — and these two figures are now tappable, so they have to agree with
+   * the list they open. They used to count every event, which was invisible
+   * while nothing could be tapped and would be a plain contradiction now: tap
+   * 22 and arrive at a list of 9.
+   */
+  const syncedThisEvent = forThisEvent.filter((l) => l.syncStatus === 'synced');
+  const NEEDS_NOTE_COUNT = syncedThisEvent.filter((l) => l.needsNote).length;
+
+  /**
+   * Pending means nobody has opened a WhatsApp draft for this lead yet, which
+   * is recorded the moment a rep taps the WhatsApp icon anywhere in the app.
+   * The leads screen defines the same rule and the same exclusion for a lead
+   * with no usable number; both have to agree, because this figure now opens
+   * that list.
+   */
+  const whatsappSentIds = useLeadsStore((s) => s.whatsappSentIds);
+  const whatsappSent = useMemo(() => new Set(whatsappSentIds), [whatsappSentIds]);
+  const WHATSAPP_PENDING_COUNT = syncedThisEvent.filter(
+    (l) => Boolean(whatsappDigits(l.phone)) && !whatsappSent.has(l.id)
   ).length;
 
   const endOfToday = new Date();
@@ -254,48 +276,97 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        {/*
+          Every cell is a door to the leads it counts. A rep who reads
+          "22 pending" and cannot reach those 22 has been handed a number and
+          nothing to do with it.
+
+          Each one carries the matching pill to the leads screen as a `filter`
+          param, which that screen applies and then clears — see the comment
+          there for why the clearing is what makes tapping the same counter
+          twice work.
+
+          Every cell is a Pressable on its FIRST render, never a View that
+          becomes one later: that upgrade is what catches NativeWind mid-life
+          and throws the bogus "Couldn't find a navigation context" red screen
+          described in AGENTS.md.
+        */}
         <View className="bg-navy-elevated rounded-[14px] mx-5 mt-3 overflow-hidden">
           <View className="flex-row">
-            <View className="flex-1 px-4 py-3">
-              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
-                This event
-              </Typography>
+            <Pressable
+              onPress={() => router.push('/(app)/(tabs)/leads')}
+              className="flex-1 px-4 py-3"
+            >
+              <View className="flex-row items-center justify-between">
+                <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                  This event
+                </Typography>
+                <ChevronRightIcon size={10} color="rgba(255,255,255,0.38)" strokeWidth={2.5} />
+              </View>
               <Typography className="text-[16px] font-extrabold text-white mt-[3px]">
                 {forThisEvent.length}
               </Typography>
-            </View>
+            </Pressable>
             <View className="w-px bg-white/[0.14]" />
-            <View className="flex-1 px-4 py-3">
-              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
-                Follow-ups
-              </Typography>
+            <Pressable
+              onPress={() => router.push('/(app)/follow-ups')}
+              className="flex-1 px-4 py-3"
+            >
+              <View className="flex-row items-center justify-between">
+                <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                  Follow-ups
+                </Typography>
+                <ChevronRightIcon size={10} color="rgba(255,255,255,0.38)" strokeWidth={2.5} />
+              </View>
               <View className="flex-row items-center gap-[6px] mt-[5px]">
                 <View className="w-[6px] h-[6px] rounded-full bg-gold" />
                 <Typography className="text-[13px] font-bold text-white">{followUpsDue} due</Typography>
               </View>
-            </View>
+            </Pressable>
           </View>
           <View className="h-px bg-white/[0.14]" />
           <View className="flex-row">
-            <View className="flex-1 px-4 py-3">
-              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
-                Needs a note
-              </Typography>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/(tabs)/leads',
+                  params: { filter: 'Needs a note' },
+                })
+              }
+              className="flex-1 px-4 py-3"
+            >
+              <View className="flex-row items-center justify-between">
+                <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                  Needs a note
+                </Typography>
+                <ChevronRightIcon size={10} color="rgba(255,255,255,0.38)" strokeWidth={2.5} />
+              </View>
               <View className="flex-row items-center gap-[6px] mt-[5px]">
                 <View className="w-[6px] h-[6px] rounded-full bg-success" />
                 <Typography className="text-[13px] font-bold text-white">{NEEDS_NOTE_COUNT}</Typography>
               </View>
-            </View>
+            </Pressable>
             <View className="w-px bg-white/[0.14]" />
-            <View className="flex-1 px-4 py-3">
-              <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
-                WhatsApp
-              </Typography>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/(tabs)/leads',
+                  params: { filter: 'WhatsApp pending' },
+                })
+              }
+              className="flex-1 px-4 py-3"
+            >
+              <View className="flex-row items-center justify-between">
+                <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
+                  WhatsApp
+                </Typography>
+                <ChevronRightIcon size={10} color="rgba(255,255,255,0.38)" strokeWidth={2.5} />
+              </View>
               <View className="flex-row items-center gap-[6px] mt-[5px]">
                 <WhatsAppIcon size={11} color="#25D366" />
                 <Typography className="text-[13px] font-bold text-white">{WHATSAPP_PENDING_COUNT} pending</Typography>
               </View>
-            </View>
+            </Pressable>
           </View>
         </View>
 

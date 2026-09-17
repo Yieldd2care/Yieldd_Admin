@@ -128,6 +128,12 @@ export default function SendQueueScreen() {
     // `sent` here means the draft was handed over with the chat open. Whether
     // the rep pressed send in WhatsApp is not something this app can see, and
     // it must not pretend otherwise.
+    //
+    // The local mark carries the same meaning to the "WhatsApp N pending"
+    // counters, and is written here as well as on the lead screens so that a
+    // batch worked through from this queue empties them too. `skip` above
+    // deliberately does not: passing on someone is not messaging them.
+    if (channel === 'whatsapp') useLeadsStore.getState().markWhatsAppSent(lead.id);
     void recordSend({
       leadId: lead.id,
       sentBy: user.id,

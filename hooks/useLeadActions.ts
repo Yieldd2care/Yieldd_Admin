@@ -100,6 +100,17 @@ export function useLeadActions(
       fail('Cannot open WhatsApp', outcome.message);
       return;
     }
+    /**
+     * Marked locally as well as recorded on the server, and in that order.
+     *
+     * The local mark is what the "WhatsApp N pending" counters read, so it has
+     * to happen on the tap rather than after the next refresh — and it has to
+     * happen whether or not `recordSend` ever reaches the database, which it
+     * will not on a show floor with no signal. It is the same judgement the
+     * rest of this file makes: WhatsApp opened with the draft in it is as close
+     * to "sent" as this app is ever allowed to get.
+     */
+    useLeadsStore.getState().markWhatsAppSent(lead.id);
     if (user) {
       void recordSend({
         leadId: lead.id,

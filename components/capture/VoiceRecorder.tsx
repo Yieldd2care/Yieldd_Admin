@@ -169,12 +169,31 @@ function VoiceRecorderImpl({ variant, existing, onChange }: Props) {
   };
 
   if (inline) {
+    /**
+     * The whole card is the button, not just the gold circle.
+     *
+     * Nothing about the card said the circle was the only live part, so a rep
+     * who tapped the words got silence and read the screen as broken. Tapping
+     * anywhere now does what the circle does: start, then stop, then play.
+     *
+     * The circle is a plain View for exactly that reason. Leaving it a Pressable
+     * inside a Pressable would mean two press targets with one behaviour and a
+     * responder negotiation to reason about on every tap; one target cannot
+     * disagree with itself.
+     *
+     * Delete stays its own Pressable and keeps its own press. React Native hands
+     * a touch to the deepest view that claims it, so the card underneath does
+     * not also fire — which matters here, because that press is destructive and
+     * the card's press would restart the recording it just threw away.
+     */
     return (
-      <View className="rounded-md border border-hairline bg-white px-4 py-[14px]">
+      <Pressable
+        onPress={press}
+        disabled={rec.isBusy}
+        className="rounded-md border border-hairline bg-white px-4 py-[14px]"
+      >
         <View className="flex-row items-center gap-3">
-          <Pressable
-            onPress={press}
-            disabled={rec.isBusy}
+          <View
             className={`w-[46px] h-[46px] rounded-full bg-gold items-center justify-center shadow-[0_8px_18px_rgba(244,176,0,0.30)] ${
               rec.isBusy ? 'opacity-60' : ''
             }`}
@@ -186,7 +205,7 @@ function VoiceRecorderImpl({ variant, existing, onChange }: Props) {
             ) : (
               <MicIcon size={18} color="#0B132B" />
             )}
-          </Pressable>
+          </View>
 
           <View className="flex-1">
             <Typography className="text-[13.5px] font-semibold text-navy">
@@ -196,9 +215,11 @@ function VoiceRecorderImpl({ variant, existing, onChange }: Props) {
               className="text-[11.5px] text-slate mt-[2px]"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              {isRecording || hasRecording
-                ? formatDuration(rec.seconds)
-                : `Up to ${rec.maxSeconds / 60} minutes`}
+              {isRecording
+                ? `${formatDuration(rec.seconds)} · tap to stop`
+                : hasRecording
+                  ? `${formatDuration(rec.seconds)} · tap to play`
+                  : `Tap anywhere to record, up to ${rec.maxSeconds / 60} minutes`}
             </Typography>
           </View>
 
@@ -223,7 +244,7 @@ function VoiceRecorderImpl({ variant, existing, onChange }: Props) {
             ))}
           </View>
         ) : null}
-      </View>
+      </Pressable>
     );
   }
 

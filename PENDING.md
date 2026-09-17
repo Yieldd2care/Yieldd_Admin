@@ -68,6 +68,15 @@ Full diagnosis for each is in its numbered section below.
 | 62 | **Privacy policy now contradicts the app** | `[x]` done 2026-09-15 — the policy now states the app does ask, and why. On master, so live. **The Play data safety form still has to be updated to match** |
 | 61 | "Invite more reps" restarted the setup wizard | `[x]` done 2026-09-14 |
 
+**Reported 2026-09-17 — not started**
+
+| # | Item | Status |
+|---|---|---|
+| 63 | The whole "Add a voice note" card should start the recording, not just the gold circle | `[x]` done 2026-09-17 |
+| 64 | Home's blue box — make all four figures open what they count | `[x]` done 2026-09-17 — **the WhatsApp cell stays and now counts real WhatsApp sends**, by decision the same day. Both copies of the box, Home and Leads |
+| 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[ ]` |
+| 66 | A voice note plays once, then the button stops working until the lead is reopened | `[ ]` |
+
 **Parked for Phase 2 — decided 2026-09-14**
 
 Phase 2 here means *after the current launch push*, and is **not** the same thing as "Phase 2" in
@@ -176,6 +185,291 @@ links to these same pages, and the Play data safety form has to match them word 
 ---
 
 ## Open
+
+### 63. Only the gold circle starts a voice note — reported 2026-09-17, DONE 2026-09-17
+
+On the capture details screen the voice note is a card: a gold mic circle, "Add a voice note",
+and "Up to 2 minutes" underneath. Nothing about it says the circle is the only live part, and
+today it is — in [components/capture/VoiceRecorder.tsx](components/capture/VoiceRecorder.tsx)
+the `inline` variant wraps everything in a plain `View` and only the 46px `Pressable` calls
+`press()`. A rep tapping the words, or the box, gets nothing at all, which reads as a dead screen
+rather than as a missed target.
+
+**Asked for:** the whole box becomes the button. Tap anywhere on the card and recording starts.
+
+Four things to get right, none of them obvious from the report:
+
+1. **The trash button must not be swallowed.** Once a note exists the card also holds a delete
+   circle. Nesting it inside an outer `Pressable` makes the outer one fire too on some Android
+   builds, so the delete has to stop the press reaching the parent, or the outer press target has
+   to exclude it.
+2. **`press()` is three different verbs.** Idle starts, recording stops, recorded plays. Handing
+   the whole card to `press()` means a rep who taps the card to see what it says will stop a
+   recording mid-sentence. Safer: the card starts a recording when idle, and once recording or
+   recorded, only the circle keeps the stop and play action.
+3. **The other three states are cards too** — checking, plan-locked and permission-denied. Those
+   already carry their own button (See Pro, Settings), and must not become tappable boxes that do
+   something else.
+4. **AGENTS.md hazard.** Swapping the outer `View` for a `Pressable` is fine, but do not add an
+   `active:` class to a `View` that stays a `View` on first render, and do not give the card a
+   `shadow-*` that only appears in one branch. Both trip the NativeWind variable-provider upgrade
+   and produce the bogus "Couldn't find a navigation context" red screen.
+
+The standalone `screen` variant (the manual-entry route) is not in scope — it is already a
+full-screen target with a 76px button and its own "Tap to record" label.
+
+**Done 2026-09-17.** The whole card is the button now, in all three of its working states: tap
+anywhere to start, tap again to stop, tap again to play. The gold circle is a plain `View` — leaving
+it a `Pressable` inside a `Pressable` would have been two press targets with one behaviour and a
+responder negotiation to reason about on every tap, and one target cannot disagree with itself.
+
+The subtitle carries the affordance rather than leaving it to be guessed: "Tap anywhere to record,
+up to 2 minutes", then "0:14 · tap to stop", then "0:14 · tap to play".
+
+Delete keeps its own press. React Native hands a touch to the deepest view that claims it, so the
+card underneath does not also fire — which matters precisely here, because that press is
+destructive and the card's press would start a new recording on top of the one just discarded.
+
+Untouched, deliberately: the plan-locked and permission-denied cards, which already carry their own
+button (See Pro, Settings) and must not become boxes that do something else; and the full-screen
+`screen` variant, which was never the complaint — it is a 76px target under a "Tap to record" label.
+
+Changed: [components/capture/VoiceRecorder.tsx](components/capture/VoiceRecorder.tsx).
+**Not yet seen on a handset.**
+
+
+---
+
+### 64. Home's blue box — "WhatsApp 22 pending" is not a real thing, and nothing in the box is clickable — reported 2026-09-17, DONE 2026-09-17
+
+Two complaints about the same four-cell navy panel on Home
+([app/(app)/(tabs)/index.tsx](app/(app)/(tabs)/index.tsx)): This event · Follow-ups ·
+Needs a note · WhatsApp.
+
+**The WhatsApp cell is mislabelled, not merely unwanted.** It counts nothing to do with WhatsApp:
+
+    const WHATSAPP_PENDING_COUNT = syncedLeads.filter((l) => l.status === 'New').length;
+
+It is the number of leads still sitting at status New — nobody has been sent anything, by any
+channel. A rep who WhatsApps twenty people without moving their status sees the figure stay at 22,
+and a rep who moves a status without messaging sees it drop. So the report is right for a better
+reason than the one given: the label describes work that is not being measured.
+
+**Asked for:** remove the WhatsApp cell, put something useful in its place, and make every figure
+in the box open the leads it counts. Tapping 22 has to land on those 22.
+
+Where each one should go:
+
+| Cell | Opens |
+|---|---|
+| This event | the leads list, current event, no filter |
+| Follow-ups | `/(app)/follow-ups` |
+| Needs a note | the leads list with the existing "Needs a note" pill already selected |
+| the fourth | whatever replaces it |
+
+**Decision needed on the fourth cell.** Recommendation: keep the number and fix the label —
+"Not contacted" for the same `status === 'New'` count, which is honestly what it is and is the
+most actionable figure a rep has. "Captured today" is the other candidate, but Home already shows
+that number higher up the screen, so it would say the same thing twice. Drafts waiting to sync is
+a third, already computed as `draftCount`, but it is a fault indicator and does not belong in a
+row of work counts.
+
+Two things that are not free:
+
+- **The leads screen holds its filter in local state**, not in a route param — only `focus` is
+  read from the URL today. Sending a rep to a pre-filtered list means teaching
+  [app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx) a `filter` param the same way it
+  learned `focus`. And if the fourth cell becomes "Not contacted" there is no New pill to select:
+  the filter row is All / Needs a note / Qualified / Won / Lost, so one has to be added or that
+  cell has nowhere to land.
+- **The identical box is on the leads screen too**, WhatsApp cell and all, reading from its own
+  copy of the same counts. Fix one and the other still lies. Do both in the same change, or the
+  rep sees "22 pending" one tab over.
+
+While in there: Home counts "This event" over `allLeads` including drafts, the leads screen counts
+it over synced leads only, so the two boxes can disagree by the size of the outbox. Not what was
+reported, and worth settling in the same pass.
+
+**Decided and built 2026-09-17, same day it was reported.** Half of this item was withdrawn
+before it started: **the WhatsApp cell stays exactly as it is**, label and number both. What was
+built is the other half — every cell in the box now opens the leads it counts.
+
+Where each one goes, on both copies of the box:
+
+| Cell | On Home | On Leads |
+|---|---|---|
+| This event | the leads list | selects the All pill |
+| Follow-ups | `/(app)/follow-ups` | `/(app)/follow-ups` |
+| Needs a note | the leads list, Needs a note pill selected | selects that pill |
+| WhatsApp | the leads list, New pill selected | selects that pill |
+
+Home carries the pill across as a `filter` route param; the leads screen has no navigating to do,
+so it moves its own filter row instead. Each cell also grew a small chevron beside its label, since
+a number that does something has to look like it does something.
+
+Four things that had to be dealt with to make it honest:
+
+- **There was no New pill to land on.** The filter row was All / Needs a note / Qualified / Won /
+  Lost, and the WhatsApp figure counts `status === 'New'`. Added, with the same grey the status
+  sheet gives New, so the pill and the badge on a lead agree.
+- **The `Lost` pill never filtered anything.** Pre-existing, and nothing to do with this report:
+  `filtered` had branches for Needs a note, Qualified and Won and then `return true`, so choosing
+  Lost showed the entire list — the exact outcome the comment above `FILTERS` says the pill exists
+  to prevent. One line, fixed in the same pass.
+- **Home's counts covered every event; the list it now opens covers one.** "Needs a note" and the
+  WhatsApp figure were computed over all synced leads while "This event" beside them was scoped to
+  the current event. Invisible while nothing was tappable, a plain contradiction once it is: tap 22,
+  arrive at 9. Both are now scoped to the current event and to synced leads, which is what the leads
+  screen shows.
+- **The route param is cleared the instant it is applied.** Without that, tapping the same counter
+  twice does nothing the second time (the param never changed, so the effect never re-runs), and
+  returning to the tab from the tab bar weeks later silently re-applies a filter the rep cleared by
+  hand. It is set to `''` rather than `undefined`, which is removal under every router version
+  rather than the literal string "undefined".
+
+**Still open, deliberately.** "This event" counts drafts, the list it opens does not — so a rep with
+two captures in the outbox taps 10 and sees 8. The draft count is deliberate and commented as such
+(a lead captured offline still happened), so it was left alone rather than quietly reversed. If it
+bites, the fix is a line on the drafts screen, not a change to the number.
+
+Changed: [app/(app)/(tabs)/index.tsx](app/(app)/(tabs)/index.tsx),
+[app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx). `npm run typecheck` clean.
+**Not yet seen on a handset** — phone routes redirect on web, so this one cannot be checked in a
+browser.
+
+
+**Amended the same day, and this is the part worth reading.** Shown the rebuilt box, the product
+owner's answer was that the cell is not mislabelled at all — it was always meant to mean *WhatsApp*,
+and a tap on the WhatsApp icon (on a lead row, on the lead screen, or in the send queue) is to be
+taken as the message having been sent. So the label was right and the number was wrong.
+
+It now counts leads **nobody has opened a WhatsApp draft for**, and the pill it lands on is
+`WhatsApp pending`. The `New` pill added an hour earlier was removed again: it existed only to give
+the old number somewhere to land.
+
+Nothing new had to be recorded to do this. `recordSend` has written a `message_sends` row on every
+WhatsApp tap since the lead-row actions were unified, `fetchSentLeadIds` was already written, and
+the table's RLS mirrors the leads policy exactly — a rep reads sends for precisely the leads they
+can see — so counting on the device agrees with the list rather than reporting a fraction of it.
+The one thing that did not exist was any way for the lead list to know, so:
+
+- `useLeadsStore` gained `whatsappSentIds`, filled on refresh from `fetchSentLeadIds('whatsapp')`
+  in the same `Promise.all` as the leads. That request's failure is swallowed: a figure that could
+  not be recomputed is stale, not a reason to show a rep no leads.
+- It is a **union** with what the device already knew, never a replacement, and nothing is ever
+  removed. A rep on a show floor with no signal still opens WhatsApp and still messages the
+  customer; `recordSend` drops that row, and a refresh that overwrote the list would put the lead
+  back as pending after they had already been messaged.
+- `markWhatsAppSent` is called on the tap itself, in `useLeadActions` and in the send queue, so the
+  count falls immediately instead of at the next refresh. The send queue's **skip** deliberately
+  does not call it: passing on someone is not messaging them.
+- **A lead with no usable number is excluded from the count**, via `whatsappDigits`. It is not work
+  anyone can do, and counting it means the figure never reaches zero however many people the rep
+  messages.
+
+What this still cannot claim, and must not start claiming: the app hands WhatsApp a draft and the
+rep presses send inside WhatsApp. "Pending" therefore means nobody has been handed the draft, not
+that nothing was delivered. That is the same line `lib/api/messageSends.ts` has drawn since it was
+written, and the reason a bulk **skip** does not count.
+
+Changed on top of the above: [stores/useLeadsStore.ts](stores/useLeadsStore.ts),
+[hooks/useLeadActions.ts](hooks/useLeadActions.ts),
+[app/(app)/leads/send-queue.tsx](app/(app)/leads/send-queue.tsx).
+
+
+---
+
+### 65. Leads are locked to one event, and the event name is decoration — reported 2026-09-17 `[ ]`
+
+The leads tab header shows the current event and a chevron — "IITF · Mumbai ›" — and the list
+below is that event's leads only. The chevron is the complaint: it is a `Pressable` with **no
+`onPress`** ([app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx)), so it looks like a picker
+and does nothing. There is no way to see a lead from last month's show without changing which
+event you are working in.
+
+**Asked for, three parts:**
+
+1. **All events by default.** Open the tab and see every lead captured, whichever show it came
+   from.
+2. **The name and the chevron open a dropdown** of exhibitions to narrow to. Exhibition and event
+   are the same thing here; there is one concept, not two.
+3. **Newest first, always**, by capture date and time.
+
+What that costs, in order:
+
+**(1) is a screen change only.** The store already holds every event's leads — `refresh()` is
+never called with an `eventId` by anything (six call sites, all bare), so `fetchLeads` returns the
+whole org's visible set and the leads screen narrows it itself with
+`(!event || !l.eventId || l.eventId === event.id)`. Dropping that predicate shows everything with
+no new request and no new query. The four counts in the box above the list are computed from the
+same array and will silently change meaning — "This event" becomes all events — so that box needs
+a label that matches the scope, which is the same box 64 is rebuilding. **Do 64 and 65 together.**
+
+**(2) must not write to `useCurrentEventStore`.** That store answers "which show am I working in"
+and decides where the next captured card lands. A rep who opens the dropdown to look up someone
+from a show in March must not discover that the camera is now filing new cards into March. This is
+the same distinction `useEventSelectionStore` was built for on the dashboard — see its header
+comment, which says so in as many words. Viewing scope is its own state. Whether the phone reuses
+that store or gets its own is open; what is not open is that picking here changes what you see and
+nothing else.
+
+**(3) is mostly already true, and the part that is not is worth knowing.** `fetchLeads` orders
+`created_at desc`, and `createLead` writes `created_at: input.capturedAt` — the time on the
+device when the card was taken, not the time the row reached the server. So a stack of leads
+captured offline on Saturday and synced on Monday still sorts into Saturday. That is the correct
+behaviour and it is not accidental; do not "fix" it by letting the column default.
+
+What is missing is that **the list never sorts anything itself** — it renders the store array in
+whatever order it arrived, and the store prepends unsynced drafts to the front wholesale. That
+holds up today because drafts are the newest, but nothing enforces it, and merging several events
+into one list makes the order matter far more than it did when every row came from one show.
+Sort explicitly in the screen on `capturedAt` descending. It is three lines, and it removes a
+dependency on fetch order that nobody would think to check.
+
+`leads.capturedAt` is `created_at` on the row — there is no separate `captured_at` column on
+`leads` (the one in the schema belongs to `find_duplicate_lead`'s return type), so there is
+nothing to migrate.
+
+---
+
+### 66. A voice note can only be played once — reported 2026-09-17 `[ ]`
+
+**Reported, and reproduced by the user on a device.** Open a lead, play the voice note, let it
+finish. The play button then does nothing. The only way to hear it again is to go back to the list
+and open the lead a second time.
+
+**Almost certainly the playhead, not the audio.**
+[components/app/VoiceNoteCard.tsx:54](components/app/VoiceNoteCard.tsx#L54) is:
+
+```tsx
+onPress={() => (status.playing ? player.pause() : player.play())}
+```
+
+When the recording ends the player sits at the end of the file. `play()` then resumes from the end,
+which is over immediately and sounds like nothing happened. Leaving the screen unmounts the card, so
+reopening the lead builds a fresh `useAudioPlayer` at position 0 - which is exactly why reopening
+"fixes" it, and why that detail in the report is the useful clue rather than a side note.
+
+**The fix is to rewind before replaying**, not to rebuild the player: when the note has finished
+(`status.didJustFinish`, or the position having reached the duration), `seekTo(0)` first, then
+`play()`. Worth checking the same press handler covers a pause part-way through, which should
+resume rather than restart.
+
+Two things to confirm while it is open, since they share the same status object:
+
+- **The progress bar** is drawn from the same `status`. It should return to empty when the note
+  finishes, not stay full, or the second play looks broken even once it works.
+- **The button icon** flips on `status.playing`. Confirm it goes back to the play triangle at the
+  end rather than staying a stop square.
+
+**Not a high-frequency-subscription problem.** `useAudioPlayerStatus` re-renders this card while a
+note plays, which is exactly the pattern AGENTS.md warns about - but the rule is about keeping such
+a hook out of a screen that holds text inputs, and `VoiceNoteCard` is already its own component for
+that reason. Keep it that way: do not lift the player or its status into
+[app/(app)/leads/[id].tsx](app/(app)/leads/[id].tsx).
+
+**Test on a device, not a simulator:** play to the end and press play again; pause half way and
+press play again; play, leave the screen mid-note, come back.
 
 ### 33. Sign-up rebuilt as steps, referral capture, and a first-run tutorial — reported 2026-09-11
 
