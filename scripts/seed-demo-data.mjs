@@ -163,8 +163,15 @@ const pick = (list) => list[Math.floor(rand() * list.length)];
 const between = (min, max) => min + Math.floor(rand() * (max - min + 1));
 const chance = (p) => rand() < p;
 
-/** Rupees in, paise out. Money is integer paise everywhere below. */
-const paise = (rupees) => Math.round(rupees * 100);
+/**
+ * Rupees in, paise out. Money is integer paise everywhere below.
+ *
+ * A null or missing cost line stays null rather than becoming 0 — an unset cost
+ * and a cost of zero are different facts, and `Math.round(null * 100)` is 0
+ * while `Math.round(undefined * 100)` is NaN, which would be interpolated
+ * straight into the insert below and fail it.
+ */
+const paise = (rupees) => (rupees == null ? null : Math.round(rupees * 100));
 
 // ---------------------------------------------------------------------------
 // The four events
@@ -881,14 +888,16 @@ if (CLEAN) {
 
   for (const event of EVENTS) {
     const spend =
-      event.spendRupees ?? Object.values(event.costs).reduce((sum, value) => sum + value, 0);
+      event.spendRupees ??
+      Object.values(event.costs).reduce((sum, value) => sum + (value ?? 0), 0);
     const wonValue = event.won.reduce((sum, value) => sum + value, 0);
-    const roi = Math.round(((wonValue - spend) / spend) * 100);
+    // No spend recorded means no return to report, not a division by zero.
+    const roi = spend > 0 ? Math.round(((wonValue - spend) / spend) * 100) : null;
     console.log(
       `  ${event.name.padEnd(26)} ${String(event.leadCount).padStart(2)} leads` +
         `  spend ${`Rs ${spend.toLocaleString('en-IN')}`.padStart(13)}` +
         `  won ${`Rs ${wonValue.toLocaleString('en-IN')}`.padStart(13)}` +
-        `  ROI ${roi > 0 ? '+' : ''}${roi}%`
+        `  ROI ${roi == null ? 'not costed' : `${roi > 0 ? '+' : ''}${roi}%`}`
     );
   }
   console.log('');

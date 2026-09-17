@@ -177,9 +177,15 @@ export default function DashEventDashboard() {
         />
         <Stat
           label="What the stall cost"
-          // Event.totalCost is rupees; formatPaise wants paise.
-          value={formatPaise(event.totalCost * 100, { fallback: 'Not added' })}
-          sub={event.totalCost > 0 ? 'Across seven cost lines' : 'Add it and the return works itself out'}
+          // Event.totalCost is rupees; formatPaise wants paise. It is generated
+          // with coalesce, so it is 0 for an uncosted event rather than null —
+          // isPriced is what separates "free" from "not filled in".
+          value={event.isPriced ? formatPaise(event.totalCost * 100) : 'Not added'}
+          sub={
+            event.isPriced
+              ? 'Across seven cost lines'
+              : 'Add it and the return works itself out'
+          }
           icon={<Icon d={ICON.building} size={16} color="#0B132B" />}
           onPress={isAdmin ? () => router.push(`/(dash)/events/${event.id}/edit`) : undefined}
         />

@@ -28,9 +28,19 @@ function formatInr(n: number) {
   return n.toLocaleString('en-IN');
 }
 
-/** Only the digits count — people type "8,40,000" and "Rs 12000" alike. */
-function toAmount(value: string): number {
-  return parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+/**
+ * Only the digits count — people type "8,40,000" and "Rs 12000" alike.
+ *
+ * An empty box is `null`, not 0: "I have not seen the stall invoice yet" and "the
+ * stall was free" are different answers, and only the second one is a number.
+ * A typed "0" still comes back as 0, which is how someone says a line cost
+ * nothing.
+ */
+function toAmount(value: string): number | null {
+  const digits = value.replace(/[^\d]/g, '');
+  if (!digits) return null;
+  const parsed = parseInt(digits, 10);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 export default function EventCostScreen() {
@@ -55,9 +65,13 @@ export default function EventCostScreen() {
   const updateEvent = useUpdateEvent();
   const [error, setError] = useState<string | null>(null);
 
+  // `!= null` rather than truthiness, here and in the effect below: a genuine 0
+  // is falsy, so seeding on truthiness would show an empty box for a line
+  // someone recorded as free — and the save below would then write it back as
+  // null, quietly turning "this cost nothing" into "nobody filled this in".
   const [values, setValues] = useState<Record<CostKey, string>>(() =>
     COST_KEYS.reduce(
-      (acc, key) => ({ ...acc, [key]: savedCosts[key] ? String(savedCosts[key]) : '' }),
+      (acc, key) => ({ ...acc, [key]: savedCosts[key] != null ? String(savedCosts[key]) : '' }),
       {} as Record<CostKey, string>
     )
   );
@@ -73,7 +87,7 @@ export default function EventCostScreen() {
     if (!editingOne || !event) return;
     setValues(
       COST_KEYS.reduce(
-        (acc, key) => ({ ...acc, [key]: event.costs[key] ? String(event.costs[key]) : '' }),
+        (acc, key) => ({ ...acc, [key]: event.costs[key] != null ? String(event.costs[key]) : '' }),
         {} as Record<CostKey, string>
       )
     );
@@ -81,19 +95,17 @@ export default function EventCostScreen() {
   }, [editingOne, event?.id]);
 
   const total = useMemo(
-    () => Object.values(values).reduce((sum, v) => sum + toAmount(v), 0),
+    () => Object.values(values).reduce((sum, v) => sum + (toAmount(v) ?? 0), 0),
     [values]
   );
 
-  // Both the primary button and "Skip for now" commit, because skipping means
-  // "no costs yet", not "throw away what I already typed".
   const commitAndContinue = async () => {
     if (updateEvent.isPending) return;
     setError(null);
 
     const costs = COST_KEYS.reduce(
       (acc, key) => ({ ...acc, [key]: toAmount(values[key]) }),
-      {} as Record<CostKey, number>
+      {} as Record<CostKey, number | null>
     );
 
     // Written straight to the seven paise columns, which is what makes
@@ -120,6 +132,29 @@ export default function EventCostScreen() {
       return;
     }
 
+    useEventDraftStore.getState().setCosts(costs);
+    router.push('/(app)/events/new/invite');
+  };
+
+  /**
+   * Skipping writes nothing at all, which is the point.
+   *
+   * This used to call `commitAndContinue`, on the reasoning that skipping meant
+   * "no costs yet" rather than "discard what I typed". But `toAmount` returned 0
+   * for an empty box, so skipping the step wrote seven zeros just as surely as
+   * filling it in — every event came out of the wizard already "priced", the
+   * unpriced warning on Home could never name anything, and the app could never
+   * ask for the figures again. Leaving the columns null is what lets it ask.
+   *
+   * Anything already typed is kept in the draft on the way past, so this still
+   * does not throw away work — it just does not invent zeros for the rest.
+   */
+  const skipForNow = () => {
+    if (updateEvent.isPending) return;
+    const costs = COST_KEYS.reduce(
+      (acc, key) => ({ ...acc, [key]: toAmount(values[key]) }),
+      {} as Record<CostKey, number | null>
+    );
     useEventDraftStore.getState().setCosts(costs);
     router.push('/(app)/events/new/invite');
   };
@@ -181,7 +216,7 @@ export default function EventCostScreen() {
             className="w-full"
           />
           {editingOne ? null : (
-            <Pressable onPress={commitAndContinue} disabled={updateEvent.isPending}>
+            <Pressable onPress={skipForNow} disabled={updateEvent.isPending}>
               <Typography className="text-[13px] font-semibold text-slate">Skip for now</Typography>
             </Pressable>
           )}

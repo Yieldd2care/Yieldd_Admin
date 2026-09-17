@@ -75,6 +75,26 @@ const event = {
   startDate: '2026-09-05',
   endDate: '2026-09-08',
   totalCost: 684000,
+  // Someone recorded this show's costs. `totalCost` cannot say so on its own —
+  // it is a generated column, `coalesce(cost_stall_paisa, 0) + …`, so it reads 0
+  // for an uncosted event rather than null.
+  blankCostKeys: [],
+  isPriced: true,
+};
+
+/**
+ * The same show, with nobody having entered a cost line.
+ *
+ * The admin still sees every money field — `spend_paisa` is `total_cost_paisa`,
+ * which is generated with coalesce and so arrives as 0, not null. Before
+ * `isPriced` existed the sheet took that 0 at face value and printed "₹0 spent",
+ * on the one page that goes to a finance team.
+ */
+const unpricedEvent = {
+  ...event,
+  blankCostKeys: ['Stall', 'Fabrication', 'Furniture', 'Travel', 'Staff', 'Accommodation', 'Marketing'],
+  isPriced: false,
+  totalCost: 0,
 };
 
 const adminStats = {
@@ -130,6 +150,28 @@ ok('explains that break-even is zero', html.includes('÷ event cost'));
 const repHtml = buildRoiPdfHtml(event, repStats);
 ok('a rep sees a dash, never ₹0', !repHtml.includes('₹0<') && repHtml.includes('Not recorded'));
 ok('a rep still sees the counts', repHtml.includes('312') && repHtml.includes('>9<'));
+
+// An ADMIN looking at a show nobody has costed. Distinct from the rep case: the
+// rep is refused the number, the admin is told it was never recorded.
+const unpricedHtml = buildRoiPdfHtml(unpricedEvent, {
+  ...adminStats,
+  spendPaise: 0,
+  roiPercent: null,
+  costPerLeadPaise: null,
+  costPerWonPaise: null,
+});
+ok(
+  'an uncosted show never prints a rupee spend figure',
+  !unpricedHtml.includes('₹0') && unpricedHtml.includes('Not recorded')
+);
+ok(
+  'the hero does not claim the stall was free',
+  !unpricedHtml.includes('against ₹0 spent') && unpricedHtml.includes('no cost recorded')
+);
+ok(
+  'a costed show still prints its spend',
+  html.includes('₹6,84,000') && !html.includes('no cost recorded')
+);
 
 ok('subtitle names the city', eventSubtitle(event).includes('Mumbai'));
 ok('subtitle survives a missing event', eventSubtitle(null) === '');

@@ -506,7 +506,15 @@ export default function DashHome() {
                         onPress={openMoney}
                         label="Cost per lead"
                         value={formatPaise(stats?.costPerLeadPaise)}
-                        note={`${formatPaise(stats?.spendPaise ?? 0)} spent on the stall`}
+                        // No `?? 0` here: it defeated formatPaise's own null
+                        // handling and printed "₹0 spent on the stall" both for a
+                        // rep, who may not see money at all, and for an event
+                        // nobody has costed.
+                        note={
+                          event?.isPriced
+                            ? `${formatPaise(stats?.spendPaise)} spent on the stall`
+                            : 'No cost recorded for this event yet'
+                        }
                       />
                     ) : (
                       <HeroMetric

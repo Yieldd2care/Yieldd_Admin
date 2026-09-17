@@ -32,10 +32,17 @@ export function emptyEventForm(): EventFormValues {
   return { name: '', city: '', stallNumber: '', startDate: null, endDate: null, costs: { ...EMPTY_COSTS } };
 }
 
-/** Digits only. An empty box means "not known yet", which is zero. */
-function toAmount(text: string) {
+/**
+ * Digits only. An empty box means "not known yet", which is `null` — not zero.
+ *
+ * It used to mean zero, and the comment here said so. That is what made every
+ * event look priced and left the app with no honest way to ask for the figures
+ * afterwards. A typed "0" is still 0, which is how someone records a line that
+ * genuinely cost nothing.
+ */
+function toAmount(text: string): number | null {
   const digits = text.replace(/[^0-9]/g, '');
-  return digits ? Number(digits) : 0;
+  return digits ? Number(digits) : null;
 }
 
 export function EventForm({
@@ -158,7 +165,13 @@ export function EventForm({
               <View className="w-[150px]">
                 <TextInput
                   placeholder="0"
-                  value={values.costs[key] ? String(values.costs[key]) : ''}
+                  // `!= null`, never truthiness. This input is controlled and
+                  // holds a NUMBER, so `0 ? … : ''` rendered an empty box for a
+                  // typed zero — the digit erased itself as you typed it, and a
+                  // zero cost was literally impossible to enter here. Harmless
+                  // while zero was the default for everything; not harmless now
+                  // that typing 0 is the only way to say "this line was free".
+                  value={values.costs[key] != null ? String(values.costs[key]) : ''}
                   onChangeText={(t) => setCost(key, t)}
                   keyboardType="number-pad"
                   className="h-[42px] text-right"

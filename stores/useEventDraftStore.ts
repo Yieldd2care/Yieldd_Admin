@@ -65,7 +65,7 @@ const EMPTY: EventDraft = {
   city: '',
   startDate: null,
   endDate: null,
-  costs: EMPTY_COSTS,
+  costs: { ...EMPTY_COSTS },
   invitedReps: [],
   whatsappTemplate: '',
   emailSubject: '',
@@ -99,7 +99,11 @@ export const useEventDraftStore = create<EventDraftState>()(
       storage: createJSONStorage(() => AsyncStorage),
       // v2 adds eventId. A v1 draft has no row behind it, so it starts over
       // rather than being adopted by whatever event is created next.
-      version: 2,
+      //
+      // v3: an empty cost line became null rather than 0. A v2 draft on a device
+      // holds seven zeros, which would come back as "every line is filled in,
+      // all of them free" — the exact claim the null change exists to avoid.
+      version: 3,
       migrate: () => ({ ...EMPTY, costs: { ...EMPTY_COSTS } }),
     }
   )

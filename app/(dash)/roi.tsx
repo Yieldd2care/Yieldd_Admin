@@ -67,14 +67,27 @@ export default function DashPortfolioRoi() {
 
   // Until the aggregate lands, every figure here would read 0 - which is a
   // claim, not a blank. Waiting is the honest state.
-  if (!events?.length || !all) {
+  //
+  // `priced` is waited on too, not just `all`. It used to be left out, which was
+  // invisible only because `unpricedEventIds` was always empty and the two
+  // queries shared a key. Now that a show can genuinely be unpriced, `priced`
+  // resolves a beat later, and without this guard there is a frame where
+  // `spend` is 0 and the page says "No show has a cost entered yet" to an org
+  // whose shows are perfectly well costed.
+  //
+  // `pricedIds` empty is NOT a loading state — useEventSetStats is disabled at
+  // zero ids, so `priced` stays undefined forever and waiting on it would hang
+  // the page on the one org that needs the empty-state copy most.
+  const pricedPending = pricedIds.length > 0 && !priced;
+
+  if (!events?.length || !all || pricedPending) {
     return (
       <DashShell title="Return across your shows" breadcrumb={[{ label: 'Events', href: '/(dash)/events' }]}>
         <Panel>
           <Empty
-            title={isLoading || (events?.length && !all) ? 'Loading' : 'No events yet'}
+            title={isLoading || (events?.length && (!all || pricedPending)) ? 'Loading' : 'No events yet'}
             body={
-              isLoading || (events?.length && !all)
+              isLoading || (events?.length && (!all || pricedPending))
                 ? 'Working out the return across your shows.'
                 : 'Create an event and its return works itself out from there.'
             }
@@ -240,8 +253,9 @@ export default function DashPortfolioRoi() {
                 e.city || '-',
                 <Typography className="text-[14px] font-bold text-navy">{e.leads ?? 0}</Typography>,
                 <Typography className="text-[13px] font-semibold text-navy">
-                  {/* totalCost is rupees; formatPaise wants paise. */}
-                  {formatPaise(e.totalCost * 100, { fallback: 'Not added' })}
+                  {/* totalCost is rupees; formatPaise wants paise. Generated with
+                      coalesce, so an uncosted event reads 0, not null. */}
+                  {e.isPriced ? formatPaise(e.totalCost * 100) : 'Not added'}
                 </Typography>,
                 <Typography className="text-[12.5px] text-slate">
                   {new Date(e.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}

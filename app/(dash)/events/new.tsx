@@ -35,7 +35,12 @@ export default function NewEventScreen() {
       // createEvent takes no costs — the columns are a separate write, the same
       // way the wizard's cost step is. Skipped entirely when nothing was typed,
       // so a blank cost panel does not cost a round trip.
-      const hasCosts = COST_KEYS.some((k) => (values.costs[k] || 0) > 0);
+      //
+      // "Was anything typed", not "is anything above zero". The old `> 0` test
+      // threw away an event costed entirely at zero, leaving it indistinguishable
+      // from one nobody had costed at all — which is the distinction this form
+      // now exists to record.
+      const hasCosts = COST_KEYS.some((k) => values.costs[k] != null);
       if (hasCosts) {
         await updateEvent.mutateAsync({ id: event.id, costs: values.costs });
       }

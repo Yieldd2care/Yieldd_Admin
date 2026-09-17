@@ -19,7 +19,16 @@ export const COST_KEYS = [
 
 export type CostKey = (typeof COST_KEYS)[number];
 
-export type EventCosts = Record<CostKey, number>;
+/**
+ * Rupees per line, and `null` for a line nobody has filled in yet.
+ *
+ * The distinction is the whole point: an exhibitor who spent nothing on
+ * marketing types 0, and an exhibitor who has not yet seen the invoice leaves
+ * the box alone. Collapsing the two — which is what `|| 0` on the write path
+ * used to do — makes "which costs are still missing?" an unanswerable question,
+ * and makes an ROI computed against a partial cost look like a real return.
+ */
+export type EventCosts = Record<CostKey, number | null>;
 
 /** Same three words the database uses, so no case translation is needed here. */
 export type EventStatus = 'upcoming' | 'live' | 'closed';
@@ -43,10 +52,22 @@ export type Event = {
   status: EventStatus;
   /** What the column actually holds, for the code that reconciles the two. */
   storedStatus: EventStatus;
-  /** Rupees, keyed the way the cost screen labels them. */
+  /** Rupees, keyed the way the cost screen labels them. `null` = not filled in. */
   costs: EventCosts;
-  /** Rupees. The generated column, converted once. */
+  /**
+   * Rupees. The generated column, converted once.
+   *
+   * ALWAYS A NUMBER, NEVER NULL — `total_cost_paisa` is generated as
+   * `coalesce(cost_stall_paisa, 0) + …`, so an event nobody has costed totals 0
+   * rather than unknown. Never test this to decide whether a cost was recorded;
+   * that is what `isPriced` is for. A `formatPaise(totalCost * 100, { fallback })`
+   * can never reach its fallback.
+   */
   totalCost: number;
+  /** The cost lines still waiting for a figure, in the order the form shows them. */
+  blankCostKeys: CostKey[];
+  /** Whether anyone has recorded any cost at all. */
+  isPriced: boolean;
   leaderboardVisibleToReps: boolean;
   whatsappTemplateId: string | null;
   emailTemplateId: string | null;
@@ -61,14 +82,21 @@ export type Event = {
   leads?: number;
 };
 
+/**
+ * Seven lines nobody has filled in — not seven lines that cost nothing.
+ *
+ * These were zeros until the write path learned the difference. Anything
+ * spreading this is starting from "unknown", which is what a fresh draft and a
+ * fresh form both genuinely are.
+ */
 export const EMPTY_COSTS: EventCosts = {
-  Stall: 0,
-  Fabrication: 0,
-  Furniture: 0,
-  Travel: 0,
-  Staff: 0,
-  Accommodation: 0,
-  Marketing: 0,
+  Stall: null,
+  Fabrication: null,
+  Furniture: null,
+  Travel: null,
+  Staff: null,
+  Accommodation: null,
+  Marketing: null,
 };
 
 /** Total across all seven cost lines, in rupees. */

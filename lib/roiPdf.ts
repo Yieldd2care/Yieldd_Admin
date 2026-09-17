@@ -63,7 +63,19 @@ export function buildRoiPdfHtml(event: Event, stats: EventStats): string {
     .join('');
 
   const roi = formatPercent(stats.roiPercent, 'Not enough data');
-  const spend = formatPaise(stats.spendPaise, { fallback: 'Not recorded' });
+  /**
+   * `stats.spendPaise` is `total_cost_paisa`, which is a GENERATED column —
+   * `coalesce(cost_stall_paisa, 0) + …` — so an event nobody has costed arrives
+   * here as 0, never null, and `formatPaise`'s own fallback could never fire for
+   * an admin. The sheet printed "₹8,40,000 won against ₹0 spent" directly above
+   * "Not enough data", which reads as a claim that the stall was free. On a page
+   * that goes to a finance team that is the worst possible place to guess.
+   *
+   * `event.isPriced` is the honest signal, and the caller already has the event.
+   */
+  const spend = event.isPriced
+    ? formatPaise(stats.spendPaise, { fallback: 'Not recorded' })
+    : 'Not recorded';
   const wonValue = formatPaise(stats.wonValuePaise, { fallback: '-' });
   const costPerLead = formatPaise(stats.costPerLeadPaise, { fallback: '-' });
 
@@ -77,7 +89,11 @@ export function buildRoiPdfHtml(event: Event, stats: EventStats): string {
         <div style="background:#0B132B; border-radius:16px; padding:24px; margin-top:20px; color:#fff;">
           <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.6);">Return on investment</div>
           <div style="font-size:40px; font-weight:800; margin-top:6px;">${roi}</div>
-          <div style="font-size:12px; color:rgba(255,255,255,0.55); margin-top:6px;">${wonValue} won against ${spend} spent</div>
+          <div style="font-size:12px; color:rgba(255,255,255,0.55); margin-top:6px;">${
+            event.isPriced
+              ? `${wonValue} won against ${spend} spent`
+              : `${wonValue} won · no cost recorded for this event yet`
+          }</div>
           <div style="height:1px; background:rgba(255,255,255,0.12); margin:16px 0;"></div>
           <div style="display:flex; justify-content:space-between; font-size:13px;">
             <span style="color:rgba(255,255,255,0.55);">Cost per lead</span>

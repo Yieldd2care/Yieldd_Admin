@@ -58,6 +58,12 @@ function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+/** `Stall, Travel and Staff` — the cost lines read out as a sentence would. */
+function listLines(keys: readonly string[]): string {
+  if (keys.length <= 2) return keys.join(' and ');
+  return `${keys.slice(0, -1).join(', ')} and ${keys[keys.length - 1]}`;
+}
+
 export function useAttention(): Attention[] {
   const leads = useLeadsStore((s) => s.leads);
   const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
@@ -135,8 +141,39 @@ export function useAttention(): Attention[] {
       });
     }
 
-    // ---- events running now, or about to ----
+    // ---- shows that ended without their costs ----
+    //
+    // The show closing is the one moment the app knows the spending is final:
+    // stall invoices, travel and staff are all settled afterwards, which is
+    // exactly why the wizard's cost step gets skipped while the event is being
+    // created. `deriveStatus` flips an event to closed when its dates pass, so
+    // this appears on its own the morning after the show without anything
+    // needing to be scheduled.
+    //
+    // A PROMPT, never a block. An event that ends without its costs recorded is
+    // normal, and refusing to close it would be worse than the gap.
+    //
+    // Admin-only: a rep does not enter event costs, and `events_admin_update`
+    // would refuse the write anyway.
     for (const event of events ?? []) {
+      if (isAdmin && event.status === 'closed' && event.blankCostKeys.length) {
+        out.push({
+          id: `cost-${event.id}`,
+          icon: <AlertCircleIcon size={17} color="#8A6100" strokeWidth={2} />,
+          iconBg: 'bg-gold/[0.16]',
+          title: `${event.name} ended without its costs`,
+          // Naming the lines is the whole point of this item — "some costs are
+          // missing" is something the user already knows.
+          description: `${listLines(event.blankCostKeys)} ${
+            event.blankCostKeys.length === 1 ? 'has' : 'have'
+          } no figure yet. Until ${
+            event.blankCostKeys.length === 1 ? 'it does' : 'they do'
+          }, this show sits outside your return.`,
+          weight: 4,
+          href: { pathname: '/(app)/events/new/cost', params: { eventId: event.id } },
+        });
+      }
+
       if (event.status === 'closed') continue;
       const position = eventDayPosition(event.startDate, event.endDate);
       if (position?.isCurrent) {

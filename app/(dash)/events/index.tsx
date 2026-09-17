@@ -146,8 +146,11 @@ export default function DashEvents() {
                       <StatusChip value={e.status} />,
                       <Typography className="text-[14px] font-bold text-navy">{e.leads ?? 0}</Typography>,
                       <Typography className="text-[13px] font-semibold text-navy">
-                        {/* totalCost is rupees; formatPaise wants paise. */}
-                        {formatPaise(e.totalCost * 100, { fallback: 'Not added' })}
+                        {/* totalCost is rupees; formatPaise wants paise. It is also
+                            generated with coalesce, so it is 0 rather than null for an
+                            uncosted event and the fallback could never fire on its own —
+                            isPriced is the real question. */}
+                        {e.isPriced ? formatPaise(e.totalCost * 100) : 'Not added'}
                       </Typography>,
                       <View className="flex-row gap-2 justify-end">
                         <Pressable

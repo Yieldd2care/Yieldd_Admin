@@ -1303,7 +1303,7 @@ is the natural place to assert whichever is chosen.
 
 ---
 
-### 54. Ask for the event cost when the show ends — surfaced 2026-09-14 `[ ]`
+### 54. Ask for the event cost when the show ends — surfaced 2026-09-14, DONE 2026-09-17
 
 > **⚠ READ THIS BEFORE BUILDING IT. Found 2026-09-16 while checking 55.**
 >
@@ -1350,7 +1350,86 @@ recorded is normal, and refusing to close it would be worse than the gap.
 
 ---
 
-### 55. "This event cost nothing" is not something you can say — surfaced 2026-09-14 `[ ]`
+**Built 2026-09-17. The decision was (a): an empty box means "not filled in yet".** A typed 0 still
+means zero, and is now the way to record a line that genuinely cost nothing.
+
+**The live counts, measured before deciding** (`npm run db:rehearse -- --sql`, read-only):
+
+| measure | count |
+|---|---|
+| events | 8 |
+| `is_priced` true | **8 of 8** |
+| any null cost column | **0** |
+| all seven at zero | 2 (Plastindia, Gitex AI) |
+| non-zero total | 6 |
+
+So consequence 2 above was confirmed against live data rather than assumed: `unpricedEventIds` was
+always empty, and Home's "add the missing cost" list from 50 had never named a single event.
+
+The sharpest case was **Vibrant Gujarat** — ₹5,00,000 of stall and the other **six lines zero**. One
+line filled, six skipped, and the ROI screen was treating ₹5,00,000 as the whole cost of the show.
+A wrong number on screen, not just a missing reminder.
+
+**No migration.** All seven `cost_*_paisa` columns were already `is_nullable: YES` — checked against
+`information_schema.columns` on the live database, not assumed from the migration text — and the
+`events_costs_non_negative` CHECK is written `coalesce(col, 0) >= 0`, so nulls pass it. The
+column-level GRANT trap from
+[20260827130200](supabase/migrations/20260827130200_event_costs_stall_timezone.sql)'s header does not
+apply, because no column was added. This shipped as a code change only.
+
+**Events already holding seven zeros keep them.** There was no backfill and there should not be one:
+nobody can now tell which of those zeros meant "free" and which meant "skipped", so rewriting them
+would be inventing a fact. The three affected rows stay as they are, which means **Vibrant Gujarat's
+ROI is still computed against ₹5,00,000 until someone re-enters its costs by hand**. The change stops
+it happening again; it does not repair what already happened.
+
+**What the reminder keys off.** `deriveStatus` flips an event to closed when its dates pass, which is
+the moment the spending is final, so the item appears on its own the morning after the show with
+nothing scheduled. It lives in [hooks/useAttention.tsx](hooks/useAttention.tsx) beside the other
+attention items, so it feeds the notifications screen and the bell dot from one definition. It names
+which lines are blank, is admin-only, and is a prompt — nothing about closing an event changed.
+
+**Four defects had to be fixed first, and none of them were the notification.** Each one passes
+`tsc --noEmit`, because `number` is assignable to `number | null` and the damage is a wrong value
+rather than a wrong type:
+
+1. **`rupeesToPaise(null)` is 0, not null.** It is `Math.round(rupees * 100)`, so simply dropping the
+   old `|| 0` from `costsToColumns` would have gone on writing zeros silently. The null branch is
+   explicit now, and [lib/mappers/event.ts](lib/mappers/event.ts) says why.
+2. **Both cost forms seeded their boxes on truthiness** — `costs[key] ? String(...) : ''`. A genuine
+   0 is falsy, so a line recorded as free came back as an empty box, and the next save wrote it as
+   null. Worse, [lib/api/events.ts](lib/api/events.ts) rewrites all seven columns on *every* update,
+   so editing an event's name on the dashboard would have corrupted its costs without anyone opening
+   the cost panel.
+3. **The dashboard cost box could not accept a typed 0 at all.**
+   [components/dash/EventForm.tsx](components/dash/EventForm.tsx) is a controlled input holding a
+   number, so `0 ? … : ''` rendered an empty string and the digit erased itself as you typed it.
+   Harmless while zero was the default for everything; a blocker the moment typing 0 became the only
+   way to say "this line was free".
+4. **`total_cost_paisa` cannot carry the signal.** It is generated as `coalesce(component, 0) + …`,
+   so it reads 0 for an uncosted event rather than null, and every
+   `formatPaise(totalCost * 100, { fallback: 'Not added' })` in the app was unreachable code. The
+   worst of them was [lib/roiPdf.ts](lib/roiPdf.ts), which printed *"₹8,40,000 won against ₹0 spent"*
+   directly above "Not enough data" — on the one page that goes to a finance team. `Event.isPriced`
+   and `Event.blankCostKeys` are derived in the mapper and carry the fact instead.
+
+**New regression cover:** `npm run verify:costs`
+([scripts/verify-event-costs.mjs](scripts/verify-event-costs.mjs)) saves, reads, re-seeds the form
+and saves again, twice, asserting a typed 0 and an untouched line both survive unchanged. That is the
+pair defects 1–3 would each have broken invisibly. `verify:roi-pdf` gained an
+admin-looking-at-an-uncosted-show fixture; it only ever covered the rep case, whose money fields are
+null for an unrelated reason.
+
+**Still worth knowing:** several code paths went live here for the first time — `pricedIds` on
+[(dash)/roi.tsx](<app/(dash)/roi.tsx>), the `pricedNote` and "Add the missing cost" CTA on
+[(dash)/index.tsx](<app/(dash)/index.tsx>) — because until now `unpricedEventIds` was always empty.
+They were correct by inspection and one loading-guard flicker was fixed, but they have not been seen
+against real unpriced data in a browser. Every seeded demo login is a rep, and a rep is shown no
+money at all.
+
+---
+
+### 55. "This event cost nothing" is not something you can say — surfaced 2026-09-14 `[ ]` **reopened by 54**
 
 `events.total_cost_paisa` is generated as `coalesce(cost_stall_paisa, 0) + ...` over the seven
 components ([20260827130200](supabase/migrations/20260827130200_event_costs_stall_timezone.sql)), so
@@ -1370,6 +1449,31 @@ Worth doing only if free events actually happen. If they do, a single "this even
 that writes explicit zeros across the seven components is enough — no schema change, because the
 components already carry the distinction. If they do not, leave it: an extra control for a case that
 never arises is worse than the gap.
+
+**Reopened 2026-09-17 by 54, and the answer is: mostly already done, and not worth a tick.**
+
+55 was dropped because typing 0 and skipping the step were indistinguishable, so a tick would have
+added nothing. That stopped being true when 54 shipped. An empty box now writes null and a typed 0
+writes 0, so **"this event cost nothing" is already sayable** — you type 0 into the lines that were
+free, and every screen that inspects the components reads it as a recorded zero rather than as
+"not filled in".
+
+Two things are worth recording about that:
+
+- The part that actually had to be fixed was not the schema and not a new control. It was that
+  [components/dash/EventForm.tsx](components/dash/EventForm.tsx) **could not accept a typed 0 at
+  all** — a controlled input holding a number, seeded `values.costs[key] ? String(...) : ''`, so the
+  digit erased itself as you typed it. The distinction had survived at the database level since
+  [20260827130200](supabase/migrations/20260827130200_event_costs_stall_timezone.sql) exactly as this
+  item says; there was simply no way to enter the value. That is fixed.
+- What remains is a **convenience shortcut, not a missing capability**: seven keystrokes instead of
+  one tick. Still only worth building if free events actually happen often enough to notice —
+  the original test, unchanged. The difference is that the gap is now ergonomic rather than
+  structural, so the cost of leaving it is much lower than this item first assumed.
+
+A genuinely free event is also now distinguishable to `is_priced`, which counts it as **priced**
+(one non-null component is enough), so it appears in the across-events return with a real ₹0 cost
+instead of being excluded as uncosted.
 
 ---
 

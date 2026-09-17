@@ -53,19 +53,35 @@ export function deriveStatus(row: {
   return 'upcoming';
 }
 
+/**
+ * Paise columns → rupees, keeping "nobody filled this in" as null.
+ *
+ * The `?? 0` this used to carry was where the distinction died for the whole
+ * app: the columns are null-permissive by design, and coalescing on the way out
+ * meant no screen could ever tell a free line from an unfilled one.
+ */
 function costsFromRow(row: EventRow): EventCosts {
   const costs = { ...EMPTY_COSTS };
   for (const key of COST_KEYS) {
-    costs[key] = paiseToRupees(row[COST_COLUMNS[key]] ?? 0);
+    const paise = row[COST_COLUMNS[key]];
+    costs[key] = paise == null ? null : paiseToRupees(paise);
   }
   return costs;
 }
 
-/** Rupees → the seven paise columns, for an insert or update. */
+/**
+ * Rupees → the seven paise columns, for an insert or update.
+ *
+ * The null branch is explicit rather than left to `rupeesToPaise`, which is
+ * `Math.round(rupees * 100)` — and `Math.round(null * 100)` is 0, not null. So
+ * dropping the old `|| 0` alone would have kept writing zeros, silently and
+ * without a type error.
+ */
 export function costsToColumns(costs: EventCosts): Partial<EventRow> {
-  const columns: Record<string, number> = {};
+  const columns: Record<string, number | null> = {};
   for (const key of COST_KEYS) {
-    columns[COST_COLUMNS[key]] = rupeesToPaise(costs[key] || 0);
+    const rupees = costs[key];
+    columns[COST_COLUMNS[key]] = rupees == null ? null : rupeesToPaise(rupees);
   }
   return columns as Partial<EventRow>;
 }
@@ -73,6 +89,13 @@ export function costsToColumns(costs: EventCosts): Partial<EventRow> {
 export function toEvent(row: EventRow, leads?: number): Event {
   const status = deriveStatus(row);
   const position = eventDayPosition(row.start_date, row.end_date);
+
+  // Derived here rather than asked of the server: `event_stats` returns no
+  // priced flag at all, and `total_cost_paisa` is generated with coalesce so it
+  // reads 0 for an uncosted event. Both reads already select `*`, so the seven
+  // columns are in hand and this costs nothing.
+  const costs = costsFromRow(row);
+  const blankCostKeys = COST_KEYS.filter((key) => costs[key] == null);
 
   const dates = formatShortDateRange(row.start_date, row.end_date);
   const sub = [row.city, dates].filter(Boolean).join(' · ');
@@ -89,8 +112,10 @@ export function toEvent(row: EventRow, leads?: number): Event {
     timezone: row.timezone,
     status,
     storedStatus: row.status,
-    costs: costsFromRow(row),
+    costs,
     totalCost: paiseToRupees(row.total_cost_paisa ?? 0),
+    blankCostKeys,
+    isPriced: blankCostKeys.length < COST_KEYS.length,
     leaderboardVisibleToReps: row.leaderboard_visible_to_reps,
     whatsappTemplateId: row.whatsapp_template_id,
     emailTemplateId: row.email_template_id,

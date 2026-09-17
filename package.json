@@ -70,6 +70,7 @@
     "db:types": "supabase gen types typescript --linked --schema public > types/database.ts",
     "typecheck": "tsc --noEmit",
     "verify:roi": "node scripts/verify-roi.mjs",
+    "verify:costs": "node scripts/verify-event-costs.mjs",
     "verify:roi-pdf": "node scripts/verify-roi-pdf.mjs",
     "verify:web-routes": "node scripts/verify-web-routes.mjs",
     "verify:stats": "node --env-file=.env scripts/verify-stats.mjs",
