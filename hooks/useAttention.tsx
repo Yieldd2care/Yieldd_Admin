@@ -58,12 +58,6 @@ function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** `Stall, Travel and Staff` — the cost lines read out as a sentence would. */
-function listLines(keys: readonly string[]): string {
-  if (keys.length <= 2) return keys.join(' and ');
-  return `${keys.slice(0, -1).join(', ')} and ${keys[keys.length - 1]}`;
-}
-
 export function useAttention(): Attention[] {
   const leads = useLeadsStore((s) => s.leads);
   const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
@@ -141,7 +135,7 @@ export function useAttention(): Attention[] {
       });
     }
 
-    // ---- shows that ended without their costs ----
+    // ---- shows that ended without any cost recorded ----
     //
     // The show closing is the one moment the app knows the spending is final:
     // stall invoices, travel and staff are all settled afterwards, which is
@@ -150,25 +144,25 @@ export function useAttention(): Attention[] {
     // this appears on its own the morning after the show without anything
     // needing to be scheduled.
     //
+    // Fires only when NOTHING was entered. It deliberately does not count or
+    // name blank lines: most shows have two or three kinds of cost, not seven,
+    // so a blank line means "this did not arise" rather than "you owe me a
+    // number". Whatever the admin entered is taken as the whole answer.
+    //
     // A PROMPT, never a block. An event that ends without its costs recorded is
     // normal, and refusing to close it would be worse than the gap.
     //
     // Admin-only: a rep does not enter event costs, and `events_admin_update`
     // would refuse the write anyway.
     for (const event of events ?? []) {
-      if (isAdmin && event.status === 'closed' && event.blankCostKeys.length) {
+      if (isAdmin && event.status === 'closed' && !event.isPriced) {
         out.push({
           id: `cost-${event.id}`,
           icon: <AlertCircleIcon size={17} color="#8A6100" strokeWidth={2} />,
           iconBg: 'bg-gold/[0.16]',
           title: `${event.name} ended without its costs`,
-          // Naming the lines is the whole point of this item — "some costs are
-          // missing" is something the user already knows.
-          description: `${listLines(event.blankCostKeys)} ${
-            event.blankCostKeys.length === 1 ? 'has' : 'have'
-          } no figure yet. Until ${
-            event.blankCostKeys.length === 1 ? 'it does' : 'they do'
-          }, this show sits outside your return.`,
+          description:
+            'Add what it cost and its return works itself out. Until then this show sits outside your figures.',
           weight: 4,
           href: { pathname: '/(app)/events/new/cost', params: { eventId: event.id } },
         });

@@ -16,7 +16,7 @@ import { buildRoiPdfHtml, eventSubtitle, PIPELINE_STATUS_COLORS as STATUS_COLORS
 import { formatPaise } from '../../../../lib/db';
 import { formatPercent } from '../../../../lib/roi';
 import type { EventStats } from '../../../../lib/api/eventStats';
-import type { Event } from '../../../../types/event';
+import { costState, type Event } from '../../../../types/event';
 
 export default function ROIDashboardScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -101,6 +101,10 @@ export default function ROIDashboardScreen() {
    * ₹0 beside "Event cost", both of which read as "the stall was free".
    */
   const isPriced = event?.isPriced ?? false;
+  // Nothing recorded, or recorded and adding up to zero. Blank lines are not
+  // counted and never asked about — most shows simply do not have all seven
+  // kinds of cost.
+  const state = event ? costState(event) : 'none';
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
@@ -141,11 +145,13 @@ export default function ROIDashboardScreen() {
                   isPriced, the same way the dashboard's ROI screen does.
                 */}
                 <Typography className="text-[20px] font-extrabold text-white mt-3 leading-[1.35]">
-                  {isPriced ? 'This event is recorded as costing nothing' : 'Add what this event cost'}
+                  {state === 'free'
+                    ? 'This event is recorded as costing nothing'
+                    : 'Add what this event cost'}
                 </Typography>
                 <Typography className="text-[12.5px] text-white/[0.55] mt-2 leading-[1.5]">
-                  {isPriced
-                    ? 'Every cost line is zero, so there is no spend to work a return out against.'
+                  {state === 'free'
+                    ? 'What was entered adds up to zero, so there is no spend to work a return out against.'
                     : 'ROI and cost per lead need the event cost. Without it there is nothing to divide by.'}
                 </Typography>
                 <Pressable
@@ -155,7 +161,7 @@ export default function ROIDashboardScreen() {
                   className="self-start bg-gold rounded-full px-[14px] py-[9px] mt-4"
                 >
                   <Typography className="text-[12.5px] font-bold text-navy">
-                    {isPriced ? 'Edit event cost' : 'Add event cost'}
+                    {state === 'free' ? 'Edit event cost' : 'Add event cost'}
                   </Typography>
                 </Pressable>
               </>
@@ -222,7 +228,7 @@ export default function ROIDashboardScreen() {
               <Typography className="text-[12.5px] text-slate">Event cost</Typography>
               <View className="flex-row items-center gap-2">
                 <Typography className="text-[15px] font-bold text-navy">
-                  {isPriced ? formatPaise(stats.spendPaise) : '-'}
+                  {state === 'none' ? '-' : formatPaise(stats.spendPaise)}
                 </Typography>
                 <Typography className="text-[12px] font-bold text-gold">Edit</Typography>
               </View>

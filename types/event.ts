@@ -99,6 +99,28 @@ export const EMPTY_COSTS: EventCosts = {
   Marketing: null,
 };
 
+/**
+ * What a zero total actually means.
+ *
+ * `total_cost_paisa` reads 0 both for a show nobody has costed and for one
+ * recorded as free, so the total cannot answer this on its own.
+ *
+ * NOT every show has all seven kinds of cost — most have two or three, and many
+ * have no fabrication, accommodation or marketing at all. So a blank line means
+ * "this kind of cost did not arise", NOT "you still owe me a number", and the
+ * app never counts blank lines or asks anyone to finish them. Entering ANY line
+ * is what makes a show costed.
+ *
+ * Shared rather than decided per screen: the phone and the dashboard both render
+ * this, and two copies of the rule would eventually disagree.
+ */
+export type CostState = 'none' | 'free' | 'spent';
+
+export function costState(event: { isPriced: boolean; totalCost: number }): CostState {
+  if (!event.isPriced) return 'none';
+  return event.totalCost > 0 ? 'spent' : 'free';
+}
+
 /** Total across all seven cost lines, in rupees. */
 export function totalOfCosts(costs: EventCosts): number {
   return COST_KEYS.reduce((sum, key) => sum + (costs[key] || 0), 0);

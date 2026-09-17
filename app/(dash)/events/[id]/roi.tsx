@@ -11,6 +11,7 @@ import { useEventStats } from '../../../../hooks/useEventStats';
 import { buildRoiPdfHtml, eventSubtitle, PIPELINE_STATUS_COLORS } from '../../../../lib/roiPdf';
 import { formatPercent } from '../../../../lib/roi';
 import { formatPaise } from '../../../../lib/db';
+import { costState } from '../../../../types/event';
 import { buildLeadsCsv, DEFAULT_COLUMNS } from '../../../../lib/api/exportLeads';
 import { csvFilename } from '../../../../lib/csv';
 
@@ -115,6 +116,10 @@ export default function DashEventRoi() {
   // so it reads 0 both for an event nobody has costed AND for one genuinely
   // costed at zero. Only the components can tell those apart.
   const isPriced = event.isPriced;
+  // Nothing recorded, or recorded and adding up to zero. Blank lines are not
+  // counted and never asked about — most shows do not have all seven kinds of
+  // cost.
+  const state = costState(event);
 
   return (
     <DashShell
@@ -140,16 +145,18 @@ export default function DashEventRoi() {
         <Panel className="p-[22px] flex-row items-center justify-between">
           <View className="flex-1 pr-4">
             <Typography className="text-[15px] font-bold text-navy">
-              {isPriced ? 'This show is recorded as costing nothing' : 'Add what this stall cost'}
+              {state === 'free'
+                ? 'This show is recorded as costing nothing'
+                : 'Add what this stall cost'}
             </Typography>
             <Typography className="text-[13px] text-slate leading-[1.6] mt-1">
-              {isPriced
-                ? 'Every cost line is zero, so there is no spend to work a return out against. Change it on the edit screen if that is not right.'
-                : 'Return cannot be worked out until the spend is recorded. Seven lines, on the edit screen.'}
+              {state === 'free'
+                ? 'What was entered adds up to zero, so there is no spend to work a return out against. Change it on the edit screen if that is not right.'
+                : 'Return cannot be worked out until the spend is recorded. Add whichever of the cost lines apply, on the edit screen.'}
             </Typography>
           </View>
           <GoldButton
-            label={isPriced ? 'Edit costs' : 'Add costs'}
+            label={state === 'none' ? 'Add costs' : 'Edit costs'}
             onPress={() => router.push(`/(dash)/events/${event.id}/edit`)}
           />
         </Panel>

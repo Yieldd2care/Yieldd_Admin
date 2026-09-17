@@ -289,16 +289,35 @@ const dashRoi = fsMod.readFileSync('app/(dash)/events/[id]/roi.tsx', 'utf8');
 
 ok(
   'the phone ROI screen does not claim zero spent on an uncosted show',
-  phoneRoi.includes('no cost recorded yet') && phoneRoi.includes('isPriced')
+  phoneRoi.includes('no cost recorded yet') && phoneRoi.includes('costState')
+);
+
+// Blank lines are NOT counted, named, or chased. Most shows have two or three
+// kinds of cost, not seven, so a blank line means "this did not arise" rather
+// than "you still owe me a number". Whatever was entered is the whole answer.
+for (const [label, file] of Object.entries({
+  'the phone ROI screen': 'app/(app)/events/[id]/roi.tsx',
+  'the dashboard ROI screen': 'app/(dash)/events/[id]/roi.tsx',
+  'the end-of-show reminder': 'hooks/useAttention.tsx',
+})) {
+  const src = fsMod.readFileSync(file, 'utf8');
+  ok(`${label} never counts blank cost lines`, !src.includes('blankCostKeys.length'));
+  ok(`${label} never lists which lines are blank`, !/listCostKeys|listLines/.test(src));
+  ok(`${label} does not ask anyone to finish the costs`, !src.includes('Finish the costs'));
+}
+
+ok(
+  'the reminder fires on nothing recorded, not on any line being blank',
+  fsMod.readFileSync('hooks/useAttention.tsx', 'utf8').includes("!event.isPriced")
 );
 ok(
   'the phone ROI cost row asks isPriced rather than an unreachable fallback',
-  phoneRoi.includes("isPriced ? formatPaise(stats.spendPaise) : '-'") &&
+  phoneRoi.includes("state === 'none' ? '-' : formatPaise(stats.spendPaise)") &&
     !phoneRoi.includes("formatPaise(stats.spendPaise, { fallback: 'Not added' })")
 );
 ok(
   'the dashboard ROI screen tells a free show apart from an uncosted one',
-  dashRoi.includes('This show is recorded as costing nothing') && dashRoi.includes('event.isPriced')
+  dashRoi.includes('This show is recorded as costing nothing') && dashRoi.includes('costState')
 );
 
 // ---------------------------------------------------------------------------
@@ -324,7 +343,7 @@ for (const [label, file] of Object.entries(costDisplays)) {
   ok(`${label} shows a dash for a blank cost, not a stale label`, !src.includes("'Not added"));
   ok(
     `${label} decides on isPriced, never on the total being above zero`,
-    /isPriced|costRecorded/.test(src)
+    /isPriced|costRecorded|costState|state === 'none'/.test(src)
   );
 }
 
