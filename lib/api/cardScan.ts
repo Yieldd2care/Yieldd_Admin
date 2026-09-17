@@ -26,6 +26,17 @@ export type ScannedCard = {
   companyAddress: string | null;
   /** A second address — branch, works or regional office — when the card has one. */
   branchAddress: string | null;
+  /**
+   * Everything the card printed BEYOND the single values above.
+   *
+   * Always an array, never null, and empty for the ordinary card - which is
+   * also what a client talking to a not-yet-redeployed function sees, since
+   * the mapping below coalesces a missing key to []. That is deliberate: the
+   * app ships before the function does.
+   */
+  extraPhones: string[];
+  extraEmails: string[];
+  extraDesignations: string[];
 };
 
 export type ScanResult =
@@ -42,6 +53,9 @@ type FunctionFields = {
   company_website: string | null;
   company_address: string | null;
   branch_address: string | null;
+  extra_phones?: string[] | null;
+  extra_emails?: string[] | null;
+  extra_designations?: string[] | null;
 };
 
 /**
@@ -179,6 +193,9 @@ async function requestExtraction(base64: string, backBase64?: string): Promise<S
       companyWebsite: f.company_website,
       companyAddress: f.company_address,
       branchAddress: f.branch_address,
+      extraPhones: f.extra_phones ?? [],
+      extraEmails: f.extra_emails ?? [],
+      extraDesignations: f.extra_designations ?? [],
     },
   };
 }

@@ -377,8 +377,30 @@ export function LeadDetailBody({ leadId }: { leadId: string }) {
             <View className="flex-row gap-6 mt-3">
               <DetailColumn title="Person" icon={ICON.user}>
                 <Field label="Phone" value={lead.phone} href={lead.phone ? `tel:${lead.phone}` : undefined} />
+                {/* Numbered, and each one dialable in its own right. A second
+                    number nobody can click is barely better than not showing
+                    it - the quick-action bar above still calls the primary. */}
+                {(lead.extraPhones ?? []).map((number, i) => (
+                  <Field
+                    key={`phone-${i}`}
+                    label={`Phone ${i + 2}`}
+                    value={number}
+                    href={`tel:${number}`}
+                  />
+                ))}
                 <Field label="Email" value={lead.email} href={lead.email ? `mailto:${lead.email}` : undefined} />
+                {(lead.extraEmails ?? []).map((address, i) => (
+                  <Field
+                    key={`email-${i}`}
+                    label={`Email ${i + 2}`}
+                    value={address}
+                    href={`mailto:${address}`}
+                  />
+                ))}
                 <Field label="Designation" value={lead.designation} />
+                {(lead.extraDesignations ?? []).map((title, i) => (
+                  <Field key={`title-${i}`} label={`Designation ${i + 2}`} value={title} />
+                ))}
                 <View className="py-[10px]">
                   <Cap>Consent to follow up</Cap>
                   <Typography className="text-[14px] font-medium text-navy mt-1">

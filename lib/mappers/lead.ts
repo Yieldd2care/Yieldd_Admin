@@ -128,6 +128,12 @@ export function toLead(row: RowWithVoice): Lead {
     phone: row.phone ?? undefined,
     email: row.email ?? undefined,
     designation: row.designation ?? undefined,
+    // `?? undefined` rather than `?? []`, like every other optional field here.
+    // A lead with one number and a lead whose extras were cleared are the same
+    // lead, and the screens read both as "no extras".
+    extraPhones: row.extra_phones ?? undefined,
+    extraEmails: row.extra_emails ?? undefined,
+    extraDesignations: row.extra_designations ?? undefined,
     note: row.note ?? undefined,
     companyLandline: row.company_landline ?? undefined,
     companyWebsite: row.company_website ?? undefined,

@@ -169,6 +169,11 @@ export function useLeadActions(
       name: lead.name,
       company: lead.company,
       designation: lead.designation,
+      // Every number and address the lead holds, not just the first: the
+      // whole point of saving to contacts is not having to come back here.
+      extraPhones: lead.extraPhones,
+      extraEmails: lead.extraEmails,
+      extraDesignations: lead.extraDesignations,
       phone: lead.phone,
       landline: lead.companyLandline,
       email: lead.email,

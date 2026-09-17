@@ -62,6 +62,13 @@ const EXPECTED = {
   email: 'rajesh.menon@northline.co.in',
   company_website: 'www.northline.co.in',
   company_address: 'Plot 47, MIDC Industrial Area, Andheri East, Mumbai 400093',
+  // One mobile and one landline are printed, and they belong in phone and
+  // company_landline. There is nothing left over, so all three arrays must
+  // come back EMPTY - this is what catches a model inventing extras, the same
+  // way branch_address: null catches an invented second address.
+  extra_phones: [],
+  extra_emails: [],
+  extra_designations: [],
 };
 
 const stamp = Date.now();
@@ -101,6 +108,32 @@ try {
     }
     eq(`${label}: company (case-insensitive)`, f.company?.toLowerCase(), 'northline engineering');
     eq(`${label}: reported as read`, data.read, true);
+  }
+
+  // ---- a photo that is not a card at all ----
+  //
+  // This guards a specific way the feature could have broken silently. `read`
+  // used to be `some(value => value !== null)`, which was correct while every
+  // field was a nullable string. The moment extra_phones and friends arrived
+  // that became TRUE for every scan, because [] !== null - so a signboard, or
+  // a thumb over the lens, would have been reported as a readable card and the
+  // "Nothing readable on that photo." state would have quietly disappeared.
+  //
+  // The fixture already existed and nothing ran it, which is exactly why the
+  // regression would not have been caught here.
+  {
+    console.log('\n--- a hall signboard, not a card ---');
+    const base64 = readFileSync(join(HERE, 'fixtures', 'not-a-card.jpeg')).toString('base64');
+    const { data, error: fnError } = await supabase.functions.invoke('extract-card', {
+      body: { image_base64: base64, mime_type: 'image/jpeg' },
+    });
+    if (fnError) throw new Error(`not-a-card: ${fnError.message}`);
+
+    eq('a signboard is NOT reported as read', data.read, false);
+    const empty = Object.entries(data.fields).filter(([, value]) =>
+      Array.isArray(value) ? value.length > 0 : value !== null
+    );
+    eq('and every field comes back empty', empty.map(([key]) => key), []);
   }
 
   // ---- the storage ordering rule ----

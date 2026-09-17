@@ -75,6 +75,20 @@ export type Lead = {
   phone?: string;
   email?: string;
   designation?: string;
+  /**
+   * The SECOND and later values, when a card prints more than one.
+   *
+   * The three fields above stay the primary one each - what gets dialled, what
+   * a list row shows, what duplicate detection matches on - and these hold
+   * everything after that, in the order it was entered. Nothing may sort them.
+   *
+   * Undefined and [] mean the same thing here (one value, no extras); the
+   * distinction only matters inside a patch, where undefined means "not
+   * touched" and [] means "cleared". See lib/leadEdit.ts.
+   */
+  extraPhones?: string[];
+  extraEmails?: string[];
+  extraDesignations?: string[];
   note?: string;
   companyLandline?: string;
   companyWebsite?: string;

@@ -25,9 +25,20 @@ export type ExportRow = {
   created_at: string;
   full_name: string;
   designation: string | null;
+  /**
+   * The extras arrive as raw text[] and are joined HERE, not in SQL.
+   *
+   * This file is the one the verify scripts compile on its own, so keeping
+   * the formatting decision here keeps it testable. It also keeps the
+   * separator a presentation choice rather than something baked into a
+   * database function that would need a drop and recreate to change.
+   */
+  extra_designations: string[] | null;
   company: string | null;
   phone: string | null;
+  extra_phones: string[] | null;
   email: string | null;
+  extra_emails: string[] | null;
   company_landline: string | null;
   company_website: string | null;
   company_address: string | null;
@@ -57,6 +68,19 @@ export type ExportRow = {
   voice_transcript: string | null;
   custom_field_values: unknown;
 };
+
+/**
+ * Several values into one cell.
+ *
+ * " / " rather than a comma, which would force a quote around the cell and
+ * read as one long number in Excel; rather than a semicolon, which IS the
+ * delimiter in several European Excel locales; and rather than a newline,
+ * which is legal inside a quoted cell but breaks naive importers and looks
+ * like a torn row.
+ */
+function joinCell(values: string[] | null): string {
+  return (values ?? []).filter((value) => value.trim()).join(' / ');
+}
 
 export type ExportColumns = {
   identity: boolean;
@@ -150,9 +174,25 @@ export function buildCsvFromRows(
     : [];
 
   const headers: string[] = ['Captured on'];
-  if (columns.identity) headers.push('Name', 'Designation', 'Company');
+  // Each "Other ..." column sits immediately after the one it belongs to, and
+  // the set of columns is FIXED whatever the widest row holds. Numbering them
+  // (Mobile 1, Mobile 2, ...) would make the header width depend on the
+  // busiest lead in the result set, so one lead with five numbers would add
+  // four empty columns to everyone else - and a file whose column count moves
+  // between two exports of the same event cannot be pasted into a saved sheet
+  // or a CRM import mapping.
+  if (columns.identity) headers.push('Name', 'Designation', 'Other job titles', 'Company');
   if (columns.contact)
-    headers.push('Phone', 'Email', 'Company landline', 'Website', 'Address', 'Branch address');
+    headers.push(
+      'Phone',
+      'Other phones',
+      'Email',
+      'Other emails',
+      'Company landline',
+      'Website',
+      'Address',
+      'Branch address'
+    );
   if (columns.statusAndFollowUp) headers.push('Status', 'Follow-up date', 'Note', 'Consent given');
   // "Closed on" sits with won, not with expected: a qualified lead has not
   // closed and has no date to show.
@@ -163,11 +203,20 @@ export function buildCsvFromRows(
   const body = rows.map((row) => {
     const cells: unknown[] = [formatDate(row.created_at)];
 
-    if (columns.identity) cells.push(row.full_name, row.designation ?? '', row.company ?? '');
+    if (columns.identity) {
+      cells.push(
+        row.full_name,
+        row.designation ?? '',
+        joinCell(row.extra_designations),
+        row.company ?? ''
+      );
+    }
     if (columns.contact) {
       cells.push(
         row.phone ?? '',
+        joinCell(row.extra_phones),
         row.email ?? '',
+        joinCell(row.extra_emails),
         row.company_landline ?? '',
         row.company_website ?? '',
         row.company_address ?? '',

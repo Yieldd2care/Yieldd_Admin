@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -69,6 +69,26 @@ export default function CaptureDetailsScreen() {
   const handleRecording = useCallback((recording: Recording | null) => {
     useCaptureDraftStore.getState().setVoiceNote(recording);
   }, []);
+
+  /**
+   * An answer belongs to the event whose question it was.
+   *
+   * `customValues` is keyed by field id, and the context bar now changes the
+   * event from inside this form rather than by navigating away from it. Without
+   * this, switching shows mid-entry would carry the old show's answers into the
+   * new show's lead under ids that event has never heard of — invisible on
+   * screen, because the inputs below only render the NEW event's fields.
+   *
+   * Guarded on a previous id, not just a change, so the first resolve of
+   * `useCurrentEvent` (undefined → id) cannot wipe anything already typed.
+   */
+  const lastEventId = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const id = event?.id;
+    if (!id) return;
+    if (lastEventId.current && lastEventId.current !== id) setCustomValues({});
+    lastEventId.current = id;
+  }, [event?.id]);
 
   // The fields on this form belong to this event, and an admin can change them
   // mid-show — so they are loaded here rather than trusted from whatever the

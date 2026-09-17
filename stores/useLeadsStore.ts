@@ -143,6 +143,10 @@ export type NewLeadInput = {
   email?: string;
   hasVoice?: boolean;
   designation?: string;
+  /** The second and later values of each family; see data/leads.ts. */
+  extraPhones?: string[];
+  extraEmails?: string[];
+  extraDesignations?: string[];
   note?: string;
   companyLandline?: string;
   companyWebsite?: string;
@@ -230,6 +234,15 @@ function applyPatch(lead: StoredLead, patch: LeadPatch): StoredLead {
     ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
     ...(patch.email !== undefined ? { email: patch.email } : {}),
     ...(patch.designation !== undefined ? { designation: patch.designation } : {}),
+    // !== undefined, never truthiness: [] is truthy and is how the form says
+    // "cleared". Without these three the edit queues, syncs and never shows on
+    // the device until a refresh pulls the row back - so offline, the rep
+    // watches the save not take.
+    ...(patch.extraPhones !== undefined ? { extraPhones: patch.extraPhones } : {}),
+    ...(patch.extraEmails !== undefined ? { extraEmails: patch.extraEmails } : {}),
+    ...(patch.extraDesignations !== undefined
+      ? { extraDesignations: patch.extraDesignations }
+      : {}),
     ...(patch.note !== undefined ? { note: patch.note } : {}),
     ...(patch.companyLandline !== undefined ? { companyLandline: patch.companyLandline } : {}),
     ...(patch.companyWebsite !== undefined ? { companyWebsite: patch.companyWebsite } : {}),
@@ -427,6 +440,9 @@ export const useLeadsStore = create<LeadsState>()(
           phone: input.phone,
           email: input.email,
           designation: input.designation,
+          extraPhones: input.extraPhones,
+          extraEmails: input.extraEmails,
+          extraDesignations: input.extraDesignations,
           note: input.note,
           companyLandline: input.companyLandline,
           companyWebsite: input.companyWebsite,
@@ -677,6 +693,16 @@ export const useLeadsStore = create<LeadsState>()(
                 const fill = (current: string | undefined, next: string | null) =>
                   current?.trim() ? current : (next ?? undefined);
 
+                /**
+                 * The same rule for a list, and NOT a merge.
+                 *
+                 * Merging the two would resurrect a number the rep had already
+                 * deleted, which is the one thing "the rep's corrections win"
+                 * is there to prevent. Either their list or the card's, whole.
+                 */
+                const fillList = (current: string[] | undefined, next: string[] | undefined) =>
+                  current && current.length > 0 ? current : (next?.length ? next : undefined);
+
                 const name = fill(lead.name, f.fullName) ?? '';
                 const phone = fill(lead.phone, f.phone);
 
@@ -715,6 +741,9 @@ export const useLeadsStore = create<LeadsState>()(
                           company: fill(l.company, f.company) ?? '',
                           email: fill(l.email, f.email),
                           designation: fill(l.designation, f.designation),
+                          extraPhones: fillList(l.extraPhones, f.extraPhones),
+                          extraEmails: fillList(l.extraEmails, f.extraEmails),
+                          extraDesignations: fillList(l.extraDesignations, f.extraDesignations),
                           companyLandline: fill(l.companyLandline, f.companyLandline),
                           companyWebsite: fill(l.companyWebsite, f.companyWebsite),
                           companyAddress: fill(l.companyAddress, f.companyAddress),
@@ -801,6 +830,9 @@ export const useLeadsStore = create<LeadsState>()(
                 phone: forInsert.phone,
                 email: forInsert.email,
                 designation: forInsert.designation,
+                extraPhones: forInsert.extraPhones,
+                extraEmails: forInsert.extraEmails,
+                extraDesignations: forInsert.extraDesignations,
                 note: forInsert.note,
                 companyLandline: forInsert.companyLandline,
                 companyWebsite: forInsert.companyWebsite,

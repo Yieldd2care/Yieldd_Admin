@@ -21,6 +21,16 @@ export type ContactInput = {
   phone?: string;
   landline?: string;
   email?: string;
+  /**
+   * A lead's further numbers, addresses and job titles.
+   *
+   * All optional, so the business-card callers - app/c/[slug].tsx,
+   * app/(dash)/card.tsx, app/(app)/card/share.tsx - go on compiling and
+   * behaving exactly as they did. Only a lead ever has these.
+   */
+  extraPhones?: string[];
+  extraEmails?: string[];
+  extraDesignations?: string[];
   website?: string;
   address?: string;
 };
@@ -52,6 +62,47 @@ export function splitName(name: string): { firstName?: string; lastName?: string
   return { firstName: trimmed.slice(0, cut), lastName: trimmed.slice(cut + 1) };
 }
 
+/**
+ * Every number that should reach the address book, normalised and de-duped.
+ *
+ * The de-dupe happens AFTER contactNumber() has normalised each one, which is
+ * the only point at which 9820441720 and +919820441720 are visibly the same
+ * number. Comparing the raw strings would put both in the rep's phone, and a
+ * duplicated contact is the kind of mess an address book never recovers from.
+ */
+function contactNumbers(values: (string | undefined)[]): string[] {
+  const out: string[] = [];
+  for (const value of values) {
+    const number = contactNumber(value);
+    if (number && !out.includes(number)) out.push(number);
+  }
+  return out;
+}
+
+/** Trimmed, non-empty, case-insensitively de-duped, original order kept. */
+function contactEmails(values: (string | undefined)[]): string[] {
+  const out: string[] = [];
+  for (const value of values) {
+    const address = value?.trim();
+    if (address && !out.some((seen) => seen.toLowerCase() === address.toLowerCase())) {
+      out.push(address);
+    }
+  }
+  return out;
+}
+
+/**
+ * One TITLE, even when the card printed two.
+ *
+ * vCard lets TITLE repeat and most contacts apps keep only the first, so a
+ * second title would vanish without trace. Joined, it survives.
+ */
+function joinedTitle(input: ContactInput): string | undefined {
+  const titles = [input.designation, ...(input.extraDesignations ?? [])]
+    .map((title) => title?.trim())
+    .filter((title): title is string => Boolean(title));
+  return titles.length > 0 ? titles.join(' / ') : undefined;
+}
 /** `Priya Sharma` -> `priya-sharma.vcf`, for the web download. */
 export function contactFilename(name: string): string {
   const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -62,10 +113,14 @@ export function toVCardInput(input: ContactInput): VCardInput {
   return {
     name: input.name.trim() || 'Unknown',
     company: input.company?.trim() || undefined,
-    designation: input.designation?.trim() || undefined,
+    designation: joinedTitle(input),
     phone: contactNumber(input.phone),
     secondaryPhone: contactNumber(input.landline),
+    // The primary is already on `phone`, so it is dropped from the extras
+    // here rather than emitted twice. Same for the addresses below.
+    extraPhones: contactNumbers([input.phone, ...(input.extraPhones ?? [])]).slice(1),
     email: input.email?.trim() || undefined,
+    extraEmails: contactEmails([input.email, ...(input.extraEmails ?? [])]).slice(1),
     website: input.website?.trim() || undefined,
     address: input.address?.trim() || undefined,
   };
@@ -91,12 +146,20 @@ export function leadVCard(input: ContactInput): string {
  */
 export function toExpoContact(input: ContactInput): Record<string, unknown> {
   const name = input.name.trim() || 'Unknown';
+  // The extras sit with the mobile they belong to and ahead of the company
+  // switchboard, which is the order a person expects to find them in.
   const phones = [
-    { label: 'mobile', number: contactNumber(input.phone) },
+    ...contactNumbers([input.phone, ...(input.extraPhones ?? [])]).map((number) => ({
+      label: 'mobile',
+      number,
+    })),
     { label: 'work', number: contactNumber(input.landline) },
   ].filter((entry) => entry.number);
 
-  const emails = [{ label: 'work', email: input.email?.trim() }].filter((entry) => entry.email);
+  const emails = contactEmails([input.email, ...(input.extraEmails ?? [])]).map((email) => ({
+    label: 'work',
+    email,
+  }));
   const urls = [{ label: 'work', url: input.website?.trim() }].filter((entry) => entry.url);
   const addresses = [{ label: 'work', street: input.address?.trim() }].filter((e) => e.street);
 
@@ -105,7 +168,7 @@ export function toExpoContact(input: ContactInput): Record<string, unknown> {
     ...splitName(name),
     contactType: 'person',
     ...(input.company?.trim() ? { company: input.company.trim() } : {}),
-    ...(input.designation?.trim() ? { jobTitle: input.designation.trim() } : {}),
+    ...(joinedTitle(input) ? { jobTitle: joinedTitle(input) } : {}),
     ...(phones.length ? { phoneNumbers: phones } : {}),
     ...(emails.length ? { emails } : {}),
     ...(urls.length ? { urlAddresses: urls } : {}),

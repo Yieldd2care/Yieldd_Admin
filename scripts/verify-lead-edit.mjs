@@ -67,13 +67,20 @@ const LEAD = {
   customFieldValues: { budget: 'Over 10L', urgent: true },
 };
 
-/** The form as the screen fills it: every key present, blanks as ''. */
+/**
+ * The form as the screen fills it: every key present, blanks as ''.
+ *
+ * The three families are ONE list each with the primary at [0], which is what
+ * the screen holds and what listFrom() in leads/edit.tsx builds. The split back
+ * into phone + extra_phones happens inside leadEditPatch and is what most of
+ * the cases below are checking.
+ */
 const formFrom = (lead, overrides = {}) => ({
   name: lead.name ?? '',
-  phone: lead.phone ?? '',
+  phones: [lead.phone ?? '', ...(lead.extraPhones ?? [])],
   company: lead.company ?? '',
-  email: lead.email ?? '',
-  designation: lead.designation ?? '',
+  emails: [lead.email ?? '', ...(lead.extraEmails ?? [])],
+  designations: [lead.designation ?? '', ...(lead.extraDesignations ?? [])],
   companyLandline: lead.companyLandline ?? '',
   companyWebsite: lead.companyWebsite ?? '',
   companyAddress: lead.companyAddress ?? '',
@@ -97,7 +104,7 @@ eq('a lead with almost nothing set still writes nothing', m.leadEditPatch(SPARSE
 // --- one field changed sends one field ------------------------------------
 eq(
   'a corrected digit sends the phone alone',
-  m.leadEditPatch(LEAD, formFrom(LEAD, { phone: '+919820441721' })),
+  m.leadEditPatch(LEAD, formFrom(LEAD, { phones: ['+919820441721'] })),
   { phone: '+919820441721' }
 );
 eq(
@@ -107,7 +114,7 @@ eq(
 );
 eq(
   'two changes send two keys',
-  m.leadEditPatch(LEAD, formFrom(LEAD, { company: 'Northline Engg', designation: 'GM Purchase' })),
+  m.leadEditPatch(LEAD, formFrom(LEAD, { company: 'Northline Engg', designations: ['GM Purchase'] })),
   { company: 'Northline Engg', designation: 'GM Purchase' }
 );
 
@@ -123,7 +130,7 @@ eq(
 // to reach the server rather than being mistaken for "unchanged".
 eq(
   'clearing a wrong number sends the empty value',
-  m.leadEditPatch(LEAD, formFrom(LEAD, { phone: '' })),
+  m.leadEditPatch(LEAD, formFrom(LEAD, { phones: [''] })),
   { phone: '' }
 );
 
@@ -203,6 +210,96 @@ const spacesName = formFrom(LEAD, { name: '   ' });
 mark(
   m.canSaveLeadEdits(m.leadEditPatch(LEAD, spacesName), spacesName) === false,
   '  ...and spaces do not count as one');
+
+// --- several numbers, emails and titles on one lead -----------------------
+//
+// The form holds one list per family. leadEditPatch splits it back into the
+// primary column and the extras column, and each half is sent ONLY if it
+// moved - the same "only what actually moved" rule as every case above, which
+// matters more here because the extras are written whole.
+
+const MANY = {
+  ...LEAD,
+  extraPhones: ['+912240001234'],
+  extraDesignations: ['Director'],
+};
+
+eq('opening a lead with extras and closing it writes nothing', m.leadEditPatch(MANY, formFrom(MANY)), {});
+
+// The screen always shows a spare empty row to type the next value into.
+// Without dropping blanks, merely looking at the form would write one.
+eq(
+  'a blank row left at the end is not an edit',
+  m.leadEditPatch(MANY, formFrom(MANY, { phones: [LEAD.phone, '+912240001234', ''] })),
+  {}
+);
+
+// The primary did not move, so it must not be resent: doing so would
+// overwrite whatever the dashboard did to it while this form was open.
+eq(
+  'adding a second number sends the extras alone',
+  m.leadEditPatch(LEAD, formFrom(LEAD, { phones: [LEAD.phone, '+912240001234'] })),
+  { extraPhones: ['+912240001234'] }
+);
+
+// Both halves genuinely moved here, so two keys is correct minimality.
+eq(
+  'deleting the primary promotes the second and sends both halves',
+  m.leadEditPatch(MANY, formFrom(MANY, { phones: ['', '+912240001234'] })),
+  { phone: '+912240001234', extraPhones: [] }
+);
+
+eq(
+  'removing the only extra sends an empty list, not undefined',
+  m.leadEditPatch(MANY, formFrom(MANY, { phones: [LEAD.phone] })),
+  { extraPhones: [] }
+);
+
+// A text[] has an order, Postgres and PostgREST both preserve it, and row 2
+// is visibly above row 3. Unlike the custom answers above, this is NOT sorted.
+const TWO_EXTRAS = { ...LEAD, extraPhones: ['+912240001234', '+912240009999'] };
+eq(
+  'reordering two extras is a real edit',
+  m.leadEditPatch(TWO_EXTRAS, formFrom(TWO_EXTRAS, {
+    phones: [LEAD.phone, '+912240009999', '+912240001234'],
+  })),
+  { extraPhones: ['+912240009999', '+912240001234'] }
+);
+
+// Typing the primary again in a later row is a duplicate the database is
+// deliberately not asked to refuse - a CHECK it could trip is classified a
+// permanent failure and would strand the capture. It is dropped here instead.
+eq(
+  'repeating the primary in a later row is dropped, not stored twice',
+  m.leadEditPatch(LEAD, formFrom(LEAD, { phones: [LEAD.phone, LEAD.phone] })),
+  {}
+);
+
+// A caller built before a family existed leaves the key off entirely. Writing
+// [] over extras the form never showed is the one unrecoverable direction.
+const withoutPhones = formFrom(MANY);
+delete withoutPhones.phones;
+eq('an absent list key never clobbers the stored extras', m.leadEditPatch(MANY, withoutPhones), {});
+
+// Emails and titles take the same path, so one case each is enough to catch a
+// family that was wired up for phones and forgotten for the other two.
+eq(
+  'a second email sends the email extras alone',
+  m.leadEditPatch(LEAD, formFrom(LEAD, { emails: [LEAD.email, 'accounts@northline.co.in'] })),
+  { extraEmails: ['accounts@northline.co.in'] }
+);
+eq(
+  'a second job title sends the designation extras alone',
+  m.leadEditPatch(LEAD, formFrom(LEAD, { designations: [LEAD.designation, 'Director'] })),
+  { extraDesignations: ['Director'] }
+);
+
+// The name is the only field that may not be emptied. That rule must NOT have
+// quietly extended to the number when the families were introduced.
+mark(
+  m.canSaveLeadEdits({ phone: '', extraPhones: [] }, formFrom(MANY, { phones: [''] })) === true,
+  'a lead may still be left with no number at all'
+);
 
 console.log(`\n${failed === 0 ? 'All checks passed.' : `${failed} check(s) FAILED.`}`);
 process.exitCode = failed ? 1 : 0;

@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, TextInput as RNTextInput, View, type TextInputProps } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
+import { FloatingLabelInput } from '../../../components/ui/FloatingLabelInput';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
 import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
+import { FormTabs, type LeadFormTab } from '../../../components/app/FormTabs';
+import { RepeatableField } from '../../../components/app/RepeatableField';
 import { CustomFieldInput } from '../../../components/app/CustomFieldInput';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { fetchEventFields } from '../../../lib/api/eventFields';
@@ -19,51 +22,52 @@ import { canSaveLeadEdits, leadEditPatch, type LeadEditForm } from '../../../lib
  *
  * The reader gets things wrong — a smudged digit, a surname read as a company
  * — and until now the only fix was to capture the person again, which leaves
- * a duplicate behind. The edit button on the lead screen existed and did
- * nothing at all; this is what it does.
+ * a duplicate behind.
  *
  * Deliberately NOT here: status, deal value, follow-up date, assignment.
  * Those are paid features with their own sheets, and slipping them into a
  * form the whole plan can open would be a way around the locks.
+ *
+ * ---------------------------------------------------------------------------
+ * Why one card and a pair of tabs, rather than two stacked panels
+ *
+ * The two groups used to sit one under the other, each in its own tinted panel
+ * with its heading notched into the border. Three things were wrong with it:
+ * the company's landline sat four screens below the person's name; the heading
+ * was drawn in the same strip of space the floated labels rise into, so a
+ * filled field painted over it; and the tinted panel meant every label carried
+ * a white rectangle across a blue background.
+ *
+ * One white card, and a tab to choose which half of the form is in it, fixes
+ * all three at once. The counts on the tabs are what makes hiding a section
+ * safe — see components/app/FormTabs.tsx.
  */
 
-function BigField({ label, ...rest }: { label: string } & TextInputProps) {
-  return (
-    <View className="mb-[18px]">
-      <Typography
-        className="text-[12.5px] font-bold tracking-[0.04em] text-slate mb-[9px]"
-        style={{ textTransform: 'uppercase' }}
-      >
-        {label}
-      </Typography>
-      <RNTextInput
-        className="h-[60px] rounded-[14px] border-[1.5px] border-hairline px-[18px] text-[20px] font-semibold text-navy bg-white"
-        placeholderTextColor="#97A3B8"
-        {...rest}
-      />
-    </View>
-  );
+/** The surface the fields sit on. The floated labels paint this colour behind
+ *  themselves so they read as a notch in the border rather than a smear. */
+const CARD = '#FFFFFF';
+
+/**
+ * The stored split, back into the one list the form edits.
+ *
+ * `phone` and `extra_phones` are two columns because of what the rest of the
+ * app does with the first of them — it is what gets dialled, what a list row
+ * shows, what duplicate detection matches on. On this screen that distinction
+ * would only be in the way, so the form sees one list and `leadEditPatch`
+ * splits it again on the way out.
+ */
+function listFrom(primary: string | undefined, extras: string[] | undefined): string[] {
+  return [primary ?? '', ...(extras ?? [])];
 }
 
-function SmallField(props: TextInputProps) {
-  return (
-    <RNTextInput
-      className="h-[50px] rounded-md border border-hairline px-4 text-[14.5px] text-navy bg-white"
-      placeholderTextColor="#97A3B8"
-      {...props}
-    />
-  );
-}
-
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <Typography
-      className="text-[10px] font-bold tracking-[0.12em] text-slate mt-5 mb-[10px]"
-      style={{ textTransform: 'uppercase' }}
-    >
-      {children}
-    </Typography>
-  );
+/** How many of these actually hold something, for the tab badge. */
+function filledCount(...values: (string | string[])[]): number {
+  let n = 0;
+  for (const value of values) {
+    if (Array.isArray(value)) n += value.filter((v) => v.trim()).length;
+    else if (value.trim()) n += 1;
+  }
+  return n;
 }
 
 export default function EditLeadScreen() {
@@ -72,11 +76,13 @@ export default function EditLeadScreen() {
   const lead = leads.find((l) => l.id === leadId);
   const saveLeadEdits = useLeadsStore((s) => s.saveLeadEdits);
 
+  const [tab, setTab] = useState<LeadFormTab>('person');
+
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phones, setPhones] = useState<string[]>(['']);
   const [company, setCompany] = useState('');
-  const [email, setEmail] = useState('');
-  const [designation, setDesignation] = useState('');
+  const [emails, setEmails] = useState<string[]>(['']);
+  const [designations, setDesignations] = useState<string[]>(['']);
   const [companyLandline, setCompanyLandline] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
@@ -89,16 +95,18 @@ export default function EditLeadScreen() {
    *
    * Keyed on the id rather than on the lead object: the store hands back a new
    * object whenever a sync lands, and re-running this on every one of those
-   * would wipe out whatever the rep had half-typed.
+   * would wipe out whatever the rep had half-typed. The three lists are seeded
+   * HERE, in this same effect, for that reason — a second effect keyed on
+   * `lead` would reintroduce exactly the wipe this guard exists to prevent.
    */
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   useEffect(() => {
     if (!lead || loadedFor === lead.id) return;
     setName(lead.name ?? '');
-    setPhone(lead.phone ?? '');
+    setPhones(listFrom(lead.phone, lead.extraPhones));
     setCompany(lead.company ?? '');
-    setEmail(lead.email ?? '');
-    setDesignation(lead.designation ?? '');
+    setEmails(listFrom(lead.email, lead.extraEmails));
+    setDesignations(listFrom(lead.designation, lead.extraDesignations));
     setCompanyLandline(lead.companyLandline ?? '');
     setCompanyWebsite(lead.companyWebsite ?? '');
     setCompanyAddress(lead.companyAddress ?? '');
@@ -134,10 +142,10 @@ export default function EditLeadScreen() {
   const form = useMemo<LeadEditForm>(
     () => ({
       name,
-      phone,
+      phones,
       company,
-      email,
-      designation,
+      emails,
+      designations,
       companyLandline,
       companyWebsite,
       companyAddress,
@@ -145,12 +153,15 @@ export default function EditLeadScreen() {
       note,
       customFieldValues: customValues,
     }),
+    // Hand-written, so a field added above and forgotten here leaves the Save
+    // button dead while the rep types — which reads as "the app won't let me
+    // save", not as a stale memo.
     [
       name,
-      phone,
+      phones,
       company,
-      email,
-      designation,
+      emails,
+      designations,
       companyLandline,
       companyWebsite,
       companyAddress,
@@ -160,10 +171,7 @@ export default function EditLeadScreen() {
     ]
   );
 
-  const patch = useMemo<LeadPatch>(
-    () => (lead ? leadEditPatch(lead, form) : {}),
-    [lead, form]
-  );
+  const patch = useMemo<LeadPatch>(() => (lead ? leadEditPatch(lead, form) : {}), [lead, form]);
 
   const dirty = Object.keys(patch).length > 0;
   const canSave = canSaveLeadEdits(patch, form);
@@ -193,65 +201,128 @@ export default function EditLeadScreen() {
 
       <KeyboardSafe className="flex-1">
         <ScrollView
-          contentContainerClassName="px-5 pt-[18px] pb-8"
+          contentContainerClassName="px-4 pt-4 pb-8"
+          // Not optional. Without it the first tap on the add and remove
+          // controls, and on the tabs, is spent dismissing the keyboard and
+          // reads as a dead button — see components/app/KeyboardSafe.tsx.
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <BigField label="Name" value={name} onChangeText={setName} autoCapitalize="words" />
+          <View className="bg-white rounded-[18px] border border-hairline px-4 pt-4 pb-5">
+            <FormTabs
+              tab={tab}
+              onChange={setTab}
+              personFilled={filledCount(name, phones, emails, designations, note)}
+              companyFilled={filledCount(
+                company,
+                companyLandline,
+                companyWebsite,
+                companyAddress,
+                branchAddress
+              )}
+            />
 
-          <SectionLabel>Person</SectionLabel>
-          <View className="gap-[10px]">
-            <SmallField
-              placeholder="Phone"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-            <SmallField
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <SmallField placeholder="Designation" value={designation} onChangeText={setDesignation} />
+            {/*
+              gap-[22px], not the old 10. The floated label rises out of the
+              box and needs clear air above it; at 10 it landed on the bottom
+              border of the field above. This is the spacing bug, and the
+              notchColor below is the other half of it.
+            */}
+            <View className="gap-[22px] mt-6">
+              {tab === 'person' ? (
+                <>
+                  <FloatingLabelInput
+                    label="Person name"
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    notchColor={CARD}
+                  />
+                  <RepeatableField
+                    label="Mobile number"
+                    values={phones}
+                    onChange={setPhones}
+                    keyboardType="phone-pad"
+                    notchColor={CARD}
+                  />
+                  <RepeatableField
+                    label="Email"
+                    values={emails}
+                    onChange={setEmails}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    notchColor={CARD}
+                  />
+                  <RepeatableField
+                    label="Job title"
+                    values={designations}
+                    onChange={setDesignations}
+                    notchColor={CARD}
+                  />
+                  <FloatingLabelInput
+                    label="Notes"
+                    value={note}
+                    onChangeText={setNote}
+                    hint="What did you talk about?"
+                    multiline
+                    notchColor={CARD}
+                  />
+                </>
+              ) : (
+                <>
+                  <FloatingLabelInput
+                    label="Company name"
+                    value={company}
+                    onChangeText={setCompany}
+                    autoCapitalize="words"
+                    notchColor={CARD}
+                  />
+                  <FloatingLabelInput
+                    label="Landline"
+                    value={companyLandline}
+                    onChangeText={setCompanyLandline}
+                    keyboardType="phone-pad"
+                    notchColor={CARD}
+                  />
+                  <FloatingLabelInput
+                    label="Website"
+                    value={companyWebsite}
+                    onChangeText={setCompanyWebsite}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                    notchColor={CARD}
+                  />
+                  <FloatingLabelInput
+                    label="Address"
+                    value={companyAddress}
+                    onChangeText={setCompanyAddress}
+                    multiline
+                    minHeight={76}
+                    notchColor={CARD}
+                  />
+                  <FloatingLabelInput
+                    label="Branch address"
+                    value={branchAddress}
+                    onChangeText={setBranchAddress}
+                    multiline
+                    minHeight={76}
+                    notchColor={CARD}
+                  />
+                </>
+              )}
+            </View>
           </View>
 
-          <SectionLabel>Company</SectionLabel>
-          <View className="gap-[10px]">
-            <SmallField placeholder="Company" value={company} onChangeText={setCompany} autoCapitalize="words" />
-            <SmallField
-              placeholder="Landline"
-              value={companyLandline}
-              onChangeText={setCompanyLandline}
-              keyboardType="phone-pad"
-            />
-            <SmallField
-              placeholder="Website"
-              value={companyWebsite}
-              onChangeText={setCompanyWebsite}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
-            <SmallField placeholder="Address" value={companyAddress} onChangeText={setCompanyAddress} />
-            <SmallField placeholder="Branch address" value={branchAddress} onChangeText={setBranchAddress} />
-          </View>
-
-          <SectionLabel>Note</SectionLabel>
-          <RNTextInput
-            className="min-h-[96px] rounded-md border border-hairline px-4 py-3 text-[14.5px] text-navy bg-white"
-            placeholderTextColor="#97A3B8"
-            placeholder="What did you talk about?"
-            value={note}
-            onChangeText={setNote}
-            multiline
-            textAlignVertical="top"
-          />
-
+          {/*
+            Outside the tabbed card on purpose. An event's own questions belong
+            to neither the person nor their company, and a required one hidden
+            behind a tab the rep never opened is a save they cannot complete
+            and cannot see why.
+          */}
           {fieldDefs.length > 0 ? (
-            <>
-              <SectionLabel>Event fields</SectionLabel>
-              <View className="gap-[10px]">
+            <View className="bg-white rounded-[18px] border border-hairline px-4 pt-4 pb-5 mt-4">
+              <Typography className="text-[13px] font-bold text-slate mb-4">Event fields</Typography>
+              <View className="gap-[14px]">
                 {fieldDefs.map((field) => (
                   <CustomFieldInput
                     key={field.id}
@@ -261,7 +332,7 @@ export default function EditLeadScreen() {
                   />
                 ))}
               </View>
-            </>
+            </View>
           ) : null}
         </ScrollView>
       </KeyboardSafe>

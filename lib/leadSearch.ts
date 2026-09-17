@@ -20,6 +20,15 @@ export type SearchableLead = {
   phone?: string;
   companyLandline?: string;
   email?: string;
+  /**
+   * The extras are searched too, and that is not a nicety.
+   *
+   * A rep who typed a second number into a lead and then searches for it gets
+   * nothing back if only the primary is matched - which reads as "search is
+   * broken", not as "search only looks at the first number".
+   */
+  extraPhones?: string[];
+  extraEmails?: string[];
 };
 
 /**
@@ -45,12 +54,15 @@ export function leadMatchesQuery(lead: SearchableLead, rawQuery: string): boolea
   if (lead.name.toLowerCase().includes(needle)) return true;
   if (lead.company.toLowerCase().includes(needle)) return true;
   if (lead.email && lead.email.toLowerCase().includes(needle)) return true;
+  for (const address of lead.extraEmails ?? []) {
+    if (address.toLowerCase().includes(needle)) return true;
+  }
 
   // Anything that looks like part of a number is compared digit to digit, so the
   // formatting on the card never has to match the formatting in the database.
   const queryDigits = stripLeadingZero(digitsOf(query));
   if (queryDigits.length >= MIN_NUMBER_DIGITS) {
-    for (const number of [lead.phone, lead.companyLandline]) {
+    for (const number of [lead.phone, lead.companyLandline, ...(lead.extraPhones ?? [])]) {
       if (number && digitsOf(number).includes(queryDigits)) return true;
     }
   }

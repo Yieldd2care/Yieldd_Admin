@@ -411,7 +411,10 @@ export default function CameraScreen() {
         </Pressable>
       </View>
 
-      <View className="absolute left-0 right-0 bottom-0 items-center gap-[22px] pb-11">
+      {/* pb-16, not pb-11: the row was asked to sit a little higher off the
+          bottom edge now that the "Edit manually" text link above it is gone
+          and "Type it in" is the only way into the form from here. */}
+      <View className="absolute left-0 right-0 bottom-0 items-center gap-[22px] pb-16">
         {captureError ? (
           <View className="bg-navy/[0.72] border border-[#FF9B9B]/[0.45] rounded-full px-[18px] py-[9px] mx-8">
             <Typography className="text-[12.5px] font-semibold text-[#FF9B9B] text-center">

@@ -288,5 +288,65 @@ eq(
   '098204 41720'
 );
 
+// --- a lead carrying more than one of each ---------------------------------
+//
+// The extras are worth nothing if they stop at the database. This is the one
+// place a rep actually uses them: the contact in their own phone.
+
+const MANY = {
+  ...FULL,
+  extraPhones: ['+91 99300 11223', '98204 41720'],
+  extraEmails: ['accounts@northline.example', 'PRIYA@northline.example'],
+  extraDesignations: ['Director'],
+};
+const many = m.toExpoContact(MANY);
+const manyNumbers = many.phoneNumbers.map((entry) => entry.number);
+const manyEmails = many.emails.map((entry) => entry.email);
+
+ok('a second mobile reaches the contact', manyNumbers.includes('+919930011223'));
+
+// The list repeats the primary, written the way it is printed on the card. It
+// is the same number, and only normalising first makes that visible - a raw
+// string comparison would put both into the address book.
+eq(
+  'the same number written two ways lands once, not twice',
+  manyNumbers.filter((number) => number === '+919820441720').length,
+  1
+);
+
+// The switchboard stays last: the person first, their company after.
+eq(
+  'the company landline is still the final number',
+  manyNumbers[manyNumbers.length - 1],
+  '+912224931234'
+);
+
+ok('a second email reaches the contact', manyEmails.includes('accounts@northline.example'));
+eq(
+  'the primary address in a different case is not a second address',
+  manyEmails.filter((address) => address.toLowerCase() === 'priya@northline.example').length,
+  1
+);
+
+// TITLE may repeat in vCard, but most contacts apps keep only the first and
+// drop the rest silently. A joined title survives; a second one would not.
+eq('two job titles are joined into one', many.jobTitle, 'Head of Procurement / Director');
+eq(
+  'and the vCard carries a single TITLE line',
+  m.leadVCard(MANY).match(/^TITLE:/gm).length,
+  1
+);
+
+// vCard 3.0 does allow TEL and EMAIL to repeat and contacts apps keep all of
+// them, so those are emitted as separate lines rather than joined.
+eq('the vCard repeats TEL instead of joining numbers', m.leadVCard(MANY).match(/^TEL/gm).length, 3);
+
+// A lead with no extras must produce exactly what it did before this existed.
+eq(
+  'a lead with no extras is untouched by any of this',
+  JSON.stringify(m.toExpoContact(FULL)),
+  JSON.stringify(full)
+);
+
 console.log(`\n${failed === 0 ? 'All checks passed.' : `${failed} check(s) FAILED.`}`);
 process.exit(failed ? 1 : 0);

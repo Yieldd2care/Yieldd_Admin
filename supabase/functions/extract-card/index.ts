@@ -52,6 +52,9 @@ Return ONLY a JSON object, no prose and no code fence, with exactly these keys:
   company_website  the company's website
   company_address  the postal address as printed, on one line
   branch_address   a SECOND address, when the card prints one
+  extra_phones       every OTHER number printed for this person, as an array
+  extra_emails       every OTHER email address printed, as an array
+  extra_designations any FURTHER job titles printed, as an array
 
 Rules that matter more than completeness:
 
@@ -68,8 +71,21 @@ Rules that matter more than completeness:
   company called Northline Engineering.
 - Indian mobile numbers are ten digits and often printed with a +91, a 0, or
   spaces. Keep the digits exactly as they are; keep a leading + if printed.
-- If two numbers are printed, the mobile goes in phone and the landline or
-  office number goes in company_landline. If only one is printed, it is phone.
+- If two or more numbers are printed, the mobile goes in phone and the landline
+  or office number goes in company_landline. Any number beyond those two goes
+  in extra_phones, in the order it is printed. If only one is printed, it is
+  phone. Never repeat a number that is already in phone or company_landline.
+- The first email goes in email; any further address printed for the same
+  person goes in extra_emails, in the order printed. A generic company address
+  (info@, sales@, enquiry@) printed alongside a personal one is an extra, and
+  is never the value of email.
+- Indian cards often print a compound title on one line - "Director - Sales &
+  Marketing", "MD & CEO". That is ONE designation, not two; keep it whole in
+  designation. Use extra_designations only when the card prints genuinely
+  separate titles, on separate lines or for a second company.
+- The three array fields are ALWAYS arrays. Use [] - never null, never a bare
+  string - when there is nothing extra. Never move a value out of phone, email
+  or designation into an array to make an array non-empty.
 - If the card is unreadable, blank, or is not a business card, return every
   field as null rather than inventing plausible values.`;
 
@@ -83,6 +99,9 @@ type Extracted = {
   company_website: string | null;
   company_address: string | null;
   branch_address: string | null;
+  extra_phones: string[];
+  extra_emails: string[];
+  extra_designations: string[];
 };
 
 const EMPTY: Extracted = {
@@ -95,9 +114,12 @@ const EMPTY: Extracted = {
   company_website: null,
   company_address: null,
   branch_address: null,
+  extra_phones: [],
+  extra_emails: [],
+  extra_designations: [],
 };
 
-/** Keeps only the nine known keys, and turns blanks into null. */
+/** Keeps only the known keys, and turns blanks into null or []. */
 function normalise(raw: Record<string, unknown>): Extracted {
   const clean = (value: unknown): string | null => {
     if (typeof value !== 'string') return null;
@@ -107,6 +129,17 @@ function normalise(raw: Record<string, unknown>): Extracted {
     if (/^(null|n\/a|none|not (printed|provided|available))$/i.test(trimmed)) return null;
     return trimmed;
   };
+
+  /**
+   * Element-wise, so the trim and the literal-"null" guard above apply to
+   * every entry rather than to the array as a whole. Anything that is not an
+   * array at all - a bare string, a null - becomes [], because the caller and
+   * the column both want a list.
+   */
+  const cleanList = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.map(clean).filter((entry): entry is string => entry !== null)
+      : [];
 
   return {
     full_name: clean(raw.full_name),
@@ -118,6 +151,9 @@ function normalise(raw: Record<string, unknown>): Extracted {
     company_website: clean(raw.company_website),
     company_address: clean(raw.company_address),
     branch_address: clean(raw.branch_address),
+    extra_phones: cleanList(raw.extra_phones),
+    extra_emails: cleanList(raw.extra_emails).map((entry) => entry.toLowerCase()),
+    extra_designations: cleanList(raw.extra_designations),
   };
 }
 
@@ -250,7 +286,18 @@ Deno.serve(async (req) => {
     }
 
     const fields = normalise(parsed);
-    const read = Object.values(fields).some((value) => value !== null);
+    /*
+     * An empty array is not a reading.
+     *
+     * This was `value !== null` while every field was a nullable string. The
+     * moment the three array fields arrived that became true for EVERY scan,
+     * because [] !== null - so a photo of a thumb would have come back
+     * `read: true`, and the "Nothing readable on that photo." state that
+     * useLeadsStore sets from this flag would have disappeared silently.
+     */
+    const read = Object.values(fields).some((value) =>
+      Array.isArray(value) ? value.length > 0 : value !== null
+    );
 
     return jsonResponse({ fields, read });
   } catch (e) {

@@ -299,6 +299,21 @@ export default function DashLeads() {
       if (l.company?.toLowerCase().includes(q)) return true;
       if (l.email?.toLowerCase().includes(q)) return true;
       if (l.designation?.toLowerCase().includes(q)) return true;
+      // The extras are searchable too. A rep who typed a second number into a
+      // lead and then searched for it would otherwise get nothing back, which
+      // reads as "search is broken" rather than "search reads the first only".
+      // The list ROW still shows the primary alone: a row stays one line.
+      for (const address of l.extraEmails ?? []) {
+        if (address.toLowerCase().includes(q)) return true;
+      }
+      for (const title of l.extraDesignations ?? []) {
+        if (title.toLowerCase().includes(q)) return true;
+      }
+      if (digits.length >= 3) {
+        for (const number of l.extraPhones ?? []) {
+          if (number.replace(/\D/g, '').includes(digits)) return true;
+        }
+      }
       if (digits.length >= 3 && l.phone?.replace(/\D/g, '').includes(digits)) return true;
       return false;
     };

@@ -281,5 +281,77 @@ eq('deal value is off by default', m.DEFAULT_COLUMNS.dealValue, false);
   eq('and no money headers, since nothing said they were allowed', lines(csv)[0], 'Captured on');
 }
 
+// --- several numbers, emails and job titles on one lead --------------------
+//
+// The column SET is fixed. Numbering them instead (Mobile 1, Mobile 2, ...)
+// would make the header width depend on the busiest lead in the file, and a
+// CSV whose column count moves between two exports of the same event cannot
+// be pasted into a saved sheet or a CRM import mapping.
+{
+  const IDENTITY_AND_CONTACT = {
+    identity: true,
+    contact: true,
+    statusAndFollowUp: false,
+    dealValue: false,
+    transcript: false,
+    customFields: false,
+  };
+
+  const withExtras = row({
+    designation: 'Purchase Head',
+    extra_designations: ['Director'],
+    company: 'Northline',
+    phone: '+919820441720',
+    extra_phones: ['+912240001234', '+919930011223'],
+    email: 'priya@northline.example',
+    extra_emails: ['accounts@northline.example'],
+  });
+
+  const { csv } = m.buildCsvFromRows([withExtras], IDENTITY_AND_CONTACT);
+  const [head, body] = lines(csv);
+
+  eq(
+    'each Other column sits immediately after the one it belongs to',
+    head,
+    'Captured on,Name,Designation,Other job titles,Company,Phone,Other phones,Email,Other emails,Company landline,Website,Address,Branch address'
+  );
+
+  // Joined with " / ": a comma would force a quote around the cell and read as
+  // one long number in Excel, a semicolon IS the delimiter in several European
+  // Excel locales, and a newline looks like a torn row to a naive importer.
+  eq(
+    'several values share one cell, joined and unquoted',
+    body,
+    '15/09/2026,Priya Nair,Purchase Head,Director,Northline,+919820441720,+912240001234 / +919930011223,priya@northline.example,accounts@northline.example,,,,'
+  );
+
+  // The ordinary lead, and the lead exported from a cache that predates the
+  // columns entirely. Both must give the same shape as the one above.
+  const plain = m.buildCsvFromRows(
+    [row({ designation: 'Purchase Head', phone: '+919820441720' })],
+    IDENTITY_AND_CONTACT
+  );
+  const plainLines = lines(plain.csv);
+  eq('a lead with no extras keeps the identical header', plainLines[0], head);
+  eq(
+    'and leaves those cells empty rather than printing null',
+    plainLines[1],
+    '15/09/2026,Priya Nair,Purchase Head,,,+919820441720,,,,,,,'
+  );
+
+  eq(
+    'so the column count never moves between two exports',
+    plainLines[0].split(',').length === body.split(',').length,
+    true
+  );
+
+  // An empty array and a null are the same absence as far as a file goes.
+  const emptied = m.buildCsvFromRows(
+    [row({ phone: '+919820441720', extra_phones: [], extra_emails: [], extra_designations: [] })],
+    IDENTITY_AND_CONTACT
+  );
+  eq('an empty list exports the same as no list at all', lines(emptied.csv)[1], plainLines[1].replace('Purchase Head', ''));
+}
+
 console.log(failed ? `\n${failed} check(s) failed.` : '\nAll checks passed.');
 process.exit(failed ? 1 : 0);

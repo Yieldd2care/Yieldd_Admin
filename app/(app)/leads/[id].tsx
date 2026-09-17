@@ -141,12 +141,21 @@ export default function LeadDetailScreen() {
     const fill = (current: string | undefined, next: string | null) =>
       current?.trim() ? undefined : (next ?? undefined);
 
+    // The list form. Same rule - offer nothing where the lead already has
+    // something - and never a merge of the two, which would resurrect a
+    // number the rep had deleted.
+    const fillList = (current: string[] | undefined, next: string[]) =>
+      current && current.length > 0 ? undefined : (next.length > 0 ? next : undefined);
+
     const patch = {
       name: fill(lead.name, f.fullName),
       company: fill(lead.company, f.company),
       phone: fill(lead.phone, f.phone),
       email: fill(lead.email, f.email),
       designation: fill(lead.designation, f.designation),
+      extraPhones: fillList(lead.extraPhones, f.extraPhones),
+      extraEmails: fillList(lead.extraEmails, f.extraEmails),
+      extraDesignations: fillList(lead.extraDesignations, f.extraDesignations),
       companyLandline: fill(lead.companyLandline, f.companyLandline),
       companyWebsite: fill(lead.companyWebsite, f.companyWebsite),
       companyAddress: fill(lead.companyAddress, f.companyAddress),
@@ -522,7 +531,15 @@ export default function LeadDetailScreen() {
           </Typography>
           <FieldRow k="Name" v={lead.name} />
           <FieldRow k="Phone" v={lead.phone || 'Not captured'} />
+          {/* Numbered rather than repeated under one heading, so two rows
+              never read as the same fact stated twice. */}
+          {(lead.extraPhones ?? []).map((number, i) => (
+            <FieldRow key={`phone-${i}`} k={`Phone ${i + 2}`} v={number} />
+          ))}
           <FieldRow k="Email" v={lead.email || 'Not captured'} />
+          {(lead.extraEmails ?? []).map((address, i) => (
+            <FieldRow key={`email-${i}`} k={`Email ${i + 2}`} v={address} />
+          ))}
           <View className="flex-row justify-between py-[10px] border-b border-section">
             <Typography className="text-[12.5px] text-slate">Consent</Typography>
             <View className="flex-row items-center gap-[8px]">
@@ -538,6 +555,9 @@ export default function LeadDetailScreen() {
           </Typography>
           <FieldRow k="Company" v={lead.company || 'Not captured'} />
           {lead.designation ? <FieldRow k="Designation" v={lead.designation} /> : null}
+          {(lead.extraDesignations ?? []).map((title, i) => (
+            <FieldRow key={`title-${i}`} k={`Designation ${i + 2}`} v={title} />
+          ))}
           {lead.companyWebsite ? <FieldRow k="Website" v={lead.companyWebsite} /> : null}
           {lead.companyLandline ? <FieldRow k="Landline" v={lead.companyLandline} /> : null}
           {lead.companyAddress ? <FieldRow k="Address" v={lead.companyAddress} /> : null}

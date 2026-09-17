@@ -61,6 +61,15 @@ export function ChevronRightIcon({ size = 18, color = '#97A3B8', strokeWidth = 2
   );
 }
 
+/** Points down because the thing it opens drops OVER the screen, not into a new one. */
+export function ChevronDownIcon({ size = 16, color = '#5A6B87', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 9l6 6 6-6" />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ size = 32, color = '#0B132B', strokeWidth = 2.4 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">

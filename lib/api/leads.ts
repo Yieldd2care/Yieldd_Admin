@@ -139,6 +139,16 @@ export type LeadCaptureInput = {
   phone?: string;
   email?: string;
   designation?: string;
+  /**
+   * The second and later values. The three above stay the primary one each.
+   *
+   * Cleaned on the way to the column by toColumnList below, not by a CHECK:
+   * 23514 is classified permanent by isPermanentFailure, so a constraint the
+   * app could trip would strand a capture rather than bounce it back.
+   */
+  extraPhones?: string[];
+  extraEmails?: string[];
+  extraDesignations?: string[];
   note?: string;
   companyLandline?: string;
   companyWebsite?: string;
@@ -191,6 +201,40 @@ export type LeadCaptureInput = {
   captureAddress?: string;
 };
 
+/**
+ * A list of typed-in values on its way to a text[] column.
+ *
+ * Trims, drops the blanks a half-filled row leaves behind, drops repeats, and
+ * returns null rather than [] when nothing survives - the same shape as the
+ * "|| null" on every other optional column here, so an empty list reads back
+ * as the ordinary "no extras" null instead of an empty array nothing expects.
+ *
+ * `exclude` is the primary value this list sits beside. The same number typed
+ * into the first row and a later one is a duplicate the DATABASE deliberately
+ * does not refuse: a CHECK it could trip is classified permanent by
+ * isPermanentFailure above, which would set syncError and strand a capture the
+ * rep can do nothing about. Correcting it silently here is the whole reason
+ * that constraint was left out of the migration.
+ *
+ * Order is preserved. It is the order the rep entered, it is visible on the
+ * screen, and nothing anywhere may sort it.
+ */
+function toColumnList(
+  values: string[] | undefined,
+  opts: { lower?: boolean; exclude?: string } = {}
+): string[] | null {
+  if (values === undefined) return null;
+  const norm = (v: string) => (opts.lower ? v.trim().toLowerCase() : v.trim());
+  const skip = opts.exclude === undefined ? null : norm(opts.exclude);
+  const out: string[] = [];
+  for (const raw of values) {
+    const value = norm(raw ?? '');
+    if (!value || value === skip || out.includes(value)) continue;
+    out.push(value);
+  }
+  return out.length > 0 ? out : null;
+}
+
 function toInsert(input: LeadCaptureInput): Inserts<'leads'> {
   return {
     id: input.id,
@@ -202,6 +246,9 @@ function toInsert(input: LeadCaptureInput): Inserts<'leads'> {
     phone: input.phone?.trim() || null,
     email: input.email?.trim().toLowerCase() || null,
     designation: input.designation?.trim() || null,
+    extra_phones: toColumnList(input.extraPhones, { exclude: input.phone }),
+    extra_emails: toColumnList(input.extraEmails, { lower: true, exclude: input.email }),
+    extra_designations: toColumnList(input.extraDesignations, { exclude: input.designation }),
     note: input.note?.trim() || null,
     company_landline: input.companyLandline?.trim() || null,
     company_website: input.companyWebsite?.trim() || null,
@@ -251,6 +298,16 @@ export type LeadPatch = {
   phone?: string;
   email?: string;
   designation?: string;
+  /**
+   * The second and later values. The three above stay the primary one each.
+   *
+   * Cleaned on the way to the column by toColumnList below, not by a CHECK:
+   * 23514 is classified permanent by isPermanentFailure, so a constraint the
+   * app could trip would strand a capture rather than bounce it back.
+   */
+  extraPhones?: string[];
+  extraEmails?: string[];
+  extraDesignations?: string[];
   note?: string;
   companyLandline?: string;
   companyWebsite?: string;
@@ -298,6 +355,19 @@ export function toUpdate(patch: LeadPatch): Updates<'leads'> {
   if (patch.phone !== undefined) row.phone = patch.phone.trim() || null;
   if (patch.email !== undefined) row.email = patch.email.trim().toLowerCase() || null;
   if (patch.designation !== undefined) row.designation = patch.designation.trim() || null;
+  // Keyed on !== undefined like everything else, and never on truthiness: an
+  // empty array is truthy, and it is how the form says "clear the extras".
+  // `exclude` is passed only when the primary moved in the same patch, which
+  // is the only time this layer can see what it would be dedup-ing against.
+  if (patch.extraPhones !== undefined) {
+    row.extra_phones = toColumnList(patch.extraPhones, { exclude: patch.phone });
+  }
+  if (patch.extraEmails !== undefined) {
+    row.extra_emails = toColumnList(patch.extraEmails, { lower: true, exclude: patch.email });
+  }
+  if (patch.extraDesignations !== undefined) {
+    row.extra_designations = toColumnList(patch.extraDesignations, { exclude: patch.designation });
+  }
   if (patch.note !== undefined) row.note = patch.note.trim() || null;
   if (patch.companyLandline !== undefined) row.company_landline = patch.companyLandline.trim() || null;
   if (patch.companyWebsite !== undefined) row.company_website = patch.companyWebsite.trim() || null;
