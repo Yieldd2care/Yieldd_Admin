@@ -303,7 +303,6 @@ if (captureLocation && mapTiles && captureConsent) {
     LOCATION_NOTICE_TITLE,
     LOCATION_NOTICE_WHY,
     LOCATION_NOTICE_SCOPE,
-    LOCATION_NOTICE_OPTIONAL,
   } = captureConsent;
 
   /** The ordinary state of a fresh install: nothing granted, the OS willing to ask. */
@@ -386,10 +385,27 @@ if (captureLocation && mapTiles && captureConsent) {
     /never in the background/i.test(LOCATION_NOTICE_SCOPE),
     'app.json blocks ACCESS_BACKGROUND_LOCATION and the published policy says so too'
   );
+
+  /**
+   * And it stays short.
+   *
+   * The opposite failure from the one above, and the likelier one: every future
+   * edit to a permission screen wants to add one more reassuring sentence, and
+   * the result reads as a screen with something to hide rather than a screen
+   * asking for a postcode. Google Play wants what and why; past that this is our
+   * own prose, arguing a case in front of somebody who only wants to scan a
+   * card. The ceiling is what keeps that from creeping back one line at a time.
+   */
+  const shown = [LOCATION_NOTICE_TITLE, LOCATION_NOTICE_WHY, LOCATION_NOTICE_SCOPE];
   ok(
-    'the disclosure says refusing costs the rep nothing',
-    /no|not/i.test(LOCATION_NOTICE_OPTIONAL) && LOCATION_NOTICE_OPTIONAL.trim().length > 20,
-    LOCATION_NOTICE_OPTIONAL
+    'the whole disclosure stays short enough to read at a glance',
+    shown.join(' ').length <= 200,
+    `${shown.join(' ').length} characters - a wall of reassurance in front of a permission reads as a catch`
+  );
+  ok(
+    'it is three lines, not a policy page',
+    shown.every((line) => line.length <= 80),
+    shown.map((line) => `${line.length}: ${line}`).join(' | ')
   );
 }
 

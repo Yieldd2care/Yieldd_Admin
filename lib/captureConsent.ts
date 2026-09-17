@@ -104,33 +104,41 @@ export function decideLocationAccess({
 }
 
 /**
- * The disclosure itself.
+ * The disclosure itself. THREE SHORT LINES, AND IT HAS TO STAY THAT WAY.
  *
- * Kept here beside the rule, rather than inline in the component, so the verify
- * script can assert that the app still ships an explanation - the sentence that
- * says what is taken and the sentence that says why are the two the policy is
- * actually about, and a redesign that quietly dropped one would otherwise be
- * invisible until a review rejected the build.
+ * Google Play asks for two things and only two: what is accessed, and what it is
+ * used for. Everything past that is our own words, and our own words are what
+ * make this screen dangerous. A permission screen that argues its case reads as a
+ * permission screen with something to hide - the rep is standing in a hall
+ * wanting to scan a card, and a wall of reassurance in front of a location
+ * request is exactly the shape a scam has. Short is not a style preference here,
+ * it is what makes the request look ordinary enough to accept.
  *
- * Plain language on purpose. This is read once, in a hall, by somebody who wants
- * to get on with scanning a card.
+ * So: what, why, and the one limit that answers the question everybody actually
+ * has, which is whether this follows them around. Nothing about how leads save,
+ * nothing about what refusing costs - the No thanks button says that by
+ * existing, and saying it in words invites the doubt it is trying to settle.
+ *
+ * Kept here rather than inline in the component so the verify script can hold
+ * the wording to the policy: a redesign that dropped what or why would otherwise
+ * be invisible until a review rejected the build.
  */
-export const LOCATION_NOTICE_TITLE = 'Yieldd notes where you are when you capture a lead.';
-
-/** Why - the sentence the policy asks for. */
-export const LOCATION_NOTICE_WHY =
-  'So each lead records which venue and city you met them at.';
-
-/** The limits, stated before they are asked rather than after. */
-export const LOCATION_NOTICE_SCOPE =
-  'Your position is read only while you are capturing a lead - never in the background, and never between captures.';
-
 /**
- * That refusing costs them nothing.
+ * Says the word "location", deliberately.
  *
- * Load-bearing, not reassurance: a capture never waits for a fix and a lead with
- * no location is a normal lead, so this sentence is a true description of the
- * app rather than a promise it has to keep separately.
+ * "where you capture a lead" is friendlier and was the first draft, but a
+ * reviewer skimming this screen is looking for the data type by name, and a
+ * disclosure that talks around it is the kind that gets rejected as vague - the
+ * same reason the iOS purpose string names the feature instead of waving at it.
+ * Being plain about it is also the honest version: softening the noun to make
+ * the ask feel smaller is the move that earns the suspicion.
  */
-export const LOCATION_NOTICE_OPTIONAL =
-  'You can say no and keep using Yieldd exactly as before. Leads save just the same, with no location on them.';
+export const LOCATION_NOTICE_TITLE = 'Yieldd notes your location when you capture a lead';
+
+/** Why - the one sentence the policy actually asks for. */
+export const LOCATION_NOTICE_WHY =
+  'So each lead records the venue and city you met them at.';
+
+/** The only limit worth the line: it answers "is this following me?". */
+export const LOCATION_NOTICE_SCOPE =
+  'Only while you are capturing — never in the background.';

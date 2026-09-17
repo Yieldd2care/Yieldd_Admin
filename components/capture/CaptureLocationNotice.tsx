@@ -7,7 +7,6 @@ import { Button } from '../ui/Button';
 import { MapPinIcon } from '../ui/icons';
 import { NavyGlowBackdrop } from '../app/NavyGlowBackdrop';
 import {
-  LOCATION_NOTICE_OPTIONAL,
   LOCATION_NOTICE_SCOPE,
   LOCATION_NOTICE_TITLE,
   LOCATION_NOTICE_WHY,
@@ -129,6 +128,11 @@ function CaptureLocationNoticeInner({ enabled = true }: Props) {
       <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
         <NavyGlowBackdrop />
 
+        {/* Three lines, and nothing else. See the note on the copy in
+            lib/captureConsent.ts: past what and why, more words on a permission
+            screen read as a reason to distrust it rather than a reason to
+            accept. The No thanks button below is what says refusing is fine -
+            spelling that out in a paragraph invites the doubt it settles. */}
         <View className="flex-1 justify-center px-8">
           <View className="w-16 h-16 rounded-full bg-gold/[0.14] items-center justify-center self-center">
             <MapPinIcon size={28} color="#F4B000" strokeWidth={1.75} />
@@ -140,11 +144,8 @@ function CaptureLocationNoticeInner({ enabled = true }: Props) {
           <Typography className="mt-4 text-[14px] leading-[1.6] text-white/[0.72] text-center">
             {LOCATION_NOTICE_WHY}
           </Typography>
-          <Typography className="mt-5 text-[13px] leading-[1.6] text-white/[0.55] text-center">
+          <Typography className="mt-4 text-[13px] leading-[1.6] text-white/[0.50] text-center">
             {LOCATION_NOTICE_SCOPE}
-          </Typography>
-          <Typography className="mt-3 text-[13px] leading-[1.6] text-white/[0.55] text-center">
-            {LOCATION_NOTICE_OPTIONAL}
           </Typography>
         </View>
 
