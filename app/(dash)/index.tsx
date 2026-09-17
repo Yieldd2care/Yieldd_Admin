@@ -567,8 +567,8 @@ export default function DashHome() {
                   label="Deals won"
                   value={String(setStats?.dealsWon ?? 0)}
                   sub={
-                    setMoney
-                      ? `${formatPaise(setStats?.wonValuePaise)} attributed`
+                    setMoney && setStats?.wonValuePaise != null
+                      ? `${formatPaise(setStats.wonValuePaise)} attributed`
                       : setStats?.conversionPercent != null
                         ? `${setStats.conversionPercent.toFixed(1)}% of leads`
                         : undefined

@@ -65,13 +65,19 @@ export default function DashPortfolioRoi() {
     router.push(`/(dash)/leads?${query.toString()}`);
   };
 
-  if (!events?.length) {
+  // Until the aggregate lands, every figure here would read 0 - which is a
+  // claim, not a blank. Waiting is the honest state.
+  if (!events?.length || !all) {
     return (
       <DashShell title="Return across your shows" breadcrumb={[{ label: 'Events', href: '/(dash)/events' }]}>
         <Panel>
           <Empty
-            title={isLoading ? 'Loading' : 'No events yet'}
-            body={isLoading ? 'One moment.' : 'Create an event and its return works itself out from there.'}
+            title={isLoading || (events?.length && !all) ? 'Loading' : 'No events yet'}
+            body={
+              isLoading || (events?.length && !all)
+                ? 'Working out the return across your shows.'
+                : 'Create an event and its return works itself out from there.'
+            }
           />
         </Panel>
       </DashShell>
