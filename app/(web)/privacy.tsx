@@ -118,15 +118,18 @@ export default function PrivacyScreen() {
         gallery for anything else.
       </LegalBullet>
       <LegalBullet>
-        <LegalStrong>Contacts: </LegalStrong>two separate things, and only one of them asks
-        your permission. Saving a lead to your phone book opens your phone&apos;s own new-contact
-        screen with the details filled in, and you confirm it there; that needs no permission at
-        all. Inviting a team member offers a &ldquo;Pick from my contacts&rdquo; button, and that
-        one does ask for contacts permission, because your phone will not hand over a contact
-        without it. We read only the single person you pick, and only to fill in their name and
-        number on the invite in front of you. Yieldd never reads the rest of your contact list,
-        and never uploads or stores it. Refuse the permission and everything else still works;
-        you type the number instead.
+        <LegalStrong>Contacts: </LegalStrong>two separate things, and on an Android phone both
+        of them ask your permission. Saving a lead to your phone book opens your phone&apos;s own
+        new-contact screen with the details already filled in, and you confirm it there. Android
+        will not open that screen for us unless Yieldd holds contacts access, so we ask for it
+        first; on an iPhone the same screen opens with no permission at all, and we do not ask.
+        Inviting a team member offers a &ldquo;Pick from my contacts&rdquo; button, which asks on
+        both, because your phone will not hand over a contact without it. We read only the single
+        person you pick, and only to fill in their name and number on the invite in front of you.
+        Saving a lead reads nothing at all: it only hands your phone details you captured
+        yourself. Yieldd never reads the rest of your contact list, and never uploads or stores
+        it. Refuse the permission and everything else still works; you type the number in, or add
+        the contact to your phone yourself.
       </LegalBullet>
 
       <LegalBullet>

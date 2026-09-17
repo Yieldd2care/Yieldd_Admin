@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 
+import { loadContacts, requestContactsAccess, warmContacts } from './contactsAccess';
 import { readPickedContact, type PickedNumber } from './pickedContact';
 
 /**
@@ -52,36 +53,17 @@ export type PickContactOutcome =
 const PICKER_TIMEOUT_MS = 45_000;
 
 /**
- * The module, loaded once and remembered.
- *
- * `await import()` is cheap on the second call — Metro inlines the module and
- * caches it — but the FIRST one still has to evaluate expo-contacts' legacy
- * entry point and wire up its native bridge, and that happens on the tap, while
- * someone is watching a button that says "Opening contacts…".
- *
- * Holding the promise rather than the module means two taps in quick succession
- * share one load instead of racing.
+ * Loading the module and asking for contacts access both live in
+ * lib/contactsAccess.ts now, shared with lib/contacts.ts. That file has the
+ * long note on why the `/legacy` subpath and the lazy import are load-bearing.
  */
-let contactsModule: Promise<typeof import('expo-contacts/legacy')> | null = null;
-
-function loadContacts() {
-  contactsModule ??= import('expo-contacts/legacy');
-  return contactsModule;
-}
 
 /**
- * Starts that load early, from a screen that is probably about to need it.
- *
- * Safe to call repeatedly and safe to ignore: it returns nothing, swallows
- * failure, and pickContact() still does its own load if this never ran. Calling
- * it is an optimisation, not a precondition.
+ * Kept under its old name because the invite screen calls it by that name, and
+ * because "warm the contact picker" is what it means there.
  */
 export function warmContactPicker(): void {
-  if (Platform.OS === 'web') return;
-  void loadContacts().catch(() => {
-    // A failure here is not worth reporting — pickContact() will hit the same
-    // problem and has somewhere to put the message.
-  });
+  warmContacts();
 }
 
 export async function pickContact(): Promise<PickContactOutcome> {
@@ -151,28 +133,32 @@ export async function pickContact(): Promise<PickContactOutcome> {
      * The permission is now requested, by the user's decision on 2026-09-14
      * after the cost was put to them. READ_CONTACTS is out of app.json's
      * `blockedPermissions`, iOS carries an NSContactsUsageDescription, and two
-     * things follow that are NOT optional:
+     * things followed that were NOT optional:
      *
-     *   1. The published privacy policy still says "Yieldd never reads your
-     *      contact list, and the app does not ask for contacts permission".
-     *      That is now false and has to be rewritten. See PENDING #62.
+     *   1. The published privacy policy had to be rewritten, because it said
+     *      the app asks for no contacts permission. Done 2026-09-15 (PENDING
+     *      #62), and rewritten again on 2026-09-17 when saving a lead turned
+     *      out to need the same permission — see the Contacts bullet in
+     *      app/(web)/privacy.tsx, which is now the only description of both.
      *   2. Play treats contacts as a sensitive permission and will ask for a
-     *      justification at review.
+     *      justification at review. The Data Safety form is still unfilled.
      *
      * Refusal is handled as a first-class outcome rather than an error: someone
      * who says no has not hit a fault, they have made a choice, and the typed
      * fields behind this button still work perfectly.
+     *
+     * The request itself moved to lib/contactsAccess.ts on 2026-09-17, when
+     * saving a lead turned out to need the same permission for a different
+     * reason. The wording is unchanged; only its home is.
      */
-    const permission = await Contacts.requestPermissionsAsync();
-    if (!permission.granted) {
-      return {
-        ok: false,
-        reason: 'unsupported',
-        message: permission.canAskAgain
-          ? 'Allow contacts access to pick someone, or type the number in.'
-          : 'Contacts access is off for Yieldd. Turn it on in Settings, or type the number in.',
-      };
+    const access = await requestContactsAccess({
+      action: 'pick someone',
+      fallback: 'or type the number in',
+    });
+    if (!access.granted) {
+      return { ok: false, reason: 'unsupported', message: access.message };
     }
+
     const timedOut = Symbol('timedOut');
     const picked = await Promise.race([
       Contacts.presentContactPickerAsync(),
@@ -215,8 +201,18 @@ export async function pickContact(): Promise<PickContactOutcome> {
      * expo-contacts resolves ACTION_PICK by taking the chosen id and calling
      * getContactById, which queries the whole ContactsContract.Data table
      * rather than the single URI the pick granted. That query is what needs
-     * READ_CONTACTS, which this app deliberately does not hold — see the note
-     * on permissions above, which is still correct about not adding it.
+     * READ_CONTACTS.
+     *
+     * ⚠️ This comment used to end "which this app deliberately does not hold —
+     * see the note on permissions above, which is still correct about not
+     * adding it". Both halves were false from 2026-09-14 onward: the app does
+     * hold it, and the note above says so. A stale comment that contradicts the
+     * code fifty lines above it is exactly what let PENDING #41 survive review
+     * for a week, so it is corrected here rather than left to be read again.
+     *
+     * The branch below still earns its place. The permission can be revoked
+     * from Settings between the request and the read, and a refused query
+     * genuinely is a different event from a picker that would not open.
      */
     const message = String((err as Error)?.message ?? err);
     const afterPick = /permission|denied|SecurityException|getContactById|READ_CONTACTS/i.test(message);

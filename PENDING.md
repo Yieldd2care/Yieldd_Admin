@@ -41,7 +41,7 @@ Full diagnosis for each is in its numbered section below.
 | 38 | Invite reps from the phone's contacts | `[x]` done 2026-09-14 — **that "no permission" note was wrong, see 60**: the picker opens without one but reading the chosen contact needs READ_CONTACTS. It is now requested, which is what created 62 |
 | 39 | Lock icon and explanation on paid features | `[x]` done 2026-09-12 — `lib/plan.ts`; no price and no pay button, asserted in `verify:plan` |
 | 40 | "Needs a note" ignores voice notes | `[x]` done 2026-09-15 — a voice note clears the flag. **The filter keeps its label, "Needs a note"** — renaming it was the other option and was NOT chosen. Five sites: one shared helper on the device, plus `event_stats` and `event_set_stats` |
-| 41 | Save-to-contacts icon does nothing | `[ ]` cause unknown, needs a device log |
+| 41 | Save-to-contacts icon does nothing | `[x]` done 2026-09-17 — Android's `presentFormAsync` throws unless the app already holds READ_CONTACTS. It is requested now, and the privacy policy was rewritten in the same commit. **Still to test on a device** |
 | 42 | Show the captured card in the list; make lead details editable | `[x]` done 2026-09-12 — card shown in list and whole on the lead; edit form sends only what moved |
 
 **Reported 2026-09-14 — not started**
@@ -599,18 +599,118 @@ lead a voice note and expects 6, in both the single-event and the across-events 
 
 ---
 
-### 41. The save-to-contacts icon does nothing — reported 2026-09-11 `[ ]`
+### 41. The save-to-contacts icon does nothing — reported 2026-09-11 `[x]` done 2026-09-17
 
 **Reported:** the contact icon does not work on the Leads screen, on the home screen's lead
 section, or when a lead is opened.
 
-This is **not** the old stub problem from 16, which was fixed on 2026-09-02. The button is wired:
-[components/app/LeadRow.tsx:95](components/app/LeadRow.tsx#L95) calls a real `saveToContacts()`.
-It also is **not** the SDK 57 import trap, which is already handled —
-[lib/contacts.ts:3](lib/contacts.ts#L3) correctly imports from `expo-contacts/legacy`.
+**The cause: on Android, `presentFormAsync` refuses to open unless the app is already holding
+READ_CONTACTS, and it will not ask for it.**
 
-So it is failing at runtime for some other reason, and failing silently. Needs reproducing on a
-device with the log open before anything is changed.
+The old comment in [lib/contacts.ts](lib/contacts.ts) said the opposite — "no permission request,
+deliberately", reasoning that the system's own new-contact screen does the writing, so neither
+platform needs the app to hold contacts access. That is true of iOS and false of Android, and the
+false half is the whole bug. Three lines of the installed package settle it:
+
+| Where | What it does |
+|---|---|
+| `expo-contacts/android/.../ContactsModule.kt:297-298` | `presentFormAsync` calls `ensureReadPermission()` as its **first** statement, before the in-progress guard and before it looks at the contact |
+| `ContactsModule.kt:722-727` | `ensureReadPermission` only **checks**. It never prompts. It throws `MissingPermissionException("Missing android.permission.READ_CONTACTS permission")` |
+| `expo-contacts/ios/ContactsModule.swift:93-97` | the iOS `presentFormAsync` has no permission check of any kind — iOS was never broken |
+
+That throw landed in the catch, came back as a generic `reason: 'error'`, and the rep read
+"That didn't open your contacts" while the real reason went nowhere but a `__DEV__`
+`console.warn`. **It worked for anyone who had already used "Pick from my contacts" on the invite
+screen (60), because they were already holding the permission — which is what made it look
+intermittent rather than broken.**
+
+⚠️ **Confirmed from the native source, not from a device log.** No Android device or emulator was
+attached to the machine this was fixed on, and the decision was made to proceed on the source
+evidence rather than wait. The reproduction PENDING asked for has therefore *not* happened, and the
+device checks below are still open. What is proven is that the throw can no longer occur; what is
+not proven is that nothing else sits behind it.
+
+**What changed**
+
+- **The permission is requested on Android before the form is opened**, and a refusal comes back as
+  `reason: 'permission'` with a sentence that says what to do — a different sentence depending on
+  whether the phone will ask again or the rep has to go to Settings. iOS is deliberately left
+  alone: `CNContactViewController` genuinely needs nothing, and a prompt there would buy nobody
+  anything on a platform that treats contacts as sensitive.
+- **[lib/contactsAccess.ts](lib/contactsAccess.ts) is new, and is the only copy of the request.**
+  The invite screen's picker (60) already had a working one; rather than grow a second, the module
+  loader, the prefetch and the request moved into one file that both use.
+  [lib/contactPicker.ts](lib/contactPicker.ts) keeps `warmContactPicker()` under its old name, and
+  its two refusal sentences are reproduced word for word, so 60's behaviour is untouched.
+- **The comment that caused this is rewritten** in [lib/contacts.ts](lib/contacts.ts), naming
+  `ContactsModule.kt` line by line, so the next reader does not have to re-derive it.
+
+**Two further defects found while auditing the same path.** Both surfaced as the same generic
+"That didn't open your contacts" that hid this bug in the first place, and both now get a separate,
+truthful message:
+
+- **A double tap claimed a failure.** `presentFormAsync` throws
+  `ContactManipulationInProgressException` when a form is already in flight
+  (`ContactsModule.kt:300-302`, `ContactsModule.swift:95-97`). The form really was opening; only
+  the second tap failed. Not theoretical — reps spent a week learning this button does nothing, so
+  they tap it more than once.
+- **The native module can be poisoned for the life of the process.** `presentForm` assigns
+  `contactManipulationPromise` **before** `startActivityForResult` (`ContactsModule.kt:356-357`).
+  If that throws — an `ActivityNotFoundException` on a ROM with no `ACTION_INSERT` handler, or a
+  lost activity — the promise is never cleared and every later tap throws in-progress. The message
+  now says to close and reopen Yieldd, which is genuinely the only way out.
+
+No in-flight flag was added on the JS side, deliberately: a flag gets stuck the moment a rep
+backgrounds the app from the contacts screen, and a stuck flag is a silently dead button — the
+exact failure this whole item is about.
+
+**iPhone now takes one tap instead of two.** `presentFormAsync` was called with no `formOptions`,
+so iOS built the controller with `forUnknownContact:` — a details card carrying a "Create New
+Contact" button — rather than the editable form. `{ isNew: true }` is passed now. Android's Kotlin
+signature discards that argument, so it cannot affect the platform the bug was on.
+
+**What the privacy policy now says.** [app/(web)/privacy.tsx](app/(web)/privacy.tsx) said, in
+published text on yieldd.co, that saving a lead to your phone book "needs no permission at all".
+Requesting the permission would have made that false, so it was rewritten **in the same commit** —
+the mistake that turned 62 into a release blocker. The Contacts bullet now says: on an Android
+phone both features ask; Android will not open its new-contact screen for us without contacts
+access, so we ask first; on an iPhone the same screen opens with no permission and we do not ask;
+**saving a lead reads nothing at all**, it only hands the phone details you captured yourself;
+Yieldd never reads the rest of your contact list and never uploads or stores it; refuse and
+everything else still works.
+
+**Play Data Safety — still yours, and now slightly bigger.** READ_CONTACTS needs no new manifest
+entry (60 put it there), so no new data type is introduced. But **the form has never been filled in
+at all** — it is open in 43a and in 62's tail — and it now has to describe two features that ask
+for contacts rather than one.
+
+**Three notes elsewhere in this file are now stale and were deliberately left alone**, to avoid
+sweeping up another session's work in a file being edited concurrently:
+
+- **line 495** — "'permission at all' stays true, and the Play Data Safety form (27) is untouched"
+- **line 1709** — "The Data Safety form must agree — do not declare a contacts permission we do not carry"
+- **item 62's body**, which still reads `[ ]` **BLOCKS RELEASE** and quotes policy wording that is
+  no longer in the file, while its table row at the top says `[x]` done 2026-09-15
+
+**Still to check on a device**, on both platforms if possible:
+
+| Case | Expected |
+|---|---|
+| Android, permission never granted | a prompt, then the prefilled form |
+| Android, refused once | "Allow contacts access to open your contacts, or add the number by hand." Tapping again re-prompts |
+| Android, refused permanently | the Settings sentence, not the allow sentence |
+| Android, granted | the contact form, prefilled |
+| Android, tapped twice quickly | the form opens once, and the second tap does not claim a failure |
+| iPhone | the editable new-contact form, with no contacts prompt at all |
+| After either | the icon turns green and reads "Saved" (`markSavedToContacts`, [stores/useLeadsStore.ts:499](stores/useLeadsStore.ts#L499)) |
+| The invite screen | "Pick from my contacts" still works — 60's request moved file |
+
+Green before committing: `npm run typecheck`, `verify:contacts`, `verify:privacy`,
+`verify:lead-edit`, and `npx expo export --platform web`. The export is not optional here:
+[lib/contacts.ts](lib/contacts.ts) is reachable from the public card page
+[app/c/[slug].tsx](app/c/[slug].tsx), and a top-level `expo-contacts` import would break the
+yieldd.co build. `verify:applinks` still fails on placeholder store identifiers — expected and
+unrelated.
 
 ---
 
