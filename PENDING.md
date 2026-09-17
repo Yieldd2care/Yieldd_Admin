@@ -49,7 +49,7 @@ Full diagnosis for each is in its numbered section below.
 | # | Item | Status |
 |---|---|---|
 | 45 | Web dashboard — Leads and Follow-ups showed nothing | `[x]` done 2026-09-14 |
-| 43 | Record where each lead was captured and show it | `[x]` done 2026-09-16 — address on the phone's lead screen, a free OpenStreetMap map on the dashboard. No key and no billing anywhere. **43a is open and is yours: the Play data safety form and the Apple privacy labels** |
+| 43 | Record where each lead was captured and show it | `[x]` done 2026-09-16 — address on the phone's lead screen, a free OpenStreetMap map on the dashboard. No key and no billing anywhere. The Play-required popup before the location permission shipped 2026-09-17 and was tried indoors on a handset. **All that is left is 43a, and it is yours: the Play data safety form and the Apple privacy labels** |
 | 46 | Pipeline chart bars should open the leads behind them | `[x]` done 2026-09-14 — leads list now takes a `status` param |
 | 47 | Export CSV carries no deal value | `[x]` done 2026-09-15 — two columns, Expected and Won, admin-only and **enforced in the database**. The report's premise was wrong in a way that mattered: the column already existed and was ungated, so a rep could tick it and export deal values |
 | 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
@@ -805,7 +805,7 @@ was written and again inside the rehearsal, after the ALTER.
 
 ---
 
-#### 43a. What you now have to declare on the two stores — NOT done, and only you can do it `[ ]`
+#### 43a. Two store forms to fill in — the only thing left on 43, and only you can do it `[ ]`
 
 This is the item-62 trap. That was a release blocker created by adding the contacts permission while
 the published policy still said the app never asked for one. The policy half is done here:
@@ -853,30 +853,31 @@ The iOS purpose string is already in [app.json](app.json) and names the feature 
 at it, which is what gets a vague one rejected. Android ships `ACCESS_BACKGROUND_LOCATION` in
 `blockedPermissions`, so the app cannot ask for background access and you must not declare it.
 
-**Testing is still to do, and we are doing it together — none of it has been run yet.** Nothing
-below has been confirmed on a real device; it is verified only by `npm run verify:capture-location`,
-the typecheck and the web and Android bundles, none of which can see a GPS radio or a permission
-dialog.
+**Testing on a handset is DONE — 2026-09-17.** Tried indoors on a real Android phone over Expo
+Go. The popup appears, the Android permission request follows it, and granting it works. The
+indoor case is the one this feature lives or dies on, and it passed.
 
-Test on a real handset **indoors**, which is the case this feature lives or dies on. A simulator
-always hands over a fix, so it proves nothing. Outdoors should give an address within a few seconds;
-indoors expect the last known fix, or no location at all — and the lead must save at exactly the
-same speed either way.
+Not every branch was exercised, and none of them blocks anything: **No thanks** was not pressed
+on a fresh install, and the profile card scanner was not checked for the popup staying away. Both
+are asserted in `npm run verify:capture-location`. Worth five minutes the next time there is a
+spare handset, but nothing is waiting on them.
 
-On the same handset, on a **fresh install**, the disclosure is worth five minutes because the two
-buttons fail in opposite directions and neither shows up in a simulator:
+### So the whole of 43 now comes down to two forms
 
-- Open the camera. The explanation appears once, *after* the camera permission and never stacked on
-  top of it, and Continue is what brings up the Android location popup.
-- Reinstall and press No thanks. No popup appears, then or ever, and reopening capture does not ask
-  again. Then turn location on in Android's own settings for Yieldd — the next capture should record
-  one without any popup or explanation reappearing.
-- A lead must save instantly in every one of those states, including with the explanation still on
-  screen behind you.
-- Scan your own card (the QR tab's card scanner, `mode=profile`) and confirm the explanation does
-  **not** appear there. That flow creates no lead and reads no location, and showing it there would
-  spend the one-time explanation on the wrong feature.
+Neither can be submitted from the codebase, and nothing else on 43 is open.
 
+| # | What | Where | Status |
+|---|---|---|---|
+| 1 | **Google Play — Data safety form** | Play Console → App content → Data safety | `[ ]` |
+| 2 | **Apple — App privacy labels** | App Store Connect → App Privacy | `[ ]` |
+
+The exact values for both are written out above — Play wants Approximate location, collected,
+not shared, optional, App functionality only; Apple wants Coarse Location under Data Linked to
+You, App Functionality, not used for tracking. Copy them across rather than re-deciding them.
+
+**Do not declare background location on either.** The app blocks the permission outright in
+app.json, so declaring it would describe behaviour that is not there — which is its own kind of
+wrong, and the same shape of mistake as item 62.
 ---
 
 ### 44. Admin imports an existing Excel list of leads — web dashboard only — reported 2026-09-14 `[ ]` PHASE 2
