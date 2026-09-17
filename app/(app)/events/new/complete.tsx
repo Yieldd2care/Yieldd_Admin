@@ -8,6 +8,7 @@ import { Button } from '../../../../components/ui/Button';
 import { NavyGlowBackdrop } from '../../../../components/app/NavyGlowBackdrop';
 import { CheckIcon, WifiIcon } from '../../../../components/ui/icons';
 import {
+  COST_KEYS,
   draftTotalCost,
   formatDateRange,
   useEventDraftStore,
@@ -51,6 +52,15 @@ export default function EventSetupCompleteScreen() {
   const name = saved?.name || draftName;
   const city = saved?.city || draftCity;
   const totalCost = saved ? saved.totalCost : draftTotalCost(costs);
+  /**
+   * Whether a cost was RECORDED, which the total cannot answer: `totalCost` is
+   * the generated column and reads 0 both for a show nobody costed and for one
+   * costed at zero on every line. A skipped step shows a dash; a deliberate zero
+   * shows ₹0, because that is a real answer the person gave.
+   */
+  const costRecorded = saved
+    ? saved.isPriced
+    : COST_KEYS.some((key) => costs[key] != null);
   const dates = saved
     ? formatDateRange(saved.startDate, saved.endDate)
     : formatDateRange(startDate, endDate);
@@ -71,7 +81,7 @@ export default function EventSetupCompleteScreen() {
     },
     {
       label: 'EVENT COST',
-      value: totalCost > 0 ? `₹${totalCost.toLocaleString('en-IN')}` : 'Not added yet',
+      value: costRecorded ? `₹${totalCost.toLocaleString('en-IN')}` : '-',
     },
   ];
 

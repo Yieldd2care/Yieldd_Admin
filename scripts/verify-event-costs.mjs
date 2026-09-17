@@ -293,12 +293,44 @@ ok(
 );
 ok(
   'the phone ROI cost row asks isPriced rather than an unreachable fallback',
-  phoneRoi.includes("isPriced ? formatPaise(stats.spendPaise) : 'Not added'") &&
+  phoneRoi.includes("isPriced ? formatPaise(stats.spendPaise) : '-'") &&
     !phoneRoi.includes("formatPaise(stats.spendPaise, { fallback: 'Not added' })")
 );
 ok(
   'the dashboard ROI screen tells a free show apart from an uncosted one',
   dashRoi.includes('This show is recorded as costing nothing') && dashRoi.includes('event.isPriced')
+);
+
+// ---------------------------------------------------------------------------
+// A blank cost reads as a dash, a typed zero reads as Rs 0.
+//
+// The user's rule, in their words: entering 0 means the line was free and must
+// show as 0; leaving it alone means nothing is known and must show as a dash.
+// Every screen that displays a cost has to obey both halves, and none of them
+// can decide it from the total - that is 0 either way.
+// ---------------------------------------------------------------------------
+
+const costDisplays = {
+  'the phone ROI cost row': 'app/(app)/events/[id]/roi.tsx',
+  'the phone event edit screen': 'app/(app)/events/[id]/edit.tsx',
+  'the dashboard events list': 'app/(dash)/events/index.tsx',
+  'the dashboard return table': 'app/(dash)/roi.tsx',
+  'the dashboard event overview': 'app/(dash)/events/[id]/index.tsx',
+  'the wizard summary screen': 'app/(app)/events/new/complete.tsx',
+};
+
+for (const [label, file] of Object.entries(costDisplays)) {
+  const src = fsMod.readFileSync(file, 'utf8');
+  ok(`${label} shows a dash for a blank cost, not a stale label`, !src.includes("'Not added"));
+  ok(
+    `${label} decides on isPriced, never on the total being above zero`,
+    /isPriced|costRecorded/.test(src)
+  );
+}
+
+ok(
+  'the wizard summary no longer calls a genuinely free show "not added"',
+  fsMod.readFileSync('app/(app)/events/new/complete.tsx', 'utf8').includes('costRecorded')
 );
 
 console.log(failed ? `\n${failed} failed` : '\nall checks passed');

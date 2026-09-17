@@ -182,7 +182,7 @@ export default function EditEventScreen() {
                   which event it is editing. Nothing here keeps its own copy. */}
               <LinkRow
                 label="Event cost"
-                value={event ? formatPaise(event.totalCost * 100, { fallback: 'Not added' }) : undefined}
+                value={event ? (event.isPriced ? formatPaise(event.totalCost * 100) : '-') : undefined}
                 onPress={() => router.push({ pathname: '/(app)/events/new/cost', params: { eventId } })}
               />
               {/* Pro, both of them. The rows stay in place and carry the chip

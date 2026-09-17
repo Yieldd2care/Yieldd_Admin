@@ -222,7 +222,7 @@ export default function ROIDashboardScreen() {
               <Typography className="text-[12.5px] text-slate">Event cost</Typography>
               <View className="flex-row items-center gap-2">
                 <Typography className="text-[15px] font-bold text-navy">
-                  {isPriced ? formatPaise(stats.spendPaise) : 'Not added'}
+                  {isPriced ? formatPaise(stats.spendPaise) : '-'}
                 </Typography>
                 <Typography className="text-[12px] font-bold text-gold">Edit</Typography>
               </View>

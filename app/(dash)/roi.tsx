@@ -255,7 +255,7 @@ export default function DashPortfolioRoi() {
                 <Typography className="text-[13px] font-semibold text-navy">
                   {/* totalCost is rupees; formatPaise wants paise. Generated with
                       coalesce, so an uncosted event reads 0, not null. */}
-                  {e.isPriced ? formatPaise(e.totalCost * 100) : 'Not added'}
+                  {e.isPriced ? formatPaise(e.totalCost * 100) : '-'}
                 </Typography>,
                 <Typography className="text-[12.5px] text-slate">
                   {new Date(e.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}

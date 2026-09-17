@@ -180,7 +180,7 @@ export default function DashEventDashboard() {
           // Event.totalCost is rupees; formatPaise wants paise. It is generated
           // with coalesce, so it is 0 for an uncosted event rather than null —
           // isPriced is what separates "free" from "not filled in".
-          value={event.isPriced ? formatPaise(event.totalCost * 100) : 'Not added'}
+          value={event.isPriced ? formatPaise(event.totalCost * 100) : '-'}
           sub={
             event.isPriced
               ? 'Across seven cost lines'
