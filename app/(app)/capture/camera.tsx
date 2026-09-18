@@ -3,6 +3,7 @@ import { Image, Linking, Platform, Pressable, View, useWindowDimensions } from '
 import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Typography } from '../../../components/ui/Typography';
 import { CheckIcon, CloseIcon, FlashIcon, ImageIcon, KeyboardIcon } from '../../../components/ui/icons';
@@ -12,6 +13,15 @@ import { persistCapture } from '../../../lib/captureFiles';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { primeCaptureLocation } from '../../../lib/location';
 import { CaptureLocationNotice } from '../../../components/capture/CaptureLocationNotice';
+
+/**
+ * Gap kept between the control row and the bottom of the usable screen.
+ *
+ * Paired with the 64 floor where it is used, never alone: the floor is the old
+ * fixed pb-16, so a phone whose navigation bar is small keeps exactly the
+ * spacing it has today and only a tall bar pushes the row up.
+ */
+const CONTROLS_BOTTOM_GAP = 32;
 
 export default function CameraScreen() {
   const [flashOn, setFlashOn] = useState(false);
@@ -45,6 +55,12 @@ export default function CameraScreen() {
   // The guide box is a fixed size in dp; the crop needs to know how much
   // of the frame that box covers, which depends on the screen it is on.
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  /**
+   * Up here with the other hooks, and it has to be: the permission-denied
+   * branch below returns early, so reading this any lower would make it a
+   * conditional hook on exactly the path that branch takes.
+   */
+  const insets = useSafeAreaInsets();
   const setImageUri = useCaptureDraftStore((s) => s.setImageUri);
   /**
    * Read back, not just written. The rep photographs the front and the screen
@@ -411,10 +427,24 @@ export default function CameraScreen() {
         </Pressable>
       </View>
 
-      {/* pb-16, not pb-11: the row was asked to sit a little higher off the
-          bottom edge now that the "Edit manually" text link above it is gone
-          and "Type it in" is the only way into the form from here. */}
-      <View className="absolute left-0 right-0 bottom-0 items-center gap-[22px] pb-16">
+      {/* The row is pinned to bottom-0, which on Android is the true bottom of
+          the display because SDK 57 draws edge-to-edge. The fixed pb-16 (64px)
+          this replaces left only ~16px above a 48px 3-button navigation bar,
+          which is what made the shutter awkward to reach on Android.
+
+          Math.max, not a bare sum, and that is the whole point: the floor is
+          that old 64px, so this can only ever move the row UP. A phone on
+          gesture navigation or an iPhone keeps the spacing it already has, and
+          only a tall navigation bar pushes the row clear of itself.
+
+          On the style prop rather than in the className because the class list
+          here must stay static from first render - see the note below and
+          AGENTS.md. A plain padding carries no CSS variables, so this is the
+          same thing TabBar.tsx does with insets.bottom. */}
+      <View
+        className="absolute left-0 right-0 bottom-0 items-center gap-[22px]"
+        style={{ paddingBottom: Math.max(insets.bottom + CONTROLS_BOTTOM_GAP, 64) }}
+      >
         {captureError ? (
           <View className="bg-navy/[0.72] border border-[#FF9B9B]/[0.45] rounded-full px-[18px] py-[9px] mx-8">
             <Typography className="text-[12.5px] font-semibold text-[#FF9B9B] text-center">
