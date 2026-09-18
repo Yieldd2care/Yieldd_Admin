@@ -1036,6 +1036,13 @@ Samsung's 3-button navigation specifically, which is taller than gesture navigat
 **Do not fix this blind.** It needs testing on that handset, or at least on an Android device with
 3-button navigation switched on.
 
+**`(tabs)/qr.tsx` is done — 2026-09-18.** It reserved only 32px against a bar that is
+`68 + insets.bottom` tall, so "Share your card" sat underneath it with no way to scroll to it.
+That screen now ends its content at `TAB_BAR_HEIGHT + insets.bottom + 12` and no longer scrolls
+at all — it is a fixed column whose QR takes the height left over. Confirmed on the handset
+on 2026-09-18: the button clears the bar, nothing scrolls, and the email sits inside the card.
+The other six screens are untouched.
+
 ---
 
 ### 36. No confirmation that the front of the card was captured — reported 2026-09-11 `[ ]`
