@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { AuthPillInput } from '../components/auth/AuthPillInput';
 import { AuthLeftPanel } from '../components/auth/AuthLeftPanel';
 import { NavyGlowBackdrop } from '../components/app/NavyGlowBackdrop';
+import { KeyboardSafe } from '../components/app/KeyboardSafe';
 import { MailIcon } from '../components/ui/icons';
 import { useSessionStore } from '../stores/useSessionStore';
 import { nextRouteAfterAuth } from '../lib/auth/nextRoute';
@@ -194,14 +195,21 @@ export default function VerifyCodeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
-      <ScrollView
-        contentContainerClassName="flex-grow justify-center px-8 py-10"
-        bounces={false}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {body}
-      </ScrollView>
+      {/* The code field autofocuses, so the keyboard is already up when this
+          screen arrives — it needs the wrapper more than most (#69). The
+          content container is left exactly as it was: `flex-grow justify-center`
+          directly on the container grows to the content's own height, so unlike
+          a `flex-1` child it has no unreachable-top problem. */}
+      <KeyboardSafe>
+        <ScrollView
+          contentContainerClassName="flex-grow justify-center px-8 py-10"
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {body}
+        </ScrollView>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

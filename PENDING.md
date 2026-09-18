@@ -77,6 +77,7 @@ Full diagnosis for each is in its numbered section below.
 | 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[x]` done 2026-09-18 — viewing scope got its **own non-persisted store** (`useLeadScopeStore`), not `useCurrentEventStore` and not the dashboard's `useEventSelectionStore`: narrowing the list must never move where the next card is filed, and not persisting it is what keeps the tab opening on every lead. All-events mode groups the list under per-show headings. **Tested on a handset by the user the same day — capture still files into the show being worked in** |
 | 66 | A voice note plays once, then the button stops working until the lead is reopened | `[x]` done 2026-09-18 — the playhead, not the audio: a finished player sits at the end of the file and `play()` there is over before it starts. The press is now a three-state decision in `lib/voicePlayback.ts` — **finished rewinds, paused resumes** — and the bar and the icon read from the same decision. The player is not rebuilt. Confirmed on a handset by the user the same day |
 | 67 | Home's counters and the Leads tab now count different things | `[ ]` — created by 65, decide whether tapping a Home figure should narrow the leads list to match it |
+| 69 | Sign-in: the keyboard covers the boxes you are typing into, and the screen will not scroll | `[x]` done 2026-09-18 — **two faults, and the reported one is a flexbox bug not a keyboard bug**: `flex-1` inside a `flex-grow` scroll container capped the content at the viewport, so there was nothing to scroll, ever. The sweep found 8 more screens. All 16 now go through one wrapper, asserted by `npm run verify:keyboard`. **Confirmed on an Android handset by the user the same day** |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -186,6 +187,162 @@ links to these same pages, and the Play data safety form has to match them word 
 ---
 
 ## Open
+
+### 69. The keyboard covers what you are typing, and the screen will not scroll — reported 2026-09-18, BUILT 2026-09-18
+
+**Reported on an Android handset:** on the sign-in screen, typing into the email or password
+box leaves that box behind the phone's keyboard, and the screen will not scroll up to reveal
+it. Asked for at the same time: sweep the rest of the app for the same fault.
+
+The sweep is most of this item. The app already has one shared wrapper,
+[components/app/KeyboardSafe.tsx](components/app/KeyboardSafe.tsx), whose whole job is this —
+and **five screens had quietly stopped using it**, each hand-rolling its own copy with a
+different Android setting, the reported sign-in screen among them. Nothing checked that a
+screen with a text field was wrapped, which is how it drifted through three separate rounds
+of work on these same screens without anyone noticing.
+
+---
+
+#### The reported screen was two faults, and the one that was reported is not a keyboard bug
+
+**Fault 1 — `behavior="height"` on Android.** Of the three `KeyboardAvoidingView` modes,
+`height` is the only one that measures against an `_initialFrameHeight` captured at first
+layout and never recomputed, so it freezes when the keyboard changes size — the emoji panel,
+the predictive-text bar. It was also not what the app's own shared wrapper used.
+
+**Fault 2 — the screen genuinely could not scroll at all.** This is the literal complaint
+("not scrolling"), and it is flexbox, not the keyboard:
+
+```tsx
+<ScrollView contentContainerClassName="flex-grow" ...>
+  <View className="flex-1 justify-center">   {/* the whole form */}
+```
+
+`flex-1` is `flexGrow:1 flexShrink:1 flexBasis:0`. A `flexBasis:0` child adds nothing to its
+container's intrinsic height, so the scroll content container resolved to **exactly the
+viewport height** and the ScrollView had nothing to scroll, ever. The form then overflowed
+that capped box, `justify-center` spilled it equally above and below, and a ScrollView cannot
+scroll above offset 0 — so the top was permanently unreachable. Shrinking the viewport with
+the keyboard made it worse.
+
+The fix is one word, `flex-1` → `flex-grow`: `flexGrow:1` with React Native's default
+`flexShrink:0` and `flexBasis:auto`, so the block is `max(content, available)`. It still
+centres when there is room — #33a put that centring there on purpose and it is not reverted —
+and grows the scroller when there is not. Deliberately `flex-grow` and not Tailwind's newer
+`grow` alias, because `flex-grow` is used four lines above it in the same file and is
+therefore known to compile under this NativeWind setup.
+
+**Write this one down.** "The screen will not scroll" reads as a keyboard fault and is a
+`flex-1`-inside-`flex-grow` trap. It is expensive to rediscover, and the same shape is one
+careless edit away on any centred form.
+
+#### Why every screen now passes `behavior="padding"`, including Android
+
+`KeyboardSafe` used to pass `undefined` on Android, on the reasoning that
+`softwareKeyboardLayoutMode` defaults to `resize` so the window shrinks by itself. Expo SDK 57
+forces Android edge-to-edge, where the window is laid out behind the keyboard and no longer
+reliably shrinks — and `undefined` renders a plain View that adjusts nothing. React Native
+0.86 ships edge-to-edge fixes, but its release notes do not say whether the root view still
+resizes, and that cannot be settled from a desk.
+
+**It does not have to be, because `padding` is right under either answer.** The inset is
+`max(frame.y + frame.height - keyboardScreenY, 0)`, measured from the wrapper's own layout
+rectangle:
+
+- **Window did not resize** — the frame still runs under the keyboard and the subtraction is
+  exactly the overlap. The enclosing `SafeAreaView` already reserved `insets.bottom` and the
+  frame starts below it, so the navigation bar is not counted twice.
+- **Window did resize** — layout reports the reduced height while the keyboard is still in
+  full-screen coordinates, the subtraction goes negative, and the clamp makes it 0. Nothing is
+  added. **No double-adjust**, which was the stated reason for avoiding `height` originally.
+
+**iOS does not change at all** — it was already `padding`. Only Android moves, from "do
+nothing" to "do the right amount". That is the main reason this is a safe change to make
+across sixteen screens at once.
+
+**No new dependency.** `react-native-keyboard-controller` is the usual recommendation for
+edge-to-edge Android and would be more robust, but it **is not in Expo Go**, and this project
+has no `expo-dev-client` and an EAS build still blocked on a Yieldd-owned Expo account. Adding
+it would have made this untestable. Staying on the built-in component is what keeps it
+checkable on a handset this week.
+
+#### What else the sweep found
+
+| Fault | Screens |
+|---|---|
+| Hand-rolled `KeyboardAvoidingView`, `behavior="height"` on Android | sign-in, [complete-profile](app/(app)/onboarding/complete-profile.tsx), [whatsapp-template](app/(app)/settings/whatsapp-template.tsx), [email-template](app/(app)/settings/email-template.tsx) |
+| No wrapper of any kind | [forgot-password](app/(auth)/forgot-password.tsx), [reset-password](app/auth/reset-password.tsx), [verify-code](app/verify-code.tsx) |
+| **Save button outside the wrapper** — broken on iPhone too | [leads/edit](app/(app)/leads/edit.tsx), [events/new/templates](app/(app)/events/new/templates.tsx) |
+| Search field over a list with no `keyboardShouldPersistTaps` | [(tabs)/leads](app/(app)/(tabs)/leads.tsx) |
+
+The last three of those four rows were **not Android-only**. The two stray footers hid Save
+behind the keyboard on iPhone as well, and they are the exact mistake `KeyboardSafe`'s own
+docblock warns about in its opening sentence. On the leads tab the default
+`keyboardShouldPersistTaps="never"` meant the first tap on a result was spent dismissing the
+keyboard and never reached the row — which reads as a dead list, not as a dismissal.
+
+The three template screens are the ones **#14 fixed on 2026-09-02**, by copying
+complete-profile's pattern — which already carried `height`. So #14's fix propagated the wrong
+Android setting to three more screens, and `KeyboardSafe` was written later with a different
+answer that nobody reconciled. Two contradictory Android strategies in one codebase is
+precisely what the new check exists to prevent.
+
+#### Deliberately not changed
+
+- **`app.json` keeps `softwareKeyboardLayoutMode` at its default `resize`.** Expo suggests
+  `pan` for bottom-tab apps, but `pan` disables the window resize that the form screens may be
+  relying on, and it is a global switch with the widest blast radius in the app. If the custom
+  `TabBar` turns out to float above the keyboard, hide it on `keyboardDidShow` instead.
+- **[AuthFormWeb.tsx](components/auth/AuthFormWeb.tsx) and the whole web dashboard.** In a
+  browser the soft keyboard is the browser's problem and `KeyboardAvoidingView` is inert — its
+  `Keyboard` events never fire there. The website's sign-in keeps its own two-column layout.
+- **The leads tab is exempt from the wrapper, with the reason written into the file.** Padding
+  the bottom of that screen would shrink the results list at the moment the rep wants to read
+  it, and the search box sits in a fixed header well above the keyboard. What it needed was the
+  persist-taps prop, which it now has.
+- **`Modal` overlays after `</KeyboardSafe>` are fine and stay where they are**
+  (`CaptureLocationNotice`, `PhoneChoiceSheet`). A Modal portals to its own window, so it has
+  no layout in that tree. The check knows the difference by following the import and looking
+  for a `<Modal`, rather than keeping a list of component names that would go stale.
+
+#### `npm run verify:keyboard`
+
+New, [scripts/verify-keyboard.mjs](scripts/verify-keyboard.mjs). Three rules, each one a bug
+that actually shipped: a screen with a text field is wrapped; nothing but `KeyboardSafe.tsx`
+imports `KeyboardAvoidingView`; no JSX sits between `</KeyboardSafe>` and `</SafeAreaView>`.
+An exemption needs a written reason on the same line, so it has to be argued rather than
+dropped in.
+
+**Each of the three rules was tested by reintroducing the bug and watching it fail**, not just
+by watching a green run — including the `behavior="padding"` guard. Worth knowing: the first
+attempt at that test silently proved nothing, because the `sed` anchor did not match the file
+it was editing, so the rule never saw a broken file and "passed" for the wrong reason.
+
+**It asserts structure and cannot open a keyboard.** A green run is not a tested screen, and
+the script prints that on every run so nobody mistakes the two.
+
+#### Verified
+
+**Confirmed on an Android handset by the user, 2026-09-18**, the same day it was reported —
+which settles the one thing the reasoning above could not: under SDK 57's edge-to-edge,
+`behavior="padding"` is the correct Android setting, and it does not double-adjust. Every
+screen goes through the single wrapper, so that one result covers all sixteen.
+
+Before that, the served Metro bundle was checked rather than assumed: the fixed class is in
+it, and `behavior: "height"` appears **zero** times anywhere in the app while
+`behavior: "padding"` appears **exactly once** — the shared wrapper. Worth keeping as a habit;
+a running Metro will happily serve a stale bundle and still answer HTTP 200.
+
+Still worth a look when someone is next on an **iPhone**: lead edit and the event wizard's
+templates step. Those two had their Save button outside the wrapper, so they were broken on
+iOS as well, and iOS is the only place a mis-applied `padding` could show as a regression —
+everything else there is byte-for-byte what it was.
+
+[reset-password](app/auth/reset-password.tsx) is the one screen here that **cannot** be checked
+on a phone today: the emailed link opens in a browser even on a handset, by design. It becomes
+a real phone screen the moment App Links ship, which is why it was fixed rather than skipped.
+
+---
 
 ### 63. Only the gold circle starts a voice note — reported 2026-09-17, DONE 2026-09-17
 

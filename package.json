@@ -104,7 +104,8 @@
     "verify:referral": "node scripts/verify-referral.mjs",
     "verify:extra-photo": "node --env-file=.env scripts/verify-extra-photo.mjs",
     "verify:otp": "node --env-file=.env scripts/verify-otp-signup.mjs",
-    "verify:voice-replay": "node scripts/verify-voice-replay.mjs"
+    "verify:voice-replay": "node scripts/verify-voice-replay.mjs",
+    "verify:keyboard": "node scripts/verify-keyboard.mjs"
   },
   "private": true
 }

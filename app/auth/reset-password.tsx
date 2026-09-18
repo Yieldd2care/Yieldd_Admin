@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -7,6 +7,7 @@ import { Typography } from '../../components/ui/Typography';
 import { Button } from '../../components/ui/Button';
 import { AuthPillInput } from '../../components/auth/AuthPillInput';
 import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
+import { KeyboardSafe } from '../../components/app/KeyboardSafe';
 import { CheckIcon } from '../../components/ui/icons';
 import { MIN_PASSWORD } from '../../components/auth/useAuthForm';
 import { hasRecoverySession, setNewPassword } from '../../lib/auth/passwordReset';
@@ -164,7 +165,24 @@ export default function ResetPasswordScreen() {
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
-      <View className="flex-1 px-8 justify-center">
+      {/*
+        Two password fields and a Save button stacked below the middle of the
+        screen, so the keyboard covered the lower half with nothing to scroll
+        (#69). Only this branch changes — the checking, done and expired states
+        above have no input on them.
+
+        Note this route is reached from the emailed link, which opens in a
+        BROWSER even on a phone (see the note on forgot-password), so this is
+        the one screen in #69 that cannot be checked on a handset today. It
+        becomes a real phone screen the moment App Links ship.
+      */}
+      <KeyboardSafe>
+        <ScrollView
+          contentContainerClassName="flex-grow justify-center px-8 py-10"
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <Typography className="text-[26px] font-extrabold text-white tracking-[-0.01em]">
           Set a new password
         </Typography>
@@ -226,7 +244,8 @@ export default function ResetPasswordScreen() {
         <Pressable onPress={() => router.replace('/(auth)')} className="mt-7 self-center">
           <Typography className="text-[13.5px] font-semibold text-white/[0.75]">Cancel</Typography>
         </Pressable>
-      </View>
+        </ScrollView>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

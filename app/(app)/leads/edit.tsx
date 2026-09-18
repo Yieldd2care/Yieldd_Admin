@@ -335,8 +335,11 @@ export default function EditLeadScreen() {
             </View>
           ) : null}
         </ScrollView>
-      </KeyboardSafe>
 
+      {/* Inside KeyboardSafe, not after it (#69). Lifting the fields and
+          leaving the Save button underneath the keyboard solves half the
+          problem — which is the first thing KeyboardSafe's own docblock says.
+          This was wrong on iPhone too, not only Android. */}
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
         {/*
           The shadow is present in both branches and only its alpha changes.
@@ -359,6 +362,7 @@ export default function EditLeadScreen() {
           </Typography>
         </Pressable>
       </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

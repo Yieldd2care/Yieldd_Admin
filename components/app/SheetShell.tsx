@@ -17,8 +17,12 @@ interface Props {
  *
  * Three parts, and all three are needed:
  *
- *   - `KeyboardSafe` lifts the sheet clear of the keyboard on iOS. Android
- *     resizes the window itself, so the sheet rises with it.
+ *   - `KeyboardSafe` lifts the sheet clear of the keyboard, on both platforms.
+ *     It used to do nothing on Android, on the assumption that the window
+ *     resizes itself; SDK 57's edge-to-edge broke that, and the reasoning now
+ *     lives in KeyboardSafe's own docblock. The padding is applied inside this
+ *     component's background, so the dim overlay stays full-bleed and only the
+ *     white sheet rises.
  *   - The sheet is capped at 88% of the screen and scrolls inside that. A sheet
  *     taller than the space left above the keyboard cannot be lifted into view;
  *     it has to scroll.

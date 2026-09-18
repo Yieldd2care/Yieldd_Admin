@@ -1,12 +1,4 @@
-import {
-  Image,
-  KeyboardAvoidingView,
-  Linking,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
+import { Image, Linking, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
@@ -18,6 +10,7 @@ import { AuthPillInput } from './AuthPillInput';
 import { AuthTabs, type AuthMode } from './AuthTabs';
 import { GoogleButton } from './GoogleButton';
 import { NavyGlowBackdrop } from '../app/NavyGlowBackdrop';
+import { KeyboardSafe } from '../app/KeyboardSafe';
 import { MIN_PASSWORD, type AuthFormState } from './useAuthForm';
 
 /**
@@ -44,7 +37,7 @@ export function AuthFormNative(form: AuthFormState) {
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
       <RadialGlow color="#F4B000" size={280} style={{ bottom: -190, right: -90 }} />
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardSafe>
         <ScrollView
           contentContainerClassName="flex-grow"
           bounces={false}
@@ -57,12 +50,27 @@ export function AuthFormNative(form: AuthFormState) {
 
             Since #33a the create tab is a single email box, so a top-aligned
             stack left a large empty band above the footer and the lockup sat
-            high and lonely. `flex-1 justify-center` inside the flex-grow
+            high and lonely. `flex-grow justify-center` inside the flex-grow
             content container spreads that space evenly above and below, which
             is what drops the logo down. The footer keeps its own `mt-auto` and
-            stays pinned to the bottom.
+            stays pinned to the bottom — a sibling with flexGrow:1 eats the free
+            space first, so the auto margin has nothing left to absorb and the
+            footer simply follows this block.
+
+            **`flex-grow`, never `flex-1` (#69).** `flex-1` is
+            flexGrow:1 flexShrink:1 flexBasis:0, and a flexBasis:0 child adds
+            nothing to its container's intrinsic height — so the scroll content
+            container resolved to exactly the viewport and the ScrollView had
+            nothing to scroll, ever. The form then overflowed this capped box,
+            justify-center spilled it equally top and bottom, and a ScrollView
+            cannot scroll above offset 0, so the top was unreachable. With the
+            keyboard up that is the reported bug: the password box sits behind
+            the keyboard and the screen will not scroll to it. `flex-grow`
+            leaves flexShrink at RN's default 0 and flexBasis at auto, so this
+            block is max(content, available) — it still centres when there is
+            room, and grows the scroller when there is not.
           */}
-          <View className="flex-1 justify-center">
+          <View className="flex-grow justify-center">
           <MotiView
             from={{ opacity: 0, translateY: -10 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -223,7 +231,7 @@ export function AuthFormNative(form: AuthFormState) {
             </Pressable>
           ) : null}
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

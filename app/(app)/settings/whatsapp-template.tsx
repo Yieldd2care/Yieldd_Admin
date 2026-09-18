@@ -1,7 +1,8 @@
-import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
+import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 import { MessageTemplateManager } from '../../../components/app/MessageTemplateManager';
 
 export default function WhatsAppTemplateScreen() {
@@ -10,10 +11,7 @@ export default function WhatsAppTemplateScreen() {
       <ScreenHeader title="WhatsApp template" />
       {/* See MessageTemplateManager for why both of these are needed: the
           keyboard covered the Save row, and its first tap was being eaten. */}
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardSafe>
         <ScrollView
           contentContainerClassName="px-5 pt-[6px] pb-10"
           keyboardShouldPersistTaps="handled"
@@ -25,7 +23,7 @@ export default function WhatsAppTemplateScreen() {
             addLabel="Add a WhatsApp template"
           />
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

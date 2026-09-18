@@ -211,7 +211,9 @@ export default function MessageTemplatesScreen() {
           </Typography>
         ) : null}
         </ScrollView>
-      </KeyboardSafe>
+      {/* Inside KeyboardSafe, not after it (#69). Both message boxes are
+          multiline, so this footer is exactly what the keyboard covers, and it
+          was outside the wrapper on iPhone as well as Android. */}
       <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6 items-center gap-3">
         <Button
           label={isSaving ? 'Saving…' : editingOne ? 'Save follow-up' : 'Use these defaults'}
@@ -225,6 +227,7 @@ export default function MessageTemplatesScreen() {
           </Pressable>
         )}
       </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -7,6 +7,7 @@ import { Typography } from '../../components/ui/Typography';
 import { Button } from '../../components/ui/Button';
 import { AuthPillInput } from '../../components/auth/AuthPillInput';
 import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
+import { KeyboardSafe } from '../../components/app/KeyboardSafe';
 import { MailIcon } from '../../components/ui/icons';
 import { requestPasswordReset } from '../../lib/auth/passwordReset';
 
@@ -43,7 +44,21 @@ export default function ForgotPasswordScreen() {
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
 
-      <View className="flex-1 px-8 justify-center">
+      {/*
+        A ScrollView rather than a plain centred View (#69). The Send button
+        sits below the field, so on a short Android screen the keyboard reached
+        it first and there was nothing to scroll. `flex-grow justify-center` on
+        the content container keeps the centred look exactly as it was whenever
+        the content fits, and lets it scroll when it does not — the same shape
+        complete-profile and verify-code already use.
+      */}
+      <KeyboardSafe>
+        <ScrollView
+          contentContainerClassName="flex-grow justify-center px-8 py-10"
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         {sent ? (
           <View className="items-center">
             <View className="w-[68px] h-[68px] rounded-full bg-gold items-center justify-center">
@@ -131,8 +146,13 @@ export default function ForgotPasswordScreen() {
             </Pressable>
           </>
         )}
-      </View>
-      {Platform.OS === 'web' ? null : <View className="h-4" />}
+        </ScrollView>
+        {/* Inside the wrapper, not after it, so this rides up with the content
+            when the keyboard pushes it — and so nothing sits between
+            </KeyboardSafe> and </SafeAreaView>, which is what verify:keyboard
+            checks for. */}
+        {Platform.OS === 'web' ? null : <View className="h-4" />}
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }

@@ -302,6 +302,17 @@ export default function LeadListScreen() {
           </View>
         </View>
 
+        {/*
+          verify:keyboard exempt searching a list is not filling in a form
+          — the field stays put and the results move.
+
+          KeyboardSafe pads the bottom of the screen to lift a form clear of
+          the keyboard. Here that would shrink the results list at exactly the
+          moment the rep wants to read it, and the search box is in a fixed
+          header well above the keyboard anyway. What this screen needed was
+          `keyboardShouldPersistTaps` on the list below, so the first tap on a
+          result opens it instead of being spent dismissing the keyboard (#69).
+        */}
         <View className="flex-row items-center gap-2 bg-surface rounded-full px-[18px] py-3 mt-4">
           <SearchIcon />
           <RNTextInput
@@ -336,8 +347,13 @@ export default function LeadListScreen() {
         </ScrollView>
       </View>
 
+      {/* `keyboardShouldPersistTaps` matters here because of the search box in
+          the header above: the default is `never`, so with the keyboard open
+          the first tap on a lead row is spent dismissing the keyboard and never
+          reaches the row. It reads as a dead list, not as a dismissal (#69). */}
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerClassName="px-5 pt-4 gap-3 flex-grow"
         refreshControl={
           <RefreshControl

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -7,6 +7,7 @@ import { Typography } from '../../../components/ui/Typography';
 import { Button } from '../../../components/ui/Button';
 import { AuthPillInput } from '../../../components/auth/AuthPillInput';
 import { NavyGlowBackdrop } from '../../../components/app/NavyGlowBackdrop';
+import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { nextRouteAfterAuth } from '../../../lib/auth/nextRoute';
@@ -146,10 +147,7 @@ export default function CompleteProfileScreen() {
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
       <NavyGlowBackdrop />
       <RadialGlow color="#F4B000" size={280} style={{ bottom: -190, right: -90 }} />
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardSafe>
         <ScrollView
           contentContainerClassName="flex-grow justify-center items-center px-8 py-10"
           bounces={false}
@@ -243,7 +241,7 @@ export default function CompleteProfileScreen() {
           </Typography>
           </CenterColumn>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 }
