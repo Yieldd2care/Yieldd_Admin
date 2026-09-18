@@ -647,6 +647,68 @@ Changed: [app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx),
 ---
 
 ### 67. Home's counters and the Leads tab now count different things — created 2026-09-18 `[ ]`
+### 68. Lead detail — a long address runs outside the white card — reported 2026-09-18 `[x]`
+
+**Fixed 2026-09-18.** `FieldRow` now gives the value `flex-1 min-w-0 text-right` with a
+`gap-[12px]` and `items-start` on the row, so every value wraps inside the card instead of
+running past it; the line height is set in `style` because `Typography` prepends its variant's
+own leading. The Consent row at :543, which repeats the same classes by hand, was kept in step.
+The user chose right-aligned wrapping over a stacked row. Nothing is truncated.
+
+The real cause was narrower than first written below: the value had no `flex-1`, so it sized to
+its own intrinsic width rather than the row's remaining width. The same fix was already working
+at [app/(app)/events/new/complete.tsx:110-121](app/(app)/events/new/complete.tsx#L110-L121) —
+`FieldRow` was simply never brought in line with it.
+
+**Also added in the same pass:** a `Branch address` row. `branchAddress` was captured in the
+edit form and shown on the web dashboard, but never displayed on the phone — a rep could type
+one and never see it again.
+
+**Reported on an iPhone.** On the lead detail screen the address spills past the right edge of the
+white card it sits in, instead of wrapping inside it.
+
+**The cause is `FieldRow`, not the address.**
+[app/(app)/leads/[id].tsx:714-721](app/(app)/leads/[id].tsx#L714-L721) is:
+
+```tsx
+<View className="flex-row justify-between py-[10px] border-b border-section">
+  <Typography className="text-[12.5px] text-slate">{k}</Typography>
+  <Typography className="text-[12.5px] font-bold text-navy">{v}</Typography>
+</View>
+```
+
+Neither child can shrink. **React Native defaults `flexShrink` to 0, unlike the web's 1** — that
+difference is the whole bug, and it is why this looks fine in a browser preview and wrong on a
+handset. The value `Typography` therefore claims its full intrinsic width, refuses to wrap, and
+runs out of the row and past the card's padding.
+
+**So it is not an address problem.** `FieldRow` renders Company, Designation, Website, Landline,
+Address, every extra designation and every extra email (lines 557-563 and 540-542). The address
+is simply the first value long enough to show it. A long company name, a long URL or a work email
+at a long domain all overflow identically. There is exactly one definition of `FieldRow` in the
+codebase, so one fix covers every row on the screen.
+
+**The fix:** let the value take the remaining width and wrap — `flex-1` plus `text-right` on the
+value, and `shrink-0` on the label so the key stays on one line. Check the result against a
+two-line and a four-line address; a right-aligned wrapped address is the thing to look at, and if
+it reads badly the alternative is a stacked row (label above, value below) for long values only.
+Decide that by looking at it on a device, not in the abstract.
+
+**Do not fix it with `numberOfLines={1}` or an ellipsis.** The address is the reason the field
+exists — truncating it hides exactly what the rep opened the lead to read.
+
+**Check the other block on the same screen while you are there.** "Where this was captured"
+([app/(app)/leads/[id].tsx:615-625](app/(app)/leads/[id].tsx#L615-L625)) renders its line as a
+full-width `Typography` with no flex row, so it should already wrap correctly — confirm it does
+rather than assume, since the report says "the address" and that block holds one too.
+
+**Watch the NativeWind rule when editing these class lists.** Adding a pseudo-class or a
+variable-backed utility (`shadow-`, `scale-`, `ring-`, gradients, filters) to only one branch of a
+conditional className throws the bogus "Couldn't find a navigation context" red screen. `flex-1`
+and `shrink-0` carry no variables and are safe.
+
+---
+
 
 Created by 65, and flagged rather than fixed inside it because the fix is a product decision, not
 a bug fix.

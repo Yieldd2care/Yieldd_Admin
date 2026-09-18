@@ -540,9 +540,11 @@ export default function LeadDetailScreen() {
           {(lead.extraEmails ?? []).map((address, i) => (
             <FieldRow key={`email-${i}`} k={`Email ${i + 2}`} v={address} />
           ))}
-          <View className="flex-row justify-between py-[10px] border-b border-section">
-            <Typography className="text-[12.5px] text-slate">Consent</Typography>
-            <View className="flex-row items-center gap-[8px]">
+          {/* Hand-inlined rather than a FieldRow because the value carries a tick.
+              Keep its layout classes in step with FieldRow above. */}
+          <View className="flex-row justify-between items-start gap-[12px] py-[10px] border-b border-section">
+            <Typography className="text-[12.5px] text-slate shrink-0">Consent</Typography>
+            <View className="flex-row items-center justify-end gap-[8px] flex-1 min-w-0">
               {lead.consentGiven ? <CheckIcon size={14} color="#2E9C61" strokeWidth={2.5} /> : null}
               <Typography className="text-[12.5px] font-bold text-navy">
                 {lead.consentGiven ? 'Given' : 'Not given'}
@@ -561,6 +563,7 @@ export default function LeadDetailScreen() {
           {lead.companyWebsite ? <FieldRow k="Website" v={lead.companyWebsite} /> : null}
           {lead.companyLandline ? <FieldRow k="Landline" v={lead.companyLandline} /> : null}
           {lead.companyAddress ? <FieldRow k="Address" v={lead.companyAddress} /> : null}
+          {lead.branchAddress ? <FieldRow k="Branch address" v={lead.branchAddress} /> : null}
 
           {answered.length ? (
             <>
@@ -711,11 +714,27 @@ function ActionButton({
   );
 }
 
+/**
+ * `flex-1` on the value is the load-bearing part: without it the value sizes to
+ * its own intrinsic width rather than the row's remaining width, and a long
+ * address runs straight out of the white card. `gap` keeps the key and the
+ * value from touching, and `items-start` keeps the key at the top of a value
+ * that has wrapped to four lines.
+ *
+ * The line height is set here rather than with a `leading-` class because
+ * `Typography` always prepends its default variant's own leading; single-line
+ * rows never showed what that resolved to, wrapped ones would.
+ */
 function FieldRow({ k, v }: { k: string; v: string }) {
   return (
-    <View className="flex-row justify-between py-[10px] border-b border-section">
-      <Typography className="text-[12.5px] text-slate">{k}</Typography>
-      <Typography className="text-[12.5px] font-bold text-navy">{v}</Typography>
+    <View className="flex-row justify-between items-start gap-[12px] py-[10px] border-b border-section">
+      <Typography className="text-[12.5px] text-slate shrink-0">{k}</Typography>
+      <Typography
+        className="text-[12.5px] font-bold text-navy flex-1 min-w-0 text-right"
+        style={{ lineHeight: 18 }}
+      >
+        {v}
+      </Typography>
     </View>
   );
 }
