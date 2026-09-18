@@ -99,6 +99,7 @@
     "verify:lead-search": "node scripts/verify-lead-search.mjs",
     "verify:plan": "node scripts/verify-plan.mjs",
     "verify:lead-edit": "node scripts/verify-lead-edit.mjs",
+    "verify:lead-scope": "node scripts/verify-lead-scope.mjs",
     "verify:referral": "node scripts/verify-referral.mjs",
     "verify:extra-photo": "node --env-file=.env scripts/verify-extra-photo.mjs",
     "verify:otp": "node --env-file=.env scripts/verify-otp-signup.mjs"

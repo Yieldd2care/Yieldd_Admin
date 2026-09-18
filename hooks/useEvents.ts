@@ -14,6 +14,7 @@ import {
 import { useSessionStore } from '../stores/useSessionStore';
 import { useCurrentEventStore } from '../stores/useCurrentEventStore';
 import { useEventSelectionStore } from '../stores/useEventSelectionStore';
+import { useLeadScopeStore } from '../stores/useLeadScopeStore';
 import type { Event } from '../types/event';
 
 export const eventKeys = {
@@ -140,6 +141,48 @@ export function useEventSelection(): {
     isLoading,
     setSelection,
   };
+}
+
+/**
+ * Which event the leads list on the phone is showing.
+ *
+ * NOT `useCurrentEvent`, and the distinction is the whole point of the store
+ * behind this: that one decides where the NEXT captured card is filed, so
+ * narrowing the list to a show in March must not reach it. Looking something up
+ * changes what you see and nothing else.
+ *
+ * The stored id is resolved against the events this viewer can actually see. An
+ * id that no longer resolves — the event was deleted, or the rep was removed
+ * from it — reads as "all events" rather than as an empty list with no way
+ * back. Same rule `useEventSelection` follows, for the same reason. Nothing is
+ * written back from here, so if the event reappears (a refetch, an access
+ * change) the scope simply returns.
+ *
+ * Both the screen and `LeadScopeSheet` call this rather than each resolving the
+ * id themselves — otherwise the header could name one show while the sheet
+ * ticked another.
+ */
+export function useLeadScope(): {
+  events: Event[];
+  scopedEvent: Event | undefined;
+  isAll: boolean;
+  isLoading: boolean;
+  scopeToEvent: (id: string | null) => void;
+} {
+  const { data, isLoading } = useEvents();
+  // Read raw and derived below, never derived inside the selector — a selector
+  // that finds or filters builds a new value on every call and re-renders
+  // without end.
+  const scopedEventId = useLeadScopeStore((s) => s.scopedEventId);
+  const scopeToEvent = useLeadScopeStore((s) => s.scopeToEvent);
+
+  const events = useMemo(() => data ?? [], [data]);
+  const scopedEvent = useMemo(
+    () => (scopedEventId ? events.find((e) => e.id === scopedEventId) : undefined),
+    [events, scopedEventId]
+  );
+
+  return { events, scopedEvent, isAll: !scopedEvent, isLoading, scopeToEvent };
 }
 
 /**

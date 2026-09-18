@@ -74,8 +74,9 @@ Full diagnosis for each is in its numbered section below.
 |---|---|---|
 | 63 | The whole "Add a voice note" card should start the recording, not just the gold circle | `[x]` done 2026-09-17 |
 | 64 | Home's blue box — make all four figures open what they count | `[x]` done 2026-09-17 — **the WhatsApp cell stays and now counts real WhatsApp sends**, by decision the same day. Both copies of the box, Home and Leads |
-| 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[ ]` |
+| 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[x]` done 2026-09-18 — viewing scope got its **own non-persisted store** (`useLeadScopeStore`), not `useCurrentEventStore` and not the dashboard's `useEventSelectionStore`: narrowing the list must never move where the next card is filed, and not persisting it is what keeps the tab opening on every lead. All-events mode groups the list under per-show headings |
 | 66 | A voice note plays once, then the button stops working until the lead is reopened | `[ ]` |
+| 67 | Home's counters and the Leads tab now count different things | `[ ]` — created by 65, decide whether tapping a Home figure should narrow the leads list to match it |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -379,7 +380,7 @@ Changed on top of the above: [stores/useLeadsStore.ts](stores/useLeadsStore.ts),
 
 ---
 
-### 65. Leads are locked to one event, and the event name is decoration — reported 2026-09-17 `[ ]`
+### 65. Leads are locked to one event, and the event name is decoration — reported 2026-09-17, DONE 2026-09-18
 
 The leads tab header shows the current event and a chevron — "IITF · Mumbai ›" — and the list
 below is that event's leads only. The chevron is the complaint: it is a `Pressable` with **no
@@ -429,6 +430,81 @@ dependency on fetch order that nobody would think to check.
 `leads.capturedAt` is `created_at` on the row — there is no separate `captured_at` column on
 `leads` (the one in the schema belongs to `find_duplicate_lead`'s return type), so there is
 nothing to migrate.
+
+**Built 2026-09-18.** No new query and no migration, as expected — the predicate simply went.
+
+The store question resolved to **a fourth thing rather than either of the two candidates**:
+[stores/useLeadScopeStore.ts](stores/useLeadScopeStore.ts), holding one `scopedEventId`, and
+**not persisted**. Reusing `useEventSelectionStore` would have tied the phone's viewing scope to
+the dashboard's "which shows am I comparing" totals, which is the same collapse this item warns
+about one level removed. Persisting it would have broken requirement 1 on the second launch —
+a narrowing that survives a cold start is an invisible filter hiding leads days later, which is
+the complaint, not the fix. Its header comment now names all three "which event?" questions so
+the next person does not have to work the distinction out again.
+
+`useLeadScope()` in [hooks/useEvents.ts](hooks/useEvents.ts) resolves the id against the events
+the viewer can see, so a deleted event — or one a rep was removed from — reads as "all events"
+rather than stranding the tab on an empty list. The screen and the sheet both call it, so the
+header can never name one show while the sheet ticks another.
+
+The sheet is a sibling, [components/shared/LeadScopeSheet.tsx](components/shared/LeadScopeSheet.tsx),
+not a parameterised `EventPickerSheet`: closed shows are listed (the point of the item), there is
+an "All events" row, and the copy says *"Changes what this list shows. New cards still save to the
+show you are working in."* `EventPickerSheet` was touched only to take `eventDetailLine` from the
+new [lib/eventDisplay.ts](lib/eventDisplay.ts) instead of its own private copy — an import-only
+change, so the capture path is untouched.
+
+Two things beyond the three asked for, both because merging the shows made them necessary:
+
+- **The list is grouped under per-show headings** while the scope is all-events, flat once it is
+  narrowed. Without them a merged list gives no way to tell one show's leads from another's,
+  since a row never names its event. Each heading is a `Pressable` that narrows to that show.
+- **The counters box relabels** — "This event" becomes "All events". All four figures come off the
+  same array, so they became all-events figures the moment the predicate went; a label still
+  saying "This event" would be a wrong number with a confident caption.
+
+The sort and the grouping live in [lib/leadScope.ts](lib/leadScope.ts) rather than inline in the
+screen, so both can be checked without a renderer: `npm run verify:lead-scope`. Worth knowing —
+the first version of that script asserted the `Z` vs `+00:00` trap and **passed either way**,
+because the date-time prefix decides those comparisons long before the suffix is reached. The
+case that actually distinguishes a text sort from `Date.parse` is a **non-UTC offset**
+(`14:30+05:30` is 09:00Z but sorts above a `10:00Z` that came later), and that is what it asserts
+now.
+
+Not done, deliberately: Home's counters stay scoped to the current event, so tapping "22 pending"
+there can land on an all-events list showing more. The labels differ, so it is honest rather than
+wrong — see item 67.
+
+Changed: [app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx),
+[hooks/useEvents.ts](hooks/useEvents.ts),
+[components/shared/EventPickerSheet.tsx](components/shared/EventPickerSheet.tsx). Added:
+`stores/useLeadScopeStore.ts`, `components/shared/LeadScopeSheet.tsx`, `lib/eventDisplay.ts`,
+`lib/leadScope.ts`, `scripts/verify-lead-scope.mjs`.
+
+---
+
+### 67. Home's counters and the Leads tab now count different things — created 2026-09-18 `[ ]`
+
+Created by 65, and flagged rather than fixed inside it because the fix is a product decision, not
+a bug fix.
+
+Home's blue box is scoped to the current event and is correct that way — it is the "how is this
+show going" panel. The identical box on the Leads tab is now scoped to whatever the leads list is
+showing, which defaults to every event. So tapping "22 pending" on Home can land on a list whose
+own box says 60. Both numbers are right and both boxes say which scope they mean, so nothing is
+lying; they just answer different questions one tap apart.
+
+Two ways out, and it wants a decision rather than a guess:
+
+1. **Tapping a Home figure narrows the leads list to the current event**, so the number you
+   pressed is the number you land on. The mechanism already exists — a `scope` route param
+   applied and then cleared by exactly the effect that handles `filter` today
+   ([app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx), the `filterParam` effect). The
+   clearing is the load-bearing part: without it, the scope would silently re-apply days later.
+2. **Leave it.** The labels differ, and a rep who taps into the list is usually looking for a
+   person rather than auditing a figure.
+
+Do not "fix" this by scoping the Leads tab back to the current event. That is item 65 undone.
 
 ---
 

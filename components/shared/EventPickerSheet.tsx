@@ -6,7 +6,7 @@ import { Typography } from '../ui/Typography';
 import { CheckIcon, ChevronRightIcon } from '../ui/icons';
 import { useEvents } from '../../hooks/useEvents';
 import { useCurrentEventStore } from '../../stores/useCurrentEventStore';
-import { eventDayPosition, formatShortDateRange } from '../../lib/dates';
+import { eventDetailLine } from '../../lib/eventDisplay';
 import type { Event } from '../../types/event';
 
 /**
@@ -63,16 +63,6 @@ function orderForPicking(events: Event[], keepId: string | undefined): Event[] {
   return picked;
 }
 
-function detailFor(event: Event): string {
-  const day = eventDayPosition(event.startDate, event.endDate);
-  return [
-    event.city,
-    day?.isCurrent ? `Day ${day.dayNumber} of ${day.totalDays}` : formatShortDateRange(event.startDate, event.endDate),
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
-
 export function EventPickerSheet({ visible, onClose, currentEventId }: Props) {
   const { data } = useEvents();
   const selectEvent = useCurrentEventStore((s) => s.selectEvent);
@@ -110,7 +100,11 @@ export function EventPickerSheet({ visible, onClose, currentEventId }: Props) {
               <Pressable
                 onPress={() => {
                   onClose();
-                  router.push('/(app)/(tabs)/events');
+                  // `reset` clears any month/year filter left on that tab. It
+                  // stays mounted, so without this a rep who has no event to
+                  // capture into could land on a list narrowed to some month
+                  // and conclude the events are gone.
+                  router.push({ pathname: '/(app)/(tabs)/events', params: { reset: '1' } });
                 }}
                 className="bg-gold rounded-md px-4 py-3 items-center"
               >
@@ -152,7 +146,7 @@ export function EventPickerSheet({ visible, onClose, currentEventId }: Props) {
                         {event.name}
                       </Typography>
                       <Typography className="text-[11.5px] text-slate mt-[2px]" numberOfLines={1}>
-                        {detailFor(event)}
+                        {eventDetailLine(event)}
                       </Typography>
                     </View>
                     {event.status === 'live' ? (
@@ -168,7 +162,9 @@ export function EventPickerSheet({ visible, onClose, currentEventId }: Props) {
               <Pressable
                 onPress={() => {
                   onClose();
-                  router.push('/(app)/(tabs)/events');
+                  // Says "all", so it has to mean all — `reset` clears the
+                  // month/year filter the Events tab may still be holding.
+                  router.push({ pathname: '/(app)/(tabs)/events', params: { reset: '1' } });
                 }}
                 className="flex-row items-center justify-center gap-1 py-3"
               >
