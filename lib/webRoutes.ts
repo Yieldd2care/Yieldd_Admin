@@ -30,6 +30,10 @@ const EXACT: Record<string, string> = {
   // while someone is scanning it.
   '/qr': '/(dash)/card',
   '/follow-ups': '/(dash)/follow-ups',
+  // The phone's Reports tile opens a list of events to pick a report from. The
+  // dashboard's equivalent of "reports across every show" is the portfolio ROI
+  // page, which already has the picker built into it.
+  '/events/reports': '/(dash)/roi',
   '/settings/team': '/(dash)/team',
   '/settings/export': '/(dash)/export',
   '/settings/email-template': '/(dash)/templates',

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -256,15 +256,11 @@ export default function HomeScreen() {
           </Pressable>
           <Pressable
             onPress={() => {
-              // The plan is checked before the "no event yet" notice, so a Free
-              // rep is told the honest reason. Telling them to go and make an
-              // event first would send them off to earn a lock.
-              if (!gate('roi')) return;
-              if (!event) {
-                Alert.alert('No event yet', 'Reports appear once you have an event with leads in it.');
-                return;
-              }
-              router.push({ pathname: '/(app)/events/[id]/roi', params: { id: event.id } });
+              // Every event's report, not the current one's. Which event is
+              // selected up in the chip row decides where the next lead is
+              // filed; it has no business deciding which show you are allowed
+              // to look back at.
+              if (gate('roi')) router.push('/(app)/events/reports');
             }}
             className={`items-center gap-2 w-[80px] ${locked ? 'opacity-60' : ''}`}
           >

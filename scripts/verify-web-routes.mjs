@@ -78,6 +78,11 @@ eq('the event dashboard moves',
   webRedirectFor('/events/abc-123/dashboard'), '/(dash)/events/abc-123');
 eq('edit event keeps its id',
   webRedirectFor('/events/abc-123/edit'), '/(dash)/events/abc-123/edit');
+// The reports picker is not an event id. EXACT is checked first, so this can
+// never be read as /events/:id and sent to a dashboard for an event called
+// "reports".
+eq('the reports list goes to the portfolio return page',
+  webRedirectFor('/events/reports'), '/(dash)/roi');
 
 // --- the six-step wizard collapses onto one page --------------------------
 for (const step of ['', '/cost', '/fields', '/templates', '/invite', '/complete']) {
