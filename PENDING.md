@@ -74,7 +74,7 @@ Full diagnosis for each is in its numbered section below.
 |---|---|---|
 | 63 | The whole "Add a voice note" card should start the recording, not just the gold circle | `[x]` done 2026-09-17 |
 | 64 | Home's blue box — make all four figures open what they count | `[x]` done 2026-09-17 — **the WhatsApp cell stays and now counts real WhatsApp sends**, by decision the same day. Both copies of the box, Home and Leads |
-| 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[x]` done 2026-09-18 — viewing scope got its **own non-persisted store** (`useLeadScopeStore`), not `useCurrentEventStore` and not the dashboard's `useEventSelectionStore`: narrowing the list must never move where the next card is filed, and not persisting it is what keeps the tab opening on every lead. All-events mode groups the list under per-show headings |
+| 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[x]` done 2026-09-18 — viewing scope got its **own non-persisted store** (`useLeadScopeStore`), not `useCurrentEventStore` and not the dashboard's `useEventSelectionStore`: narrowing the list must never move where the next card is filed, and not persisting it is what keeps the tab opening on every lead. All-events mode groups the list under per-show headings. **Tested on a handset by the user the same day — capture still files into the show being worked in** |
 | 66 | A voice note plays once, then the button stops working until the lead is reopened | `[x]` done 2026-09-18 — the playhead, not the audio: a finished player sits at the end of the file and `play()` there is over before it starts. The press is now a three-state decision in `lib/voicePlayback.ts` — **finished rewinds, paused resumes** — and the bar and the icon read from the same decision. The player is not rebuilt. Confirmed on a handset by the user the same day |
 | 67 | Home's counters and the Leads tab now count different things | `[ ]` — created by 65, decide whether tapping a Home figure should narrow the leads list to match it |
 
@@ -432,6 +432,12 @@ dependency on fetch order that nobody would think to check.
 nothing to migrate.
 
 **Built 2026-09-18.** No new query and no migration, as expected — the predicate simply went.
+
+**Tested on a handset by the user, 2026-09-18, and working.** The check that mattered is the one
+the item warns about: with the list narrowed to another show, capturing a card still files it into
+the show the rep is working in. That was verified on the device rather than only by reading the
+code — the leads tab cannot be driven in a browser, because `(app)/(tabs)/leads` and
+`(dash)/leads` both claim `/leads` on web.
 
 The store question resolved to **a fourth thing rather than either of the two candidates**:
 [stores/useLeadScopeStore.ts](stores/useLeadScopeStore.ts), holding one `scopedEventId`, and
