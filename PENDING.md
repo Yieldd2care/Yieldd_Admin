@@ -75,7 +75,7 @@ Full diagnosis for each is in its numbered section below.
 | 63 | The whole "Add a voice note" card should start the recording, not just the gold circle | `[x]` done 2026-09-17 |
 | 64 | Home's blue box — make all four figures open what they count | `[x]` done 2026-09-17 — **the WhatsApp cell stays and now counts real WhatsApp sends**, by decision the same day. Both copies of the box, Home and Leads |
 | 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[x]` done 2026-09-18 — viewing scope got its **own non-persisted store** (`useLeadScopeStore`), not `useCurrentEventStore` and not the dashboard's `useEventSelectionStore`: narrowing the list must never move where the next card is filed, and not persisting it is what keeps the tab opening on every lead. All-events mode groups the list under per-show headings |
-| 66 | A voice note plays once, then the button stops working until the lead is reopened | `[x]` done 2026-09-18 — the playhead, not the audio: a finished player sits at the end of the file and `play()` there is over before it starts. The press is now a three-state decision in `lib/voicePlayback.ts` — **finished rewinds, paused resumes** — and the bar and the icon read from the same decision. The player is not rebuilt |
+| 66 | A voice note plays once, then the button stops working until the lead is reopened | `[x]` done 2026-09-18 — the playhead, not the audio: a finished player sits at the end of the file and `play()` there is over before it starts. The press is now a three-state decision in `lib/voicePlayback.ts` — **finished rewinds, paused resumes** — and the bar and the icon read from the same decision. The player is not rebuilt. Confirmed on a handset by the user the same day |
 | 67 | Home's counters and the Leads tab now count different things | `[ ]` — created by 65, decide whether tapping a Home figure should narrow the leads list to match it |
 
 **Parked for Phase 2 — decided 2026-09-14**
@@ -588,11 +588,9 @@ still mean several independent players, unchanged.
 boundary cases that would undo this: a pause half way must resume, and the final second of a
 playing note must not read as finished.
 
-**Not verified on a handset.** The four device checks were not run — no device was attached to this
-machine, and Metro was serving over LAN to the reporter's own phone. Metro was confirmed to be
-serving the fix (the bundle contains the new handler, with the `await` intact through
-transpilation), and the state machine is covered by the verify script, but pressing the button on a
-real phone is outstanding.
+**Verified on a handset by the user, 2026-09-18.** Played to the end and replayed, paused half way
+and resumed, left the screen mid-note and came back — all correct, with the bar and the icon
+following. Closed.
 
 ### 33. Sign-up rebuilt as steps, referral capture, and a first-run tutorial — reported 2026-09-11
 
