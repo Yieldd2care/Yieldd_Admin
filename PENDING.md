@@ -52,7 +52,7 @@ Full diagnosis for each is in its numbered section below.
 | 43 | Record where each lead was captured and show it | `[x]` done 2026-09-16 — address on the phone's lead screen, a free OpenStreetMap map on the dashboard. No key and no billing anywhere. The Play-required popup before the location permission shipped 2026-09-17 and was tried indoors on a handset. **All that is left is 43a, and it is yours: the Play data safety form and the Apple privacy labels** |
 | 46 | Pipeline chart bars should open the leads behind them | `[x]` done 2026-09-14 — leads list now takes a `status` param |
 | 47 | Export CSV carries no deal value | `[x]` done 2026-09-15 — two columns, Expected and Won, admin-only and **enforced in the database**. The report's premise was wrong in a way that mattered: the column already existed and was ungated, so a rep could tick it and export deal values |
-| 48 | Team — a column for cards scanned per rep | `[ ]` nothing counts card views yet; new write path |
+| 48 | Team — a column for cards scanned per rep | `[x]` done 2026-09-18 — shipped as **Viewers**, and it is card-link opens, **not QR scans**. The QR carries a vCard and never reaches a server, so a scan cannot be counted at all; the user chose to keep it that way rather than lose the offline guarantee |
 | 49 | "New template" is silent, and creates a default not a draft | `[x]` done 2026-09-15 — web dashboard only; `addNew` now selects the new row and opens its editor, and creates it with `is_default: false` |
 | 50 | Home — all-events analytics with an event picker | `[x]` done 2026-09-14 — `event_set_stats`; no cost-per-lead, ROI covers priced events only |
 | 51 | Clicking a lead should open it as a popup over the list | `[x]` done 2026-09-16 — `components/dash/LeadOverlay.tsx`; the overlay IS the route, so the URL still changes and browser back closes it |
@@ -1684,7 +1684,7 @@ duplicated the row silently.
 
 ---
 
-### 48. Team table has no "cards scanned" column — reported 2026-09-14 `[ ]`
+### 48. Team table has no "cards scanned" column — reported 2026-09-14, DONE 2026-09-18
 
 **Asked for:** the Team screen should show, per representative, how many people scanned their QR
 code / digital card — the column Habsy shows and this table does not.
@@ -1704,6 +1704,43 @@ this is a new write path before it is a new column:
   this feature and it needs writing before any SQL — see the anon-grant trap already documented for
   the card slug work.
 - Decide whether a rep reloading their own card counts. It should not.
+
+**Done 2026-09-18 — but read the next paragraph before believing the column.**
+
+**It does not count QR scans, and it never can while the QR is a vCard.** All four QR codes in
+the app encode a vCard, not a URL ([qr.tsx](<app/(app)/(tabs)/qr.tsx>),
+[card/edit.tsx](<app/(app)/card/edit.tsx>), [card/share.tsx](<app/(app)/card/share.tsx>),
+[(dash)/card.tsx](<app/(dash)/card.tsx>)). The scanning phone decodes that text itself and saves a
+contact without a single request leaving it — which is exactly why it works in a hall with no
+signal, and exactly why the scan is invisible to us. **The user was shown the trade-off on
+2026-09-18 and chose to keep the vCard**, so what ships counts people who opened the *link*
+(WhatsApp, SMS, email, share sheet, a pasted copy). A rep who only ever holds up their phone at a
+stand will read 0, correctly. The column is called **Viewers**, never "QR scans", and the caption
+on the panel says so.
+
+**And it is distinct people, not opens.** Also the user's choice. The row grain is one per
+(card, visitor, day), so repeat opens inside a day are discarded — a *total opens* figure cannot be
+reconstructed from this table later without a second migration and a gap.
+
+Shipped:
+- `public.card_views` + `record_card_view()` + `team_counts()`
+  ([20260918100000](supabase/migrations/20260918100000_card_views.sql)). `record_card_view` is the
+  **first thing `anon` has ever been allowed to write** in this database — as a `security definer`
+  RPC with no table grant at all, the shape `peek_invite` and `signup_conflict` already use, not an
+  insert policy.
+- The owner's own reloads are dropped, per the bullet above.
+- `?s=` on every link the app sends, so a WhatsApp open is distinguishable from a mailed one.
+  **Copy link is deliberately untagged** — that URL gets pasted into signatures and websites, where
+  a tag would mislabel every visitor for as long as it sat there.
+- The vCard now carries a `URL:` line back to `/c/{slug}?s=qr` on a published card. It does not
+  count the scan; it means a contact saved at a stand has a way back, and a tap on it later is
+  counted.
+- **`fetchTeam` no longer counts leads on the device.** It was selecting `captured_by` for every
+  lead in the organisation and reducing it in JavaScript, which PostgREST truncates at 1000 rows —
+  so the Leads column was already quietly a fraction on a busy organisation. Both counts are now
+  one server-side aggregate.
+- Proven by `npm run verify:card-views` (29 checks, including every `42501` a stranger must hit) and
+  by opening the real exported build in two separate browsers.
 
 ---
 
