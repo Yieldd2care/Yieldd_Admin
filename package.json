@@ -102,7 +102,8 @@
     "verify:lead-scope": "node scripts/verify-lead-scope.mjs",
     "verify:referral": "node scripts/verify-referral.mjs",
     "verify:extra-photo": "node --env-file=.env scripts/verify-extra-photo.mjs",
-    "verify:otp": "node --env-file=.env scripts/verify-otp-signup.mjs"
+    "verify:otp": "node --env-file=.env scripts/verify-otp-signup.mjs",
+    "verify:voice-replay": "node scripts/verify-voice-replay.mjs"
   },
   "private": true
 }

@@ -75,7 +75,7 @@ Full diagnosis for each is in its numbered section below.
 | 63 | The whole "Add a voice note" card should start the recording, not just the gold circle | `[x]` done 2026-09-17 |
 | 64 | Home's blue box — make all four figures open what they count | `[x]` done 2026-09-17 — **the WhatsApp cell stays and now counts real WhatsApp sends**, by decision the same day. Both copies of the box, Home and Leads |
 | 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[x]` done 2026-09-18 — viewing scope got its **own non-persisted store** (`useLeadScopeStore`), not `useCurrentEventStore` and not the dashboard's `useEventSelectionStore`: narrowing the list must never move where the next card is filed, and not persisting it is what keeps the tab opening on every lead. All-events mode groups the list under per-show headings |
-| 66 | A voice note plays once, then the button stops working until the lead is reopened | `[ ]` |
+| 66 | A voice note plays once, then the button stops working until the lead is reopened | `[x]` done 2026-09-18 — the playhead, not the audio: a finished player sits at the end of the file and `play()` there is over before it starts. The press is now a three-state decision in `lib/voicePlayback.ts` — **finished rewinds, paused resumes** — and the bar and the icon read from the same decision. The player is not rebuilt |
 | 67 | Home's counters and the Leads tab now count different things | `[ ]` — created by 65, decide whether tapping a Home figure should narrow the leads list to match it |
 
 **Parked for Phase 2 — decided 2026-09-14**
@@ -508,7 +508,7 @@ Do not "fix" this by scoping the Leads tab back to the current event. That is it
 
 ---
 
-### 66. A voice note can only be played once — reported 2026-09-17 `[ ]`
+### 66. A voice note can only be played once — DONE 2026-09-18
 
 **Reported, and reproduced by the user on a device.** Open a lead, play the voice note, let it
 finish. The play button then does nothing. The only way to hear it again is to go back to the list
@@ -546,6 +546,53 @@ that reason. Keep it that way: do not lift the player or its status into
 
 **Test on a device, not a simulator:** play to the end and press play again; pause half way and
 press play again; play, leave the screen mid-note, come back.
+
+---
+
+**What shipped.** The diagnosis above was right. The press handler was two states where it needed
+three, so the fix is a decision rather than a toggle:
+[lib/voicePlayback.ts](lib/voicePlayback.ts) exports `pressAction`, returning `pause`, `resume` or
+`restart`, and `restart` is the only one that seeks. `seekTo` returns a promise, so the card awaits
+it before calling `play()` — firing both in one tick plays from the end all over again. The player
+is never rebuilt and the signed URL is never re-fetched.
+
+**Which condition detects "finished", and why it is both.** `status.didJustFinish` first, falling
+back to the position having come within a quarter second of the duration while not playing. Both
+are needed, and which one actually fires depends on the platform. Every expo-audio status event
+carries a full status with `didJustFinish: false` overlaid with whatever that event changed, and
+`useAudioPlayerStatus` keeps the *last* event rather than merging them — so the flag survives only
+until the next event arrives:
+
+- **Android** emits it once on the transition into `STATE_ENDED` and then goes quiet, because the
+  `playing: false` that follows is suppressed as transient
+  (`BaseAudioPlayer.kt`, `onPlaybackStateChanged`). The flag stays true, so the flag is what fires.
+- **iOS** emits it from `AVPlayerItemDidPlayToEndTime`, but the periodic time observer fires when
+  playback stops and sends `currentTime` over a fresh status, which clears the flag
+  (`AudioPlayer.swift`, `registerTimeObserver`). There the position check is the only thing left.
+- **Web** maps it to `media.ended`, which is sticky until a seek.
+
+`didJustFinish` is trusted without checking `playing`, since a player claiming both has still
+reached the end. The position check has to require `!playing`, or the last quarter second of every
+note would read as finished while it was still playing — the icon would flip to a triangle early
+and a press just before the end would restart instead of pausing.
+
+**The bar and the icon come off the same decision.** The bar reads `progressRatio`, which returns 0
+once finished instead of staying full. The icon is now drawn from `pressAction(status) === 'pause'`
+rather than from `status.playing`, so it cannot disagree with what pressing it will do.
+
+**Still its own component.** The player and `useAudioPlayerStatus` stayed in `VoiceNoteCard`;
+nothing moved into [app/(app)/leads/[id].tsx](app/(app)/leads/[id].tsx). Several notes on one lead
+still mean several independent players, unchanged.
+
+`npm run verify:voice-replay` walks all three states and both detection shapes, including the
+boundary cases that would undo this: a pause half way must resume, and the final second of a
+playing note must not read as finished.
+
+**Not verified on a handset.** The four device checks were not run — no device was attached to this
+machine, and Metro was serving over LAN to the reporter's own phone. Metro was confirmed to be
+serving the fix (the bundle contains the new handler, with the `await` intact through
+transpilation), and the state machine is covered by the verify script, but pressing the button on a
+real phone is outstanding.
 
 ### 33. Sign-up rebuilt as steps, referral capture, and a first-run tutorial — reported 2026-09-11
 

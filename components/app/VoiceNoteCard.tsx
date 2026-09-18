@@ -6,6 +6,7 @@ import { Typography } from '../ui/Typography';
 import { MicIcon, PlayIcon } from '../ui/icons';
 import { signedUrl, VOICE_NOTES_BUCKET } from '../../lib/api/storage';
 import { requestTranscription, type VoiceNote } from '../../lib/api/voiceNotes';
+import { pressAction, progressRatio } from '../../lib/voicePlayback';
 
 /**
  * A recorded note on the lead detail screen.
@@ -35,6 +36,27 @@ export function VoiceNoteCard({ note }: { note: VoiceNote }) {
   const duration = note.durationSeconds ?? 0;
   const label = `${String(Math.floor(duration / 60)).padStart(2, '0')}:${String(duration % 60).padStart(2, '0')}`;
 
+  /**
+   * Three states, not two: a note paused half way must resume, and one that
+   * has run to the end must rewind first. `seekTo` is async, so the seek has
+   * to land before `play()` — firing both in one tick plays from the end all
+   * over again, which is the bug this replaced.
+   */
+  const action = pressAction(status);
+
+  const togglePlayback = async () => {
+    if (action === 'pause') {
+      player.pause();
+      return;
+    }
+    try {
+      if (action === 'restart') await player.seekTo(0);
+      player.play();
+    } catch {
+      // The card can unmount mid-seek. A released player has nothing to play.
+    }
+  };
+
   const retry = async () => {
     setRetrying(true);
     await requestTranscription(note.id);
@@ -51,11 +73,13 @@ export function VoiceNoteCard({ note }: { note: VoiceNote }) {
 
       <View className="flex-row items-center gap-3">
         <Pressable
-          onPress={() => (status.playing ? player.pause() : player.play())}
+          onPress={() => void togglePlayback()}
           disabled={!url}
           className={`w-[38px] h-[38px] rounded-full bg-navy items-center justify-center ${url ? '' : 'opacity-40'}`}
         >
-          {status.playing ? (
+          {/* Tied to the action rather than to `playing`, so the icon cannot
+              disagree with what pressing it will do. */}
+          {action === 'pause' ? (
             <View className="w-[11px] h-[11px] rounded-[2px] bg-white" />
           ) : (
             <PlayIcon size={13} />
@@ -67,11 +91,7 @@ export function VoiceNoteCard({ note }: { note: VoiceNote }) {
         <View className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
           <View
             className="h-full rounded-full bg-gold"
-            style={{
-              width: `${
-                status.duration ? Math.min(100, (status.currentTime / status.duration) * 100) : 0
-              }%`,
-            }}
+            style={{ width: `${progressRatio(status) * 100}%` }}
           />
         </View>
       </View>
