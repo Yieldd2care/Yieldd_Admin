@@ -97,6 +97,7 @@
     "verify:card-photo": "node scripts/verify-card-photo.mjs",
     "verify:capture-location": "node scripts/verify-capture-location.mjs",
     "verify:lead-search": "node scripts/verify-lead-search.mjs",
+    "verify:event-filter": "node scripts/verify-event-filter.mjs",
     "verify:plan": "node scripts/verify-plan.mjs",
     "verify:lead-edit": "node scripts/verify-lead-edit.mjs",
     "verify:lead-scope": "node scripts/verify-lead-scope.mjs",

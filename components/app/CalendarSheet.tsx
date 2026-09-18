@@ -3,12 +3,9 @@ import { Modal, Pressable, View } from 'react-native';
 
 import { Typography } from '../ui/Typography';
 import { ChevronLeftIcon, ChevronRightIcon } from '../ui/icons';
+import { MONTH_NAMES } from '../../lib/dates';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
