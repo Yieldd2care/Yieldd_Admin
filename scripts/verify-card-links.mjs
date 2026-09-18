@@ -153,6 +153,18 @@ eq(
 
 // --- the share URL ---
 eq('the card URL is built from the base', links.cardShareUrl('priya-sharma'), 'https://yieldd.co/c/priya-sharma');
+// The bare form is what a person reads off a screen and retypes, so it stays
+// clean; the tag only rides along on a link the app sends itself.
+eq(
+  'a shared link carries where it was sent from',
+  links.cardShareUrl('priya-sharma', 'wa'),
+  'https://yieldd.co/c/priya-sharma?s=wa'
+);
+eq(
+  'an undefined source leaves the URL alone',
+  links.cardShareUrl('priya-sharma', undefined),
+  'https://yieldd.co/c/priya-sharma'
+);
 eq('the scheme is dropped for display', links.displayUrl('https://yieldd.co/c/priya-sharma'), 'yieldd.co/c/priya-sharma');
 
 console.log(failed ? `\n${failed} CHECK(S) FAILED` : '\nall checks passed');

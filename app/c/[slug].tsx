@@ -12,7 +12,7 @@ import {
   ContactsIcon,
   WhatsAppIcon,
 } from '../../components/ui/icons';
-import { fetchPublicCard, type BusinessCard } from '../../lib/api/businessCard';
+import { fetchPublicCard, recordCardView, type BusinessCard } from '../../lib/api/businessCard';
 import { linkedinUrl, mailtoUrl, safeExternalUrl, telUrl } from '../../lib/cardLinks';
 import { whatsappDigits } from '../../lib/messageText';
 import { buildVCard } from '../../lib/vcard';
@@ -39,7 +39,9 @@ type State =
   | { kind: 'error' };
 
 export default function PublicCardScreen() {
-  const { slug } = useLocalSearchParams<{ slug?: string }>();
+  // `s` is where the link was handed over — see cardShareUrl. Absent for a
+  // typed or read-off-a-screen URL, which counts as a plain link.
+  const { slug, s: source } = useLocalSearchParams<{ slug?: string; s?: string }>();
   const [state, setState] = useState<State>({ kind: 'loading' });
 
   useEffect(() => {
@@ -59,6 +61,21 @@ export default function PublicCardScreen() {
       cancelled = true;
     };
   }, [slug]);
+
+  /*
+    Somebody reached this card. Fire-and-forget, and web-only: the native render
+    of this route is the owner looking at their own page, and the RPC drops the
+    owner's own visits anyway.
+
+    It runs off the settled slug rather than inside the fetch, so a re-render
+    cannot double-count and a failed fetch records nothing. The page renders
+    identically whether or not this lands.
+  */
+  const foundSlug = state.kind === 'found' ? state.card.slug : null;
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !foundSlug) return;
+    void recordCardView(foundSlug, typeof source === 'string' ? source : null);
+  }, [foundSlug, source]);
 
   // The browser tab, and what a shared link shows in a chat preview.
   useEffect(() => {

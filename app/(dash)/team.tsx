@@ -16,7 +16,10 @@ import { inviteMessage, type Invite } from '../../lib/api/invites';
 import { whatsappUrl } from '../../lib/messageText';
 import { describePhoneProblem } from '../../lib/phone';
 
-const COLS = [1.3, 1.3, 1, 0.55, 0.6, 0.45, 0.75];
+// Member · Email · Phone · Role · Status · Leads · Viewers · action.
+// A missing weight silently falls back to flex:1 in Row, so this array and the
+// header cells have to be extended together.
+const COLS = [1.3, 1.3, 1, 0.55, 0.6, 0.45, 0.6, 0.75];
 
 type DraftRow = { name: string; phone: string };
 
@@ -370,14 +373,18 @@ export default function DashTeam() {
             title="Members"
             right={
               <Typography className="text-[12px] text-slate font-medium">
-                A lead count opens what that person captured today
+                A lead count opens today&apos;s captures · Viewers is card-link opens, never QR scans
               </Typography>
             }
           />
         </View>
         {members?.length ? (
           <>
-            <Row cols={COLS} header cells={['Member', 'Email', 'Phone', 'Role', 'Status', 'Leads', '']} />
+            <Row
+              cols={COLS}
+              header
+              cells={['Member', 'Email', 'Phone', 'Role', 'Status', 'Leads', 'Viewers', '']}
+            />
             {members.map((m, i) => (
               <Row
                 key={m.id}
@@ -423,6 +430,18 @@ export default function DashTeam() {
                   ) : (
                     <Typography className="text-[14px] font-bold text-navy">-</Typography>
                   ),
+                  /*
+                    Distinct people who opened their card link — NOT QR scans.
+                    The QR carries a vCard, which the scanning phone decodes on
+                    its own without a request ever reaching us, so a rep who
+                    only holds up their phone at a stand sits at 0 here. That is
+                    the truth about what can be measured, not a fault.
+
+                    Nothing to press: there is no per-visitor screen behind this
+                    and deliberately nothing recorded that would justify one.
+                    Same null-is-a-dash rule as the lead count beside it.
+                  */
+                  <Typography className="text-[14px] font-bold text-navy">{m.viewerCount ?? '-'}</Typography>,
                   isAdmin && !m.isSelf ? (
                     <Pressable
                       onPress={() =>

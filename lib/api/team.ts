@@ -25,6 +25,15 @@ export type TeamMember = {
   isSelf: boolean;
   /** Leads they have captured. Only an admin can see anyone else's. */
   leadCount: number | null;
+  /**
+   * Distinct people who opened their card link. Only an admin can see anyone
+   * else's.
+   *
+   * Not QR scans — the QR carries a vCard, which the scanning phone decodes on
+   * its own without ever reaching us. Someone who only hands out the QR at a
+   * stand shows zero here, and that is correct rather than broken.
+   */
+  viewerCount: number | null;
 };
 
 export type PendingInvite = {
@@ -60,15 +69,27 @@ export function relativeLabel(iso: string, prefix = 'Invited'): string {
   return relative ? `${prefix} ${relative}` : prefix;
 }
 
+type CountsRow = {
+  profile_id: string;
+  lead_count: number | null;
+  viewer_count: number | null;
+};
+
 /**
  * Everyone in the organisation.
  *
- * Lead counts are a second query rather than an embed, because
- * `leads_select_own_or_admin` means a rep can only see their own — so for a rep
- * the count is `null` (unknown) rather than `0`, which would read as "Arjun has
- * captured nothing" when it actually means "you are not allowed to know".
+ * Both counts come from `team_counts()` rather than being worked out here. The
+ * lead count used to be: select `captured_by` for every lead in the
+ * organisation and reduce it in JavaScript — which PostgREST silently truncates
+ * at 1000 rows, so the number was quietly a fraction of the truth on any busy
+ * organisation. Counting in SQL is the only way a total can be trusted when RLS
+ * decides what the client is allowed to see.
+ *
+ * The RPC returns a row per member and nulls the columns the caller may not
+ * read, so `null` still means "you are not allowed to know" rather than "they
+ * have captured nothing" — which is what the dash on the Team table draws.
  */
-export async function fetchTeam(currentUserId: string, isAdmin: boolean): Promise<TeamMember[]> {
+export async function fetchTeam(currentUserId: string, _isAdmin: boolean): Promise<TeamMember[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -77,21 +98,19 @@ export async function fetchTeam(currentUserId: string, isAdmin: boolean): Promis
   if (error) throw error;
   const rows = data as ProfileRow[];
 
-  let counts = new Map<string, number>();
-  if (isAdmin) {
-    const { data: leadRows } = await supabase.from('leads').select('captured_by');
-    if (leadRows) {
-      counts = leadRows.reduce((map, row) => {
-        const id = (row as { captured_by: string }).captured_by;
-        map.set(id, (map.get(id) ?? 0) + 1);
-        return map;
-      }, new Map<string, number>());
-    }
+  const { data: countRows, error: countsError } = await supabase.rpc('team_counts');
+  if (countsError) throw countsError;
+
+  const counts = new Map<string, CountsRow>();
+  for (const row of (countRows ?? []) as CountsRow[]) {
+    counts.set(row.profile_id, row);
   }
 
   return rows.map((row) => {
     const isSelf = row.id === currentUserId;
-    const leadCount = isAdmin || isSelf ? (counts.get(row.id) ?? 0) : null;
+    const seen = counts.get(row.id);
+    const leadCount = seen?.lead_count ?? null;
+    const viewerCount = seen?.viewer_count ?? null;
 
     return {
       id: row.id,
@@ -105,6 +124,7 @@ export async function fetchTeam(currentUserId: string, isAdmin: boolean): Promis
       designation: row.designation,
       isSelf,
       leadCount,
+      viewerCount,
     };
   });
 }

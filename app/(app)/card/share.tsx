@@ -10,7 +10,7 @@ import { Typography } from '../../../components/ui/Typography';
 import { GridIcon, LinkIcon, MailIcon, MessageIcon, MoreIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { useMyCard } from '../../../hooks/useBusinessCard';
 import { useSessionStore } from '../../../stores/useSessionStore';
-import { cardShareUrl, linkedinUrl } from '../../../lib/cardLinks';
+import { cardShareUrl, linkedinUrl, type CardLinkSource } from '../../../lib/cardLinks';
 import { buildVCard } from '../../../lib/vcard';
 import { base64ToBytes } from '../../../lib/files';
 
@@ -85,9 +85,18 @@ export default function ShareSheetScreen() {
   const qrRef = useRef<{ toDataURL: (cb: (data: string) => void) => void } | null>(null);
 
   const shareUrl = card ? cardShareUrl(card.slug) : null;
-  const shareMessage = shareUrl
-    ? `Here's my digital business card: ${shareUrl}`
-    : '';
+
+  /**
+   * The same card, tagged with how it was sent, so the Team screen can tell an
+   * open that came from WhatsApp from one that came from a mail.
+   *
+   * Copy link deliberately does NOT get a tag: that URL leaves here and gets
+   * pasted into a signature or a website, where `?s=copy` would go on
+   * mislabelling every visitor for as long as it sits there. Untagged opens are
+   * recorded as a plain link, which is the honest answer.
+   */
+  const messageFor = (source: CardLinkSource) =>
+    card ? `Here's my digital business card: ${cardShareUrl(card.slug, source)}` : '';
 
   const vCardValue = card
     ? buildVCard({
@@ -99,6 +108,10 @@ export default function ShareSheetScreen() {
         secondaryEmail: card.secondaryEmail ?? undefined,
         website: card.websiteUrl ?? undefined,
         linkedin: linkedinUrl(card.linkedinUrl) ?? undefined,
+        // Only on a live card — a link to a page that shows nothing is worse
+        // than no link. This is also the one trace a QR scan leaves: the saved
+        // contact gets a way back, and a tap on it later is counted as 'qr'.
+        cardUrl: card.isPublished ? cardShareUrl(card.slug, 'qr') : undefined,
         address: card.officeAddress ?? undefined,
       })
     : buildVCard({ name: user?.name ?? 'Your card' });
@@ -161,13 +174,13 @@ export default function ShareSheetScreen() {
     }
   };
 
-  const openWhatsApp = () => Linking.openURL(`https://wa.me/?text=${encodeURIComponent(shareMessage)}`);
-  const openMessages = () => Linking.openURL(`sms:?body=${encodeURIComponent(shareMessage)}`);
+  const openWhatsApp = () => Linking.openURL(`https://wa.me/?text=${encodeURIComponent(messageFor('wa'))}`);
+  const openMessages = () => Linking.openURL(`sms:?body=${encodeURIComponent(messageFor('sms'))}`);
   const openEmail = () =>
     Linking.openURL(
-      `mailto:?subject=${encodeURIComponent(card?.displayName ? `${card.displayName}'s business card` : 'My business card')}&body=${encodeURIComponent(shareMessage)}`
+      `mailto:?subject=${encodeURIComponent(card?.displayName ? `${card.displayName}'s business card` : 'My business card')}&body=${encodeURIComponent(messageFor('email'))}`
     );
-  const openMore = () => Share.share({ message: shareMessage });
+  const openMore = () => Share.share({ message: messageFor('share') });
 
   return (
     <Pressable className="flex-1 bg-navy/[0.55]" onPress={() => router.back()}>

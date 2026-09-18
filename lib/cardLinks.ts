@@ -19,8 +19,23 @@ export const CARD_BASE_URL = (
   process.env.EXPO_PUBLIC_CARD_BASE_URL ?? 'https://yieldd.co/c'
 ).replace(/\/+$/, '');
 
-export function cardShareUrl(slug: string): string {
-  return `${CARD_BASE_URL}/${slug}`;
+/**
+ * Where a card link was handed over, for the `?s=` tag the public page reports
+ * back. These strings are also the check constraint on `card_views.source`, so
+ * they cannot be renamed on one side alone.
+ */
+export type CardLinkSource = 'qr' | 'wa' | 'sms' | 'email' | 'share' | 'copy';
+
+/**
+ * The card's public URL, optionally tagged with the channel it went out on.
+ *
+ * The bare call is deliberately untagged: it is the URL a person reads off a
+ * screen and retypes, and `verify-card-links` asserts it stays exactly
+ * `https://yieldd.co/c/<slug>`. An untagged open is recorded as 'link'.
+ */
+export function cardShareUrl(slug: string, source?: CardLinkSource): string {
+  const url = `${CARD_BASE_URL}/${slug}`;
+  return source ? `${url}?s=${source}` : url;
 }
 
 /** `yieldd.co/c/priya-sharma` — what a person reads, without the scheme. */

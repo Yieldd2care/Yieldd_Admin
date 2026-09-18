@@ -130,6 +130,17 @@ export default function MemberDetailModal() {
           <Typography className="text-[12.5px] font-semibold text-navy">
             {member.leadCount} lead{member.leadCount === 1 ? '' : 's'} captured
           </Typography>
+          {/* Card-link opens, not QR scans — the QR saves a contact offline and
+              never reaches us, so this can sit at 0 for someone who hands their
+              card out all day. Said in full here because this is the one screen
+              with room to say it. */}
+          {member.viewerCount != null ? (
+            <Typography className="text-[11.5px] text-slate mt-[3px]">
+              {member.viewerCount === 0
+                ? 'Nobody has opened their card link yet'
+                : `${member.viewerCount} ${member.viewerCount === 1 ? 'person has' : 'people have'} opened their card link`}
+            </Typography>
+          ) : null}
         </View>
       ) : null}
 

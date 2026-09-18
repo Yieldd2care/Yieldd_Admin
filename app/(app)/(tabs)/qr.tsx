@@ -73,6 +73,10 @@ export default function QrTabScreen() {
     secondaryEmail: card?.secondaryEmail ?? undefined,
     website: card?.websiteUrl ?? undefined,
     linkedin: linkedinUrl(card?.linkedinUrl) ?? undefined,
+    // Only on a live card — a link to a page that shows nothing is worse than
+    // no link. This is the one trace a scan can leave: the scan itself never
+    // reaches us, but a tap on this line in the saved contact does.
+    cardUrl: card?.isPublished ? cardShareUrl(card.slug, 'qr') : undefined,
     address: card?.officeAddress ?? undefined,
   });
 

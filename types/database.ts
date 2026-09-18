@@ -85,6 +85,61 @@ export type Database = {
           },
         ]
       }
+      card_views: {
+        Row: {
+          card_id: string | null
+          id: string
+          organization_id: string
+          profile_id: string
+          source: string
+          viewed_at: string
+          viewed_on: string
+          visitor_hash: string
+        }
+        Insert: {
+          card_id?: string | null
+          id?: string
+          organization_id: string
+          profile_id: string
+          source?: string
+          viewed_at?: string
+          viewed_on?: string
+          visitor_hash: string
+        }
+        Update: {
+          card_id?: string | null
+          id?: string
+          organization_id?: string
+          profile_id?: string
+          source?: string
+          viewed_at?: string
+          viewed_on?: string
+          visitor_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_views_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "business_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_views_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_views_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_summaries: {
         Row: {
           created_at: string
@@ -1261,6 +1316,10 @@ export type Database = {
         }[]
       }
       perform_account_deletion: { Args: never; Returns: Json }
+      record_card_view: {
+        Args: { p_slug: string; p_source?: string; p_visitor: string }
+        Returns: undefined
+      }
       seats_in_use: { Args: { p_org: string }; Returns: number }
       set_default_message_template: {
         Args: { p_template_id: string }
@@ -1274,6 +1333,14 @@ export type Database = {
         }[]
       }
       suggest_card_slug: { Args: { p_base: string }; Returns: string }
+      team_counts: {
+        Args: never
+        Returns: {
+          lead_count: number
+          profile_id: string
+          viewer_count: number
+        }[]
+      }
       weekly_digest_rows: {
         Args: never
         Returns: {

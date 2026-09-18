@@ -23,6 +23,18 @@ export type VCardInput = {
   extraEmails?: string[];
   website?: string;
   linkedin?: string;
+  /**
+   * The owner's own `/c/{slug}` page, for their own card only.
+   *
+   * A QR here carries this vCard rather than a link, so that it still works in
+   * a hall with no signal — which also means the scan itself can never be
+   * counted. This line is the consolation: the saved contact gets a way back to
+   * the full card, and a tap on it later IS a visit that gets counted, tagged
+   * as having come from the QR.
+   *
+   * Only ever set for a saved, published card. A lead's vCard leaves it alone.
+   */
+  cardUrl?: string;
   address?: string;
 };
 
@@ -45,6 +57,7 @@ export function buildVCard(input: VCardInput) {
   if (input.secondaryEmail) lines.push(`EMAIL:${escapeVCard(input.secondaryEmail)}`);
   if (input.website) lines.push(`URL:${escapeVCard(input.website)}`);
   if (input.linkedin) lines.push(`URL:${escapeVCard(input.linkedin)}`);
+  if (input.cardUrl) lines.push(`URL:${escapeVCard(input.cardUrl)}`);
   if (input.address) lines.push(`ADR;TYPE=WORK:;;${escapeVCard(input.address)};;;;`);
 
   lines.push('END:VCARD');

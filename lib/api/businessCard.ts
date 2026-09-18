@@ -134,6 +134,64 @@ export async function fetchPublicCard(slug: string): Promise<PublicCardResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Counting who reached the card
+// ---------------------------------------------------------------------------
+
+const VISITOR_KEY = 'yieldd.card.visitor';
+
+/**
+ * A stable-ish id for this browser, so a refresh is not a second person.
+ *
+ * Deliberately nothing to do with who they are: a random uuid kept in their own
+ * storage, never an IP or a fingerprint. It throws in a private window and
+ * comes back empty after a clear, and both of those are fine — the worst case
+ * is one person counted twice, which is the direction to err in.
+ */
+function visitorId(): string | null {
+  const fresh = () =>
+    typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : null;
+
+  try {
+    const existing = globalThis.localStorage?.getItem(VISITOR_KEY);
+    if (existing && existing.length >= 16) return existing;
+    const made = fresh();
+    if (made) globalThis.localStorage?.setItem(VISITOR_KEY, made);
+    return made;
+  } catch {
+    // Storage blocked. Still count them, just as a new person each time.
+    return fresh();
+  }
+}
+
+/**
+ * Records that somebody opened this card. Never throws, never blocks the page.
+ *
+ * `record_card_view` is the one thing `anon` may write in this database, and it
+ * says nothing back — not whether the slug exists, not whether the row landed.
+ * A failure here must not turn into anything the visitor can see, so the error
+ * is swallowed the way the other anon RPC call is.
+ *
+ * What this does NOT record is a QR scan. The QR carries a vCard, which the
+ * scanning phone decodes by itself without a request; only an opened *link*
+ * ever gets here.
+ */
+export async function recordCardView(slug: string, source: string | null): Promise<void> {
+  const visitor = visitorId();
+  if (!visitor) return;
+
+  try {
+    const { error } = await supabase.rpc('record_card_view', {
+      p_slug: slug,
+      p_visitor: visitor,
+      p_source: source ?? 'link',
+    });
+    if (error && __DEV__) console.warn('[card] record_card_view failed', error.message);
+  } catch (err) {
+    if (__DEV__) console.warn('[card] record_card_view threw', err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The link
 // ---------------------------------------------------------------------------
 
