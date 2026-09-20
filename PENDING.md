@@ -35,13 +35,13 @@ Full diagnosis for each is in its numbered section below.
 | 33c | Skip on every onboarding screen | `[x]` done 2026-09-14 — every screen that should take one now does; the two older screens take none by decision |
 | 33d | First-run tutorial on Home (collage + Next) | `[x]` done 2026-09-14 |
 | 34 | Password fields need a show/hide eye icon | `[x]` done 2026-09-12 — one shared input, so every password box got it at once |
-| 35 | Bottom content behind the Android nav bar (Samsung Ultra 26) | `[ ]` needs testing on that handset |
+| 35 | Bottom content behind the Android nav bar (Samsung Ultra 26) | `[x]` done 2026-09-18 — camera controls lifted clear of the nav bar (`95c6e0b`), and the keyboard/scroll sweep in 69 reworked the same screens. **Closed by the user 2026-09-18 on a different Android handset than the one reported on** — the Samsung Ultra check was dropped by decision, not forgotten |
 | 36 | No confirmation the front of the card was captured | `[x]` done 2026-09-12 — ticked thumbnail beside the shutter, tap to retake |
 | 37 | Remove em dashes from app content | `[x]` done 2026-09-15. 128 user-facing occurrences rewritten sentence by sentence, not substituted: app screens, /privacy, /terms, /delete-account, the default WhatsApp and email templates, and the weekly-digest email. The empty-value dash (an empty table cell, `formatPaise`/`formatPercent` fallback) is now a plain hyphen `-`. **Deliberately left alone, do not "finish the job":** ~670 occurrences in code comments, every internal doc (this file, AGENTS.md, MVP_PLAN.md, TASKS.md, DATABASE_SCHEMA.md, migrations), two developer-console strings (`lib/contactPicker.ts`, `lib/supabase.ts`), the model prompts in `extract-card`, and the `mdash` entry in the HTML-entity decode table in `summarise-company` (a decoder, not copy). Proof: the exported web bundle contains zero em dashes. |
 | 38 | Invite reps from the phone's contacts | `[x]` done 2026-09-14 — **that "no permission" note was wrong, see 60**: the picker opens without one but reading the chosen contact needs READ_CONTACTS. It is now requested, which is what created 62 |
 | 39 | Lock icon and explanation on paid features | `[x]` done 2026-09-12 — `lib/plan.ts`; no price and no pay button, asserted in `verify:plan` |
 | 40 | "Needs a note" ignores voice notes | `[x]` done 2026-09-15 — a voice note clears the flag. **The filter keeps its label, "Needs a note"** — renaming it was the other option and was NOT chosen. Five sites: one shared helper on the device, plus `event_stats` and `event_set_stats` |
-| 41 | Save-to-contacts icon does nothing | `[x]` done 2026-09-17 — Android's `presentFormAsync` throws unless the app already holds READ_CONTACTS. It is requested now, and the privacy policy was rewritten in the same commit. **Still to test on a device** |
+| 41 | Save-to-contacts icon does nothing | `[x]` done 2026-09-17 — Android's `presentFormAsync` throws unless the app already holds READ_CONTACTS. It is requested now, and the privacy policy was rewritten in the same commit. **Tested and working on both iPhone and Android, 2026-09-18 by the user.** Closed |
 | 42 | Show the captured card in the list; make lead details editable | `[x]` done 2026-09-12 — card shown in list and whole on the lead; edit form sends only what moved |
 
 **Reported 2026-09-14 — not started**
@@ -58,11 +58,11 @@ Full diagnosis for each is in its numbered section below.
 | 51 | Clicking a lead should open it as a popup over the list | `[x]` done 2026-09-16 — `components/dash/LeadOverlay.tsx`; the overlay IS the route, so the URL still changes and browser back closes it |
 | 52 | An invite counts as ready with a number that is not one | `[x]` done 2026-09-15 — **both screens**, the phone invite screen and the web dashboard's Team form, since the item was written up as one. Warn, never block: an unreachable number gets an amber border and a sentence under its own row, and still sends. `ready`, the buttons and `createInvites` are all untouched. New `describePhoneProblem` in `lib/phone.ts`, deliberately looser than `isValidPhone`; asserted in `verify:phone` |
 | 53 | iOS ships a contacts permission string it never uses | `[x]` closed 2026-09-15 by 60 — the permission is genuinely requested now, so the string describes something real |
-| 54 | Ask for the event cost when the show ends | `[ ]` **decided 2026-09-15: wizard unchanged; notify the admin after the end date, naming the blank lines** — ⚠ **its premise is false, see the section: there are no blank lines to find** |
+| 54 | Ask for the event cost when the show ends | `[x]` done 2026-09-17 — see the section. **Decided 2026-09-15: wizard unchanged; notify the admin after the end date, naming the blank lines** — ⚠ **its premise is false, see the section: there are no blank lines to find** |
 | 55 | "This event cost nothing" is not something you can say | `[x]` **DROPPED 2026-09-16 by the user** — a free event is recorded by typing 0 into a line, which is enough. No tick will be built |
 | 56 | Abandoned signups leave an empty organisation behind | `[ ]` surfaced by 33a; the account is made when the code is sent |
 | 57 | Code email's subject still said "Your sign-in link" | `[x]` done 2026-09-14 |
-| 58 | After the code, ask ONLY for a password | `[ ]` 2026-09-14 — name, company and number move to the digital-card step |
+| 58 | After the code, ask ONLY for a password | `[x]` done 2026-09-15 — name, company and number move to the digital-card step |
 | 59 | Contacts button on the invite screen read as decoration | `[x]` done 2026-09-14 |
 | 60 | Picking from contacts failed after the contact was chosen | `[x]` done 2026-09-14 — permission now requested, by decision |
 | 62 | **Privacy policy now contradicts the app** | `[x]` done 2026-09-15 — the policy now states the app does ask, and why. On master, so live. **The Play data safety form still has to be updated to match** |
@@ -76,8 +76,12 @@ Full diagnosis for each is in its numbered section below.
 | 64 | Home's blue box — make all four figures open what they count | `[x]` done 2026-09-17 — **the WhatsApp cell stays and now counts real WhatsApp sends**, by decision the same day. Both copies of the box, Home and Leads |
 | 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[x]` done 2026-09-18 — viewing scope got its **own non-persisted store** (`useLeadScopeStore`), not `useCurrentEventStore` and not the dashboard's `useEventSelectionStore`: narrowing the list must never move where the next card is filed, and not persisting it is what keeps the tab opening on every lead. All-events mode groups the list under per-show headings. **Tested on a handset by the user the same day — capture still files into the show being worked in** |
 | 66 | A voice note plays once, then the button stops working until the lead is reopened | `[x]` done 2026-09-18 — the playhead, not the audio: a finished player sits at the end of the file and `play()` there is over before it starts. The press is now a three-state decision in `lib/voicePlayback.ts` — **finished rewinds, paused resumes** — and the bar and the icon read from the same decision. The player is not rebuilt. Confirmed on a handset by the user the same day |
-| 67 | Home's counters and the Leads tab now count different things | `[ ]` — created by 65, decide whether tapping a Home figure should narrow the leads list to match it |
+| 67 | Tapping one of Home's four tiles must open the Leads tab on the show picked in "Your events", not on every show | `[ ]` **restated by the user 2026-09-18 and decided: the tile carries the show through.** Add a `scope` param beside the existing `filter`, applied to `useLeadScopeStore` and cleared on arrival. All four tiles |
+| 68 | Lead detail — a long address runs outside the white card | `[x]` done 2026-09-18 (`092fa9a`) — `FieldRow` now lets the value take the remaining width and wrap: `flex-1 min-w-0 text-right` on the value, `shrink-0` on the label. RN defaults `flexShrink` to 0 unlike the web, which is why it looked fine in a browser and wrong on a handset. Fixes every long value on the screen, not only the address |
 | 69 | Sign-in: the keyboard covers the boxes you are typing into, and the screen will not scroll | `[x]` done 2026-09-18 — **two faults, and the reported one is a flexbox bug not a keyboard bug**: `flex-1` inside a `flex-grow` scroll container capped the content at the viewport, so there was nothing to scroll, ever. The sweep found 8 more screens. All 16 now go through one wrapper, asserted by `npm run verify:keyboard`. **Confirmed on an Android handset by the user the same day** |
+| 70 | A revoked rep can still read the leads already on their phone | `[x]` done 2026-09-20 — the device now tears itself down and says why. Asserted end to end by `npm run verify:deactivation`, including that the revoked path is reachable at all. See the section for what it does NOT do |
+| 71 | Lead detail never shows the deal value that was entered | `[ ]` reported 2026-09-18. Qualified and Won both take a value and neither is shown back. See the section |
+| 72 | Signing out left the previous account's leads on the handset | `[x]` done 2026-09-20 — found while building 70, and wider than it. See the section |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -175,7 +179,7 @@ links to these same pages, and the Play data safety form has to match them word 
 
 | Order | # | Correction | Status |
 |---|---|---|---|
-| 1 | 27a | Play billing — **decided 2026-09-08: sell on web only.** Strip purchase from the app | `[ ]` |
+| 1 | 27a | Play billing — **decided 2026-09-08: sell on web only.** Strip purchase from the app | `[~]` **PARKED 2026-09-18 by the user — finish the app corrections first, then decide.** The 2026-09-08 choice is reopened: they said Google taking a cut is acceptable. See the note at the end of 27a |
 | 2 | 27b | /privacy, /terms, /delete-account must render without JavaScript | `[ ]` |
 | 3 | 27c | Deletion section — the link that renders as plain text | `[~]` sentence fixed 2026-09-08, anchor still not an `<a>` |
 | 4 | 27d | /delete-account — reachable, self-serve, and named in the data safety form | `[ ]` |
@@ -184,9 +188,159 @@ links to these same pages, and the Play data safety form has to match them word 
 | 7 | 27g | Terms promise export at any time; the pricing deck locks it behind Pro | `[ ]` |
 | 8 | 27h | Verify the no-training claim against the actual Anthropic/Deepgram plan | `[ ]` |
 
+**Verified against the live site 2026-09-18, not against this file.** `origin/master` is at the
+same commit as the working branch, so yieldd.co is serving everything built so far. `curl` on all
+three legal routes returns **1398 bytes and the words "You need to enable JavaScript to run this
+app."** — 27b is real and still open. 27c is open too: `LegalLink` in
+[components/web/LegalPage.tsx](components/web/LegalPage.tsx) is still a `Typography` with
+`onPress`, so there is no `<a>` and no `href` in the DOM. 27g is open: the export sentence is
+still at [terms.tsx:102](app/(web)/terms.tsx#L102).
+
+**27d is mostly already satisfied and should not be rebuilt.**
+[delete-account.tsx:41](app/(web)/delete-account.tsx#L41) does offer a path for someone who has
+uninstalled the app or cannot sign in — it tells them to email, which is what Play asks for. What
+is left of 27d is therefore not page content: the page is invisible without JavaScript (27b), and
+the only pointer to it from /privacy is the dead pseudo-link (27c). Fix those two and 27d reduces
+to entering the URL in the Data Safety form. **Read the page before writing anything new for it.**
+
 ---
 
 ## Open
+
+### 71. Lead detail never shows the deal value that was entered — reported 2026-09-18
+
+**Reported by the user:** open a lead and there is no money on the screen. If that lead is Won,
+it should say what the deal was worth. If it is Qualified, it should say the amount the rep
+entered when they qualified it. Today neither is shown anywhere on the lead.
+
+**The value is already captured and already stored.** `leads.deal_value_paisa` is filled at
+Qualified as the expected value and at Won as the closed value, and the database enforces both
+(`leads_qualified_requires_value`, and the existing Won rule). `lib/mappers/lead.ts` already maps
+it onto the lead as `dealValue`. So this is a display gap, not missing data, and it needs no
+migration.
+
+**Where it is missing:**
+
+- **Phone, [app/(app)/leads/[id].tsx](app/(app)/leads/[id].tsx)** — no deal value at all. This is
+  the screen the report is about.
+- **Web, [components/dash/LeadDetail.tsx](components/dash/LeadDetail.tsx)** — the only place the
+  number appears is the *input box* inside the status editor, and only while a value is being
+  asked for. Close the editor and it disappears again, so the dashboard has the same gap.
+
+**What to build:**
+
+1. A money row on the phone lead detail, shown whenever the lead carries a value. Label it by
+   status so a forecast is never mistaken for revenue: **Expected value** while Qualified,
+   **Deal value** once Won. Nothing shown for New, Contacted, or Lost.
+2. The same read-only row on the web lead detail, outside the status editor.
+3. Format with `formatPaise`, the same helper the ROI screens use, so one lead and the event
+   total never disagree on how a number is written.
+4. Admin only, matching `event_stats`: money is already admin-gated on the server, and a rep
+   would otherwise see a blank row with no explanation. Decide whether a rep sees the value on a
+   lead **they themselves** entered it on — probably yes, since they typed it.
+
+**Open question for the user:** should the row be tappable to edit the amount, or read-only with
+editing left where it is today, inside the status change? Read-only is the smaller change and
+keeps one path for writing money.
+
+---
+
+### 70. A revoked rep can still read the leads already on their phone — reported 2026-09-18, DONE 2026-09-20
+
+**What the user asked for:** when an admin revokes a rep after a show, that rep must not be
+able to see or export any leads. Checked during a briefing pass, so this is a gap found by
+reading, not a handset report.
+
+**The server side was already correct and was not touched.** No migration, no policy, no RLS
+helper changed in this work.
+[20260827140000_deactivation_and_invite_peek.sql](supabase/migrations/20260827140000_deactivation_and_invite_peek.sql)
+gates `current_organization_id()` and `is_admin()` on `profiles.status = 'active'`, and every
+org-scoped policy flows through those two. Their captured leads stay with the organisation,
+which is what J3 promises, and they cannot restore themselves.
+
+**The gap was on the device, and it was one line.** `refreshProfile()` ended with
+`if (!get().user) { await get().signOut(); }`. A revoked rep ALWAYS has a cached `user` — it is
+persisted so the app can cold-start in a hall with no signal — so that condition was false and
+the function returned having done nothing at all. The session kept looking valid forever and
+`yieldd-leads` kept rendering.
+
+**Why it could not simply read `user.status`.** `PROFILE_SELECT` ends with
+`organizations!inner(...)`, and `org_select_members` is `id = current_organization_id()`, which
+is NULL for a deactivated member. So the inner join matched nothing and the profile fetch
+returned exactly what a missing profile returns. The two were indistinguishable. The fix asks a
+second, narrow question — `select('status')` on `profiles` alone, no embed, which
+`profiles_select_self_or_org` still answers through its `id = auth.uid()` disjunct. **Do not add
+a join to that query.** Making the embed a left join was the other option and was NOT chosen:
+`company` and `planTier` are read through that seam by eleven screens, and a `planTier` quietly
+defaulting to `'free'` would change paid-feature gating.
+
+**What it does now.** On any reachable-server answer of "deactivated", the app clears every
+persisted store and the whole `captures/` directory, signs out, and shows a plain screen saying
+access to that company was removed, with a support contact. The screen is rendered as a sibling
+of the navigator in `app/_layout.tsx`, not pushed as a route, so there is nothing to swipe back
+to — and nothing gets unmounted, which matters because revocation fires from a background
+refresh that can land while the rep is mid-capture. Native and the web dashboard both, from
+that one insertion point. A breadcrumb under its own AsyncStorage key survives the sign-out, so
+the explanation is still there after a force-quit.
+
+**Detected at three moments:** cold start, sign-in, and — added deliberately — the instant the
+phone comes back online (`hooks/useConnectivity.ts`). Without that third one a rep deactivated
+while offline kept reading the cache until the next relaunch, which is not what "the local copy
+goes the next time the phone touches the internet" means.
+
+**Offline is never treated as revocation.** That was the one way to make the product worse, and
+the code is arranged so it cannot happen: every new branch sits strictly below the existing
+`if (result.offline) return;`, so an offline cold start runs zero new statements and makes zero
+new requests. Anything the status query cannot answer — including a server error that is not
+recognisably a transport failure — is also treated as "no answer", never as revocation.
+
+**Unsynced captures are destroyed, and this is the decision, not an oversight.** A deactivated
+rep cannot upload them — RLS refuses the insert — and a draft holds the same lead PII as a
+synced lead: name, phone, company, the card photo. So they go with everything else. It is not
+silent: the count is taken before the wipe and the screen names it, so the rep can tell their
+ex-employer what was lost. Only the admin sees what was captured, server-side.
+
+**Asserted by `npm run verify:deactivation`**, against real throwaway accounts on the live
+database: a deactivated rep reads zero leads, zero events, exports nothing, and cannot set
+their own status back to active; the admin still reads their lead; reactivation restores
+access. And the assertion that would have caught this class of bug in the first place — that
+the app's own `PROFILE_SELECT` goes blind for a deactivated member while the narrow status
+query still answers. If anyone relaxes `org_select_members` or tidies an embed into that query,
+that check fails loudly instead of the explanation screen quietly becoming unreachable again.
+
+**Known limits, so nobody over-promises this later:** a phone kept in aeroplane mode never
+receives the instruction, and a determined person can read an app's local storage on a rooted
+device. This raises the floor honestly; it is not a remote wipe.
+
+---
+
+### 72. Signing out left the previous account's leads on the handset — found 2026-09-20, DONE 2026-09-20
+
+**Not reported — found while building 70, and wider than it.** `signOut()` cleared
+`yieldd-session` and the query cache and stopped there. Seven other persisted stores survived
+every sign-out, ordinary ones included: `yieldd-leads`, `yieldd-capture-draft`,
+`yieldd-current-event`, `yieldd-event-draft`, `yieldd-event-fields`, `yieldd-event-selection`
+and `yieldd-company`. So the next person to sign in on a shared handset — a demo phone, a
+borrowed device, a rep handing it to a colleague — inherited the previous organisation's leads.
+
+`useLeadsStore.clear()` had existed all along, documented in its own source as "called on
+sign-out". Nothing called it. That is the whole bug.
+
+The `captures/` directory was leaking too, and worse: `discardCaptureFiles()` only fires once a
+lead has fully drained to the server, so emptying the outbox with drafts still in it stranded
+their photos and voice notes under the document directory — the one place the OS never
+reclaims — referenced by nothing and deleted by nothing.
+
+**Fixed once, in one place:** `lib/localData.ts`, called from the single sign-out path that
+both `signOut()` and the unprompted `SIGNED_OUT` event now share. It resets in-memory state
+first (a mounted screen renders from zustand, not from disk), then sweeps every `yieldd-*` key
+as a prefix rather than a hand-kept list — there is no `stores/index.ts` to notice an eighth
+store being added — then deletes the capture root. The one deliberate exception is the
+revocation breadcrumb, excluded by name.
+
+Closed by the same work as 70, but it was never 70's scope, which is why it has its own number.
+
+---
 
 ### 69. The keyboard covers what you are typing, and the screen will not scroll — reported 2026-09-18, BUILT 2026-09-18
 
@@ -646,7 +800,6 @@ Changed: [app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx),
 
 ---
 
-### 67. Home's counters and the Leads tab now count different things — created 2026-09-18 `[ ]`
 ### 68. Lead detail — a long address runs outside the white card — reported 2026-09-18 `[x]`
 
 **Fixed 2026-09-18.** `FieldRow` now gives the value `flex-1 min-w-0 text-right` with a
@@ -709,27 +862,56 @@ and `shrink-0` carry no variables and are safe.
 
 ---
 
+### 67. A tile on Home opens the Leads tab on every show, not the one you picked — created 2026-09-18, restated by the user 2026-09-18 `[ ]`
 
-Created by 65, and flagged rather than fixed inside it because the fix is a product decision, not
-a bug fix.
+**The user's own description, which is the spec:**
 
-Home's blue box is scoped to the current event and is correct that way — it is the "how is this
-show going" panel. The identical box on the Leads tab is now scoped to whatever the leads list is
-showing, which defaults to every event. So tapping "22 pending" on Home can land on a list whose
-own box says 60. Both numbers are right and both boxes say which scope they mean, so nothing is
-lying; they just answer different questions one tap apart.
+> If someone clicks on the home screen, from Your Events, whatever event they have selected, and
+> clicks on any of the four blue tiles below, you should take them to the Leads screen and show
+> only that event's data. Right now it takes them to the Leads screen showing the data for all
+> events.
 
-Two ways out, and it wants a decision rather than a guess:
+Created by 65 and deliberately left open then, because the fix was a product decision rather than
+a bug. **The decision has been taken: the tile carries the picked show through.** Do not re-ask it.
 
-1. **Tapping a Home figure narrows the leads list to the current event**, so the number you
-   pressed is the number you land on. The mechanism already exists — a `scope` route param
-   applied and then cleared by exactly the effect that handles `filter` today
-   ([app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx), the `filterParam` effect). The
-   clearing is the load-bearing part: without it, the scope would silently re-apply days later.
-2. **Leave it.** The labels differ, and a rep who taps into the list is usually looking for a
-   person rather than auditing a figure.
+**The chain, all in [app/(app)/(tabs)/index.tsx](app/(app)/(tabs)/index.tsx):**
 
-Do not "fix" this by scoping the Leads tab back to the current event. That is item 65 undone.
+| Line | What it does |
+|---|---|
+| 178-200 | The "Your events" pill row. Each pill calls `selectEvent(e.id)` on `useCurrentEventStore` |
+| 50 | `useCurrentEvent()` reads that back, so `event` IS whatever the user tapped in that row |
+| 60 | `forThisEvent` filters the leads to `event.id` |
+| 303, 320, 344, 365 | The four tiles display counts derived from `forThisEvent` |
+| 326-330, 347-351 | Two tiles push to the Leads tab with `params: { filter: … }` and **nothing that names the event** |
+
+So Home computes its figures for one show and then sends you to a list that 65 made default to
+every show. Both screens are individually correct and the tap loses the show in between.
+
+**What to build.** Add a `scope` param carrying `event.id` alongside the existing `filter`, and
+have the Leads tab apply it to `useLeadScopeStore` on arrival.
+
+- **All four tiles, not the two that already pass a param.** Fixing only those leaves the same
+  complaint alive on the other two.
+- **Copy the `filterParam` effect in [app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx)
+  exactly**, including the `router.setParams` that clears the param immediately. Its comment says
+  why: without the clear, returning to the tab days later silently re-applies a scope the rep had
+  since changed. A sticky `scope` is a worse bug than this one, because the list just quietly
+  stops showing shows the rep knows they captured.
+
+**Three things not to do:**
+
+- **Do not scope the Leads tab back to the current event by default.** That is item 65 undone. The
+  tab still opens on all shows when reached by its own tab icon; this is a one-shot narrowing on
+  arrival from Home.
+- **Do not write to `useCurrentEventStore`.** That store decides where the next captured card is
+  filed. `useLeadScopeStore` exists precisely to keep viewing scope apart from capture scope — 65's
+  whole design.
+- **Do not make the scope persist.** `useLeadScopeStore` is deliberately not persisted.
+
+**Done means:** pick a show in "Your events", tap each of the four tiles in turn, and the Leads
+tab opens showing that same number for that same show, with the right filter pill where one
+applies. Then reach the Leads tab by its own icon and it opens on all shows again. Then capture a
+card and confirm it still files into the same event as before.
 
 ---
 
@@ -1080,7 +1262,7 @@ Applies to sign-in, sign-up, and the new password + confirm-password screen in 3
 
 ---
 
-### 35. Bottom content sits behind the Android navigation bar — reported 2026-09-11 `[ ]`
+### 35. Bottom content sits behind the Android navigation bar — reported 2026-09-11, DONE 2026-09-18
 
 **Reported on a Samsung Galaxy Ultra 26.** Content at the very bottom of several screens runs
 underneath the phone's own navigation bar, where the home and back buttons sit.
@@ -1106,6 +1288,20 @@ on 2026-09-18: the button clears the bar, nothing scrolls, and the email sits in
 The other six screens are untouched.
 
 ---
+**CLOSED 2026-09-18 by the user.** Tested and working on a different Android handset than the
+Samsung Ultra it was reported on. The "do not fix blind" warning above was written when nothing
+had been reproduced; it has now been checked on a device, and the user decided not to hold the
+item open for that one specific phone.
+
+What actually landed in between: `95c6e0b` lifted the camera controls clear of the navigation bar,
+and the keyboard-and-scroll sweep in item 69 reworked the same screens through one shared wrapper
+across 16 screens, asserted by `npm run verify:keyboard`. Several of the `edges={['top']}` screens
+listed above still declare top-only edges, which is correct for them — their footer is the tab bar,
+and `components/app/TabBar.tsx` adds `insets.bottom` itself.
+
+If this ever comes back, it will come back on 3-button navigation specifically, which is taller
+than gesture navigation. That is the configuration to reach for first.
+
 
 ### 36. No confirmation that the front of the card was captured — reported 2026-09-11 `[ ]`
 
@@ -1359,6 +1555,24 @@ Green before committing: `npm run typecheck`, `verify:contacts`, `verify:privacy
 yieldd.co build. `verify:applinks` still fails on placeholder store identifiers — expected and
 unrelated.
 
+
+**Device test 2026-09-18 — passes on iPhone and on Android. CLOSED.** The user tapped the contact
+icon on both platforms and the form opened.
+
+The iPhone pass on its own would not have closed this, and the reason is written three paragraphs
+up: `ContactsModule.swift:93-97` has no permission check of any kind, so **iOS was never broken by
+the bug this item fixed**. iOS cannot exercise the READ_CONTACTS request, the refusal sentences or
+the "go to Settings" branch, because none of that code runs there. What the iPhone pass does prove
+is that the `formOptions` change and the shared `lib/contactsAccess.ts` refactor did not break the
+platform that already worked. The Android pass is the one that tests the fix.
+
+**One caveat left on the record rather than chased.** A handset that had already granted contacts
+through "Pick from my contacts" on the invite screen (60) would open the form whether or not this
+fix works — that is precisely what made the bug look intermittent for a week. Not confirmed either
+way for the test phone, and not worth re-testing: the throw is proven impossible from the native
+source, and the button now works in the hands of the person who reported it broken. If it ever
+resurfaces on a fresh install, this is the first thing to check.
+
 ---
 
 ### 42. Show the captured card in the lead list, and let lead details be edited — reported 2026-09-11 `[ ]`
@@ -1370,6 +1584,7 @@ Two parts, reported together.
 - **Lead details should be editable** on the lead detail screen.
 
 ---
+
 
 ### 43. Record where each lead was captured and show it — reported 2026-09-14 `[x]` done 2026-09-16
 
@@ -2653,6 +2868,29 @@ off the table and Yieldd keeps 100% of every sale. This closes a decision that h
   web-only route it should never become a purchase screen in the app.
 - **The pricing number is still unsettled** — see #11. Removing the modal removes the app's copy
   of ₹10,000, but the website will need whatever number you land on.
+
+**REOPENED AND PARKED 2026-09-18.** Told that paying Google's cut is not an objection, which
+reopens the decision taken on 2026-09-08. Both routes were put to the user in plain terms:
+
+- **A — no purchase UI.** Delete the modal and the payment screens, sell on yieldd.co, keep 100%.
+  A day's work, and the Play upload is unblocked immediately.
+- **B — Google Play Billing.** Keep a Buy button that opens Google's checkout (which supports UPI
+  in India, so the customer's experience is unchanged). Google keeps roughly 15% of a
+  subscription, about ₹4,500 on ₹30,000. This is a build, not a setting: a billing library, a
+  real dev build rather than Expo Go, products configured in Play Console, and **server-side
+  verification of the purchase token before Pro unlocks**. Weeks. The Play upload waits for it.
+
+**The user's answer: neither yet.** Finish the outstanding app corrections first, then decide.
+So nothing is deleted and nothing is built until that decision comes back.
+
+**What did not change, and is the thing to re-read before acting on either route:** the
+"Pay with UPI" button is a violation under *both* answers. Paying Google's fee does not buy the
+right to take the payment yourself; it buys the right to use *Google's* checkout. So
+[upgrade.tsx](app/(app)/(modals)/upgrade.tsx) as it stands cannot ship whichever way this goes.
+Route B replaces that button, route A removes it.
+
+**Two things block B regardless of the answer:** the price is still undecided (#11), and there is
+no Yieldd-owned EAS account, so no dev build can be produced to test billing against.
 
 #### 27b. The pages still need JavaScript to render anything
 Unchanged since it was first raised. [vercel.json](vercel.json) rewrites

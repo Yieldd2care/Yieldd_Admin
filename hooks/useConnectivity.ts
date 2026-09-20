@@ -70,6 +70,21 @@ export function useConnectivity() {
         const userId = useSessionStore.getState().user?.id;
         if (!userId) return;
 
+        // Ask who we still are before pushing anything.
+        //
+        // An admin can deactivate a rep while their phone is in a hall with no
+        // signal, and this is the first moment the instruction can be received.
+        // Without it, detection waits for the next cold start and the leads
+        // cached on that handset stay readable until then — which is not what
+        // "the local copy goes the next time the phone touches the internet"
+        // means. It also stops syncDrafts() burning a pass on inserts RLS is
+        // certain to refuse.
+        //
+        // refreshProfile() tears the device down itself when the answer is
+        // 'deactivated', so `user` being gone here means exactly that.
+        await useSessionStore.getState().refreshProfile();
+        if (cancelled || !useSessionStore.getState().user) return;
+
         // Push before pull, the same order `useLeadsSync` uses: a refresh that
         // landed before an offline capture had been sent would briefly make it
         // look as though the capture had vanished.

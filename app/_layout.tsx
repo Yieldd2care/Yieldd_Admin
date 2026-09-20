@@ -21,6 +21,7 @@ import { startAuthAutoRefresh } from '../lib/supabase';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useConnectivity } from '../hooks/useConnectivity';
 import { useLeadsStore } from '../stores/useLeadsStore';
+import { AccessRemoved } from '../components/shared/AccessRemoved';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -37,6 +38,10 @@ export default function RootLayout() {
   // useSyncExternalStore with no shallow compare, so returning a fresh object
   // from one selector throws "getSnapshot should be cached" under React 19.
   const isInitializing = useSessionStore((s) => s.isInitializing);
+
+  // A reference held in the store, never a freshly built object, so the rule
+  // above is not broken by reading it here.
+  const accessRevoked = useSessionStore((s) => s.accessRevoked);
 
   // Restore the session once, on mount. initialize() is idempotent.
   useEffect(() => {
@@ -80,6 +85,27 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(app)" />
         </Stack>
+        {/*
+          An overlay, and deliberately neither of the two obvious alternatives.
+
+          Not a route: a pushed screen is one you can swipe back from, and this
+          must not be dismissible by a gesture. Rendering it here means nothing
+          is on a stack to go back to.
+
+          Not `return <AccessRemoved/>` in place of the Stack either, which is
+          the idiom one level down in app/(app)/_layout.tsx. Up HERE that would
+          unmount the whole navigation tree — exactly the hazard the comment
+          above was written for — and revocation fires from a background
+          refreshProfile() that can land while the rep is mid-capture. As a
+          sibling, the navigator never moves.
+
+          One insertion point covers native and web, every group, and deep
+          links. Underneath it `user` is null, so (app) redirects to /(auth) and
+          (dash) to /(web); dismissing therefore lands the rep exactly where a
+          signed-out person belongs on each platform, with no extra navigation
+          to write.
+        */}
+        {accessRevoked ? <AccessRemoved notice={accessRevoked} /> : null}
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

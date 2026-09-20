@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { Enums } from '../lib/db';
 import type { OAuthOutcome } from '../lib/auth/google';
 import type { ReferralSourceId } from '../lib/referral';
+import type { AccessRevocation } from '../lib/accessNotice';
 
 import { PLACEHOLDER_NAME } from '../lib/placeholders';
 
@@ -93,10 +94,23 @@ export interface SessionState {
    * person who signs up on this device to someone else's organisation.
    */
   pendingInviteToken: string | null;
+  /**
+   * Set only between "an admin deactivated this account" and the person
+   * dismissing the notice. Non-null means: the caches on this device are gone,
+   * there is no session, and the app owes an explanation rather than a blank
+   * sign-in screen.
+   *
+   * NOT part of the persisted slice. It survives a sign-out under its own
+   * AsyncStorage key instead — see lib/accessNotice.ts, which explains why the
+   * persisted slice is the one place it cannot live.
+   */
+  accessRevoked: AccessRevocation | null;
 
   initialize: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setPendingInviteToken: (token: string | null) => void;
+  /** Takes down the notice, on this device, for good. Never touches the network. */
+  dismissAccessNotice: () => void;
   setAccountIntent: (intent: AccountIntent) => Promise<AuthResult>;
   /**
    * Records the answer to "where did you hear about us?" on the organisation.

@@ -8,7 +8,13 @@ import { resetQueryCache } from '../lib/queryClient';
 import { PROFILE_SELECT, toSessionUser } from '../lib/mappers/profile';
 import { signInWithGoogle as startGoogleSignIn } from '../lib/auth/google';
 import { normalizePhone } from '../lib/phone';
-import type { AuthResult, SessionState, User } from '../types/session';
+import {
+  clearAccessRevoked,
+  readAccessRevoked,
+  writeAccessRevoked,
+  type AccessRevocation,
+} from '../lib/accessNotice';
+import type { AuthResult, MemberStatus, SessionState, User } from '../types/session';
 
 const NOT_CONFIGURED: AuthResult = {
   error: 'This build has no Supabase connection. See the console for setup steps.',
@@ -179,6 +185,49 @@ async function fetchProfile(userId: string): Promise<ProfileFetch> {
   }
 }
 
+type AccountStatus = { status: MemberStatus | null; offline: boolean };
+
+/**
+ * Answers the one question the joined fetch above structurally cannot: is this
+ * account still active?
+ *
+ * PROFILE_SELECT ends in `organizations!inner(...)`, and org_select_members is
+ * `id = current_organization_id()` — which migration 20260827140000 made return
+ * NULL for anyone whose status is not 'active'. So a deactivated member's inner
+ * join matches nothing and fetchProfile() returns exactly what a missing
+ * profile returns. That collision is why a revoked rep kept reading the leads
+ * cached on their phone: nothing could tell the two apart.
+ *
+ * profiles_select_self_or_org is `id = auth.uid() or organization_id =
+ * current_organization_id()`. The FIRST disjunct still holds, so a select on
+ * `profiles` alone comes back with the row. THE ABSENCE OF AN EMBED IS THE
+ * ENTIRE REASON THIS WORKS — do not add a join here, however convenient.
+ *
+ * It also means a self-read is never filtered by RLS, which is what lets
+ * refreshProfile() treat a clean zero-row answer as proof the profile is gone.
+ */
+async function fetchAccountStatus(userId: string): Promise<AccountStatus> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('status')
+      .eq('id', userId)
+      // maybeSingle, not single: zero rows is an ANSWER here, not an error.
+      .maybeSingle();
+
+    if (error) {
+      if (__DEV__) console.warn('[session] status check failed', error.message);
+      // The same discriminator fetchProfile() uses above. Anything that is not
+      // recognisably a transport failure still returns `offline: true` here, so
+      // an unexplained error can never be read as revocation.
+      return { status: null, offline: true };
+    }
+    return { status: data?.status ?? null, offline: false };
+  } catch {
+    return { status: null, offline: true };
+  }
+}
+
 export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
@@ -188,6 +237,7 @@ export const useSessionStore = create<SessionState>()(
       isSubmitting: false,
       isNewSignup: false,
       pendingInviteToken: null,
+      accessRevoked: null,
 
       // ---------------------------------------------------------------- init
       initialize: async () => {
@@ -199,6 +249,13 @@ export const useSessionStore = create<SessionState>()(
             // window where `user` is transiently null because the persisted
             // state has not landed yet.
             await useSessionStore.persist.rehydrate();
+
+            // Kept outside the persisted slice precisely so it survives the
+            // clearStorage() that revoking performs. Read before the `finally`
+            // below flips isInitializing, so the notice is on the first frame
+            // the splash uncovers rather than appearing a beat later.
+            const notice = await readAccessRevoked();
+            if (notice) set({ accessRevoked: notice });
 
             if (!isSupabaseConfigured) {
               set({ user: null, session: null });
@@ -273,6 +330,18 @@ export const useSessionStore = create<SessionState>()(
         }
 
         if (result.user) {
+          // Unreachable today — the inner join drops a deactivated member's row
+          // before it gets here — and kept precisely because it is the branch
+          // that must not silently let them in if that ever changes.
+          if (result.user.status === 'deactivated') {
+            await revokeAccess(result.user.company, result.user.email);
+            return;
+          }
+          // A reinstated rep clears their own notice by simply loading again.
+          if (get().accessRevoked) {
+            set({ accessRevoked: null });
+            void clearAccessRevoked();
+          }
           set({ user: result.user });
           return;
         }
@@ -283,12 +352,37 @@ export const useSessionStore = create<SessionState>()(
           return;
         }
 
-        // Reachable server, valid session, but no profile row: genuinely
-        // broken. Better to sign out than to sit half-authenticated.
-        if (!get().user) {
+        // Reachable server, valid session, no joined row. Two very different
+        // causes wear the same mask here, and only a query without the
+        // organisation embed can tell them apart.
+        const access = await fetchAccountStatus(session.user.id);
+
+        // No answer — the network died between the two calls, or the server
+        // returned something we cannot interpret. NEVER revocation.
+        if (access.offline) return;
+
+        if (access.status === 'deactivated') {
+          if (__DEV__) console.warn('[session] access revoked; clearing this device');
+          await revokeAccess(get().user?.company ?? '', session.user.email ?? null);
+          return;
+        }
+
+        if (access.status === null) {
+          // A clean query that matched no row. profiles_select_self_or_org
+          // never filters your own row, so this is not RLS hiding something —
+          // the profile really is gone, deleted from somewhere else.
+          //
+          // Unconditional, unlike the `if (!get().user)` this replaces. That
+          // guard was false for anyone holding a cached profile, which is
+          // everyone, and it is how a revoked rep kept reading leads for good.
           if (__DEV__) console.warn('[session] session valid but profile missing; signing out');
           await get().signOut();
+          return;
         }
+
+        // Still active, but the organisation embed failed anyway — or the row
+        // carries a status we do not act on. Not proof of anything, so the
+        // cached session stays rather than throwing someone out over a hiccup.
       },
 
       // -------------------------------------------------------------- signup
@@ -485,13 +579,17 @@ export const useSessionStore = create<SessionState>()(
           /* ignore — local state is cleared either way */
         }
 
-        set({ user: null, session: null, isNewSignup: false, pendingInviteToken: null });
-        resetQueryCache();
-        void useSessionStore.persist.clearStorage();
+        await tearDownLocalSession();
       },
 
       // --------------------------------------------------------------- misc
       setPendingInviteToken: (token) => set({ pendingInviteToken: token }),
+
+      dismissAccessNotice: () => {
+        set({ accessRevoked: null });
+        // Safe unawaited: its own key, and nothing else ever writes it.
+        void clearAccessRevoked();
+      },
 
       setAccountIntent: async (intent) => {
         const user = get().user;
@@ -560,6 +658,75 @@ export const useSessionStore = create<SessionState>()(
   )
 );
 
+/**
+ * Everything a sign-out does locally, wherever it was triggered from.
+ *
+ * signOut() and the SIGNED_OUT event below held three identical lines each, and
+ * between them they cleared only `yieldd-session` — seven other persisted
+ * stores and the whole `captures/` directory survived, so one account's leads
+ * reached the next person to sign in on a shared handset. One function now, and
+ * it calls clearLocalData().
+ *
+ * `accessRevoked` is DELIBERATELY not reset here. A revoked sign-out must leave
+ * the notice standing; an ordinary one has none to leave. Only
+ * dismissAccessNotice() and a successful profile load clear it.
+ *
+ * The import is dynamic because lib/localData.ts imports every store, and
+ * useLeadsStore -> hooks/useEvents -> this module is a cycle. By the time this
+ * runs the graph is fully loaded, so there is no half-initialised binding.
+ */
+async function tearDownLocalSession(): Promise<void> {
+  useSessionStore.setState({
+    user: null,
+    session: null,
+    isNewSignup: false,
+    pendingInviteToken: null,
+  });
+  resetQueryCache();
+
+  const { clearLocalData } = await import('../lib/localData');
+  await clearLocalData();
+
+  // Awaited, where it used to be fire-and-forget. Anything that set() after it
+  // could otherwise be written and then removed by the still-pending clear.
+  await useSessionStore.persist.clearStorage();
+}
+
+/**
+ * An admin has deactivated this account: take the device down and leave a note.
+ *
+ * Order is the whole point.
+ *
+ *   - The pending count is taken BEFORE anything is cleared, because it is
+ *     about to become unknowable. Those captures cannot be uploaded — RLS
+ *     refuses the insert — so they are lost, and the screen says so rather than
+ *     letting someone's work disappear without a word.
+ *   - The notice goes into memory first, in one set(), so the very next render
+ *     already has it up and no frame can paint a lead from a cache that is
+ *     about to go.
+ *   - Disk last, after every clear above has RESOLVED. clearLocalData()'s sweep
+ *     skips this key by name, so the two cannot fight; writing afterwards makes
+ *     that belt-and-braces rather than load-bearing.
+ *
+ * SIGNED_OUT arrives from our own signOut() through the serial queue and runs
+ * the teardown a second time. Safe: it never touches `accessRevoked`, the sweep
+ * excludes the key, and clearLocalData() is idempotent.
+ */
+async function revokeAccess(company: string, email: string | null): Promise<void> {
+  const { countUnsyncedLeads } = await import('../lib/localData');
+
+  const notice: AccessRevocation = {
+    company,
+    email,
+    pendingLeads: countUnsyncedLeads(),
+    at: new Date().toISOString(),
+  };
+
+  useSessionStore.setState({ accessRevoked: notice });
+  await useSessionStore.getState().signOut();
+  await writeAccessRevoked(notice);
+}
+
 /** Runs serialized, off the auth callback's own tick. */
 async function handleAuthEvent(event: string, session: Session | null) {
   const store = useSessionStore.getState();
@@ -590,14 +757,7 @@ async function handleAuthEvent(event: string, session: Session | null) {
       // window, so a second device or a duplicated client can invalidate this
       // one. Without handling it the app keeps rendering signed-in screens
       // against a dead session.
-      useSessionStore.setState({
-        user: null,
-        session: null,
-        isNewSignup: false,
-        pendingInviteToken: null,
-      });
-      resetQueryCache();
-      void useSessionStore.persist.clearStorage();
+      await tearDownLocalSession();
       return;
     }
   }

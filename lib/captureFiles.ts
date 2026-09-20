@@ -123,6 +123,31 @@ export function discardCaptureFiles(leadId: string): void {
   }
 }
 
+/**
+ * Delete every durable capture file on the device.
+ *
+ * discardCaptureFiles() above only fires once one lead has fully drained — see
+ * the check in stores/useLeadsStore.ts. Emptying the outbox with drafts still
+ * in it therefore strands their photos and recordings under `Paths.document`
+ * forever, which is the one directory the OS never reclaims and the entire
+ * reason they were copied there. Nothing would reference them and nothing
+ * would delete them: someone else's business cards, left on a handset that no
+ * longer has an account.
+ *
+ * So the sign-out teardown removes the root, `pending/` included. Safe while a
+ * capture is in flight — persistCapture() and claimCaptureFiles() both fail
+ * soft back to the cache URI, which is the behaviour the header promises.
+ */
+export function discardAllCaptureFiles(): void {
+  if (isWeb) return;
+  try {
+    const dir = capturesDir();
+    if (dir.exists) dir.delete();
+  } catch {
+    /* As below: a leftover directory is disk space, never correctness. */
+  }
+}
+
 /** Throw away a half-finished capture the rep abandoned. */
 export function discardPendingCapture(): void {
   if (isWeb) return;
