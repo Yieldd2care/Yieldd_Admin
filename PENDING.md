@@ -76,12 +76,14 @@ Full diagnosis for each is in its numbered section below.
 | 64 | Home's blue box — make all four figures open what they count | `[x]` done 2026-09-17 — **the WhatsApp cell stays and now counts real WhatsApp sends**, by decision the same day. Both copies of the box, Home and Leads |
 | 65 | Leads — show every event by default, put an event dropdown behind the name, newest first | `[x]` done 2026-09-18 — viewing scope got its **own non-persisted store** (`useLeadScopeStore`), not `useCurrentEventStore` and not the dashboard's `useEventSelectionStore`: narrowing the list must never move where the next card is filed, and not persisting it is what keeps the tab opening on every lead. All-events mode groups the list under per-show headings. **Tested on a handset by the user the same day — capture still files into the show being worked in** |
 | 66 | A voice note plays once, then the button stops working until the lead is reopened | `[x]` done 2026-09-18 — the playhead, not the audio: a finished player sits at the end of the file and `play()` there is over before it starts. The press is now a three-state decision in `lib/voicePlayback.ts` — **finished rewinds, paused resumes** — and the bar and the icon read from the same decision. The player is not rebuilt. Confirmed on a handset by the user the same day |
-| 67 | Tapping one of Home's four tiles must open the Leads tab on the show picked in "Your events", not on every show | `[ ]` **restated by the user 2026-09-18 and decided: the tile carries the show through.** Add a `scope` param beside the existing `filter`, applied to `useLeadScopeStore` and cleared on arrival. All four tiles |
+| 67 | Tapping one of Home's four tiles must open the Leads tab on the show picked in "Your events", not on every show | `[x]` done 2026-09-20 — a `scope` param beside `filter`, applied to `useLeadScopeStore` and cleared in the same write. **All four tiles, so the follow-ups screen learned about events too — via its own route param, never the shared store.** The narrowing was the easy half: the tile also had to hand over the pill and clear the search box, or the number still opened a list that disagreed with it. One rule for "this show" now, asserted by `npm run verify:lead-scope`. **Not yet confirmed on a handset** |
 | 68 | Lead detail — a long address runs outside the white card | `[x]` done 2026-09-18 (`092fa9a`) — `FieldRow` now lets the value take the remaining width and wrap: `flex-1 min-w-0 text-right` on the value, `shrink-0` on the label. RN defaults `flexShrink` to 0 unlike the web, which is why it looked fine in a browser and wrong on a handset. Fixes every long value on the screen, not only the address |
 | 69 | Sign-in: the keyboard covers the boxes you are typing into, and the screen will not scroll | `[x]` done 2026-09-18 — **two faults, and the reported one is a flexbox bug not a keyboard bug**: `flex-1` inside a `flex-grow` scroll container capped the content at the viewport, so there was nothing to scroll, ever. The sweep found 8 more screens. All 16 now go through one wrapper, asserted by `npm run verify:keyboard`. **Confirmed on an Android handset by the user the same day** |
 | 70 | A revoked rep can still read the leads already on their phone | `[x]` done 2026-09-20 — the device now tears itself down and says why. Asserted end to end by `npm run verify:deactivation`, including that the revoked path is reachable at all. See the section for what it does NOT do |
 | 71 | Lead detail never shows the deal value that was entered | `[ ]` reported 2026-09-18. Qualified and Won both take a value and neither is shown back. See the section |
 | 72 | Signing out left the previous account's leads on the handset | `[x]` done 2026-09-20 — found while building 70, and wider than it. See the section |
+| 73 | Two of the three doors to the Pro follow-ups screen are not gated | `[ ]` found 2026-09-20 while building 67, not caused by it. The icon row gates with `gate('follow-ups')`; the blue tile beside it and the Leads-screen cell both push straight through. See the section |
+| 74 | Tapping Home's Search tile twice in a row does not focus the box the second time | `[ ]` found 2026-09-20 while building 67, not caused by it. `focus` is the one route param never cleared — the exact bug the comment on the param beside it describes. See the section |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -311,6 +313,50 @@ that check fails loudly instead of the explanation screen quietly becoming unrea
 **Known limits, so nobody over-promises this later:** a phone kept in aeroplane mode never
 receives the instruction, and a determined person can read an app's local storage on a rooted
 device. This raises the floor honestly; it is not a remote wipe.
+
+---
+
+### 73. Two of the three doors to the Pro follow-ups screen are not gated — found 2026-09-20 `[ ]`
+
+**Not reported — found while auditing the tile paths for 67, and not caused by it.** Nothing in
+67 changed who may open that screen; this was already true.
+
+There are three ways into `app/(app)/follow-ups/index.tsx` and they disagree:
+
+| Where | Gated? |
+|---|---|
+| Home, the round icon row | **yes** — `if (gate('follow-ups')) router.push(...)` |
+| Home, the blue tile a few lines below it | no |
+| The leads screen's own copy of that blue box | no |
+
+So a Free rep who taps the greyed icon with the little padlock gets the upsell, and the same rep
+tapping the tile directly beneath it lands on the Pro screen. Whichever way it is settled, the
+three should agree — and it is worth checking the same pattern on `gate('roi')`, since the
+Reports tile is built the same way.
+
+**Not fixed here on purpose:** it is a plan question (does the follow-ups tile stay visible and
+gated, or does the count itself become Pro?), not a bug with one right answer, and 67 was not the
+place to decide it.
+
+---
+
+### 74. Home's Search tile does not focus the box when tapped twice in a row — found 2026-09-20 `[ ]`
+
+**Not reported — found while auditing the route params for 67.** Home's Search tile pushes
+`/(app)/(tabs)/leads` with `focus: 'search'`, and the effect that reads it focuses the field.
+But `focus` is **never cleared**, unlike `filter` and now `scope`. So the param keeps its value,
+the effect's dependency never changes, and it never runs a second time: leave the tab, come back
+via the Search tile, and the list opens with no keyboard.
+
+This is precisely the failure the comment above the `filter` effect describes, sitting on the
+param declared two lines away from it — which is a fair warning that the comment is doing its
+job and the third param was simply missed when it was written.
+
+**The fix is small but not free:** `focus` cannot simply join the combined clear, because that
+effect deliberately returns early when only `focus` is set. It needs its own clear inside its own
+effect, and two effects each calling `router.setParams` is the clobbering problem the combined
+one exists to avoid — so the clears have to be reconciled, not just added. That is why it is a
+separate item rather than a line in 67.
 
 ---
 
@@ -862,7 +908,7 @@ and `shrink-0` carry no variables and are safe.
 
 ---
 
-### 67. A tile on Home opens the Leads tab on every show, not the one you picked — created 2026-09-18, restated by the user 2026-09-18 `[ ]`
+### 67. A tile on Home opens the Leads tab on every show, not the one you picked — created 2026-09-18, restated by the user 2026-09-18, DONE 2026-09-20 `[x]`
 
 **The user's own description, which is the spec:**
 
@@ -912,6 +958,69 @@ have the Leads tab apply it to `useLeadScopeStore` on arrival.
 tab opens showing that same number for that same show, with the right filter pill where one
 applies. Then reach the Leads tab by its own icon and it opens on all shows again. Then capture a
 card and confirm it still files into the same event as before.
+
+---
+
+**DONE 2026-09-20.** A `scope` param carries `event.id` from the tile, and the screen it opens
+applies it and clears it in the same write. Two decisions were taken with the user before
+building, neither of which can be read back out of the diff.
+
+**Finding A — the "four tiles" are not four routes, and all four were done anyway.** Three land
+on the Leads tab; the Follow-ups tile opens `app/(app)/follow-ups/index.tsx`, which had no concept
+of an event at all — no `useEvents`, no scope, no params. The user chose to teach it rather than
+leave a quarter of the complaint alive.
+
+It reads **its own route param** and never touches `useLeadScopeStore`. That is the load-bearing
+part: writing the shared store from there would mean opening today's follow-ups silently narrowed
+the Leads tab on another tab, which is the same class of invisible filter 65 exists to prevent.
+It also gets a row naming the show with a **Show all** button, because a list that is quietly
+shorter than the rep expects is the bug, not the fix. There is deliberately **no `setParams`
+clear** on that screen, unlike the tab: it is a pushed screen, so every push mounts it fresh and
+leaving pops it. Clearing on arrival would throw the scope away mid-visit.
+
+**Finding B — the counts had to move onto the list's own rule, and that turned out to be the
+smallest of three problems.** A tile's number is a promise about the screen it opens. Three
+separate things were breaking that promise, and only the first was in the brief:
+
+1. **The counting basis.** Home counted drafts and leads with no `eventId`; `leadsInScope` drops
+   both. Tap 12, arrive at 9. The three Leads-tab tiles now count from `leadsInScope` itself.
+   Drafts are not hidden by this — they keep their own badge on the pencil icon, and "captured
+   today" still counts them, which is the figure that should.
+2. **The pill.** "This event" passed no `filter`, so the screen kept whichever pill the rep last
+   chose by hand — tap "12" with `Won` still set and get 3. It now passes `filter: 'All'`, which
+   is what the in-screen version of that same cell already did (`leads.tsx` calls `setFilter('All')`).
+3. **The search box.** `filtered` applies the search query *before* the pill, so a few letters
+   left in the box cut the list under every tile. The arrival effect now clears it. This one is a
+   behaviour change to the two tiles that shipped in 64, and was flagged to the user as such
+   rather than slipped in.
+
+Found 2 and 3 only by reading the whole path from the tile to the rendered row. Typechecking and
+the unit checks would both have passed with them still there.
+
+**One rule for "this show".** The follow-ups screen shows unsynced drafts and the leads list does
+not, so those two cannot share `leadsInScope` — but they must agree on what "this show" means.
+`narrowToEvent` is that narrowing on its own, and `followUpsDue` is the due-date rule that three
+screens each owned a private copy of. `verify-lead-scope.mjs` asserts the two narrowings return
+the same ids once drafts are excluded, so an edit that pulls them apart fails there. That script
+compiles `lib/leadScope.ts` alone and cannot render a screen, so it locks the **rule**, not the
+pixels — it would not catch a screen that stopped calling them.
+
+**Known residual, pre-existing and untouched:** the *Leads tab's* follow-ups cell counts
+synced-only (it derives from the scoped `leads`) while the follow-ups screen it opens shows
+drafts. Not part of 67, which is about Home; Home's own follow-ups tile does match its screen,
+because it counts `narrowToEvent` rather than `leadsInScope` for exactly this reason.
+
+**Verified:** `npm run typecheck` clean; `npm run verify:lead-scope` 30/30 including 13 new
+assertions; the served Metro bundle rebuilt clean (2272 modules) and contains the new code and
+none of the removed code. **The click-through is NOT verified** — headless sign-in stopped
+working when the OTP work landed, and `(tabs)` screens are not reachable by URL on web, so the
+six manual steps under "Done means" above still need a handset.
+
+Changed: [app/(app)/(tabs)/index.tsx](app/(app)/(tabs)/index.tsx),
+[app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx),
+[app/(app)/follow-ups/index.tsx](app/(app)/follow-ups/index.tsx),
+[lib/leadScope.ts](lib/leadScope.ts) (added `narrowToEvent`, `followUpsDue`, `startOfDay`),
+[scripts/verify-lead-scope.mjs](scripts/verify-lead-scope.mjs).
 
 ---
 

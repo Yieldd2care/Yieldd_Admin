@@ -5,6 +5,11 @@
  * get quietly wrong — the sort key, and the order the per-show sections come
  * out in — can be checked without a renderer. See
  * `scripts/verify-lead-scope.mjs`.
+ *
+ * It has since taken on the rules a SCREEN would otherwise own privately, for
+ * the same reason: the counters on Home are doors to these lists, so a figure
+ * and the list it opens have to be the same question asked once, not two
+ * filters in two files that happen to agree today.
  */
 
 /** Only the fields scoping and ordering actually read. */
@@ -55,6 +60,59 @@ export function leadsInScope<L extends ScopableLead>(leads: L[], eventId: string
   return leads
     .filter((lead) => lead.syncStatus === 'synced' && (!eventId || lead.eventId === eventId))
     .sort((a, b) => at(b) - at(a));
+}
+
+/**
+ * The same narrowing `leadsInScope` applies, without the synced-only rule and
+ * without the sort. `null` is every event.
+ *
+ * Exists because the follow-ups screen shows unsynced drafts and the leads list
+ * does not, so those two cannot share `leadsInScope` — but they must share the
+ * rule for what "this show" means. A figure on Home is a door to a screen, and
+ * two different answers to "which leads are this show's" is exactly how a tile
+ * reading 12 opens a list of 9. `verify-lead-scope.mjs` asserts the two stay one
+ * rule.
+ *
+ * Note this drops a lead with no `eventId` when scoped, exactly as
+ * `leadsInScope` does. Unfiled leads come back the moment the scope does.
+ */
+export function narrowToEvent<L extends { eventId: string }>(
+  leads: L[],
+  eventId: string | null
+): L[] {
+  return eventId ? leads.filter((lead) => lead.eventId === eventId) : leads;
+}
+
+/** Midnight local, so "due today" means the whole day rather than this instant. */
+export function startOfDay(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+/**
+ * The follow-ups that are today's work: due today, or any day before it.
+ *
+ * Here rather than on the screen that lists them because three places count
+ * this — Home's tile, the leads screen's cell, and the follow-ups screen itself
+ * — and two of them are numbers you tap to reach the third. Three copies of a
+ * date comparison is how they drift apart, and the first sign of the drift is a
+ * rep tapping "3 due" and being shown four people.
+ *
+ * Compared at local midnight rather than at this instant, so a follow-up set for
+ * this afternoon is already today's work at nine in the morning. Anything due
+ * later than today is left out: next week's follow-up is not today's work and
+ * would only make the list look impossible.
+ *
+ * Returns a NEW array, in the order it was given. The caller sorts — this screen
+ * wants soonest first, which is not the newest-first rule the leads list uses.
+ */
+export function followUpsDue<L extends { followUpDate?: string | null }>(
+  leads: L[],
+  now: Date = new Date()
+): L[] {
+  const today = startOfDay(now);
+  return leads.filter(
+    (lead) => lead.followUpDate && startOfDay(new Date(lead.followUpDate)) <= today
+  );
 }
 
 /**

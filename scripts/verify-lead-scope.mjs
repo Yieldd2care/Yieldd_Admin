@@ -91,6 +91,95 @@ mark(
 );
 
 // ---------------------------------------------------------------------------
+// One rule for "this show" — PENDING 67
+//
+// Home's tiles are doors: each counts a figure and opens the screen that lists
+// it. The follow-ups screen shows unsynced drafts and the leads list does not,
+// so those two cannot share `leadsInScope` — but they MUST share the narrowing,
+// or a tile reads 12 and opens a list of 9, which is the complaint 67 was.
+//
+// This compiles `lib/leadScope.ts` alone and cannot render a screen, so what is
+// locked here is the RULE, not the pixels. A future edit that pulls the two
+// narrowings apart fails below; one that stops a screen calling them does not.
+// ---------------------------------------------------------------------------
+
+eq('no scope narrows nothing', m.narrowToEvent(MIXED, null), MIXED);
+eq('a scope keeps only that show', ids(m.narrowToEvent(MIXED, 'imtex')), ['a', 'c']);
+eq(
+  'a draft is this narrowing’s business, unlike leadsInScope’s',
+  ids(m.narrowToEvent(WITH_DRAFT, 'autoexpo')),
+  ['b', 'draft']
+);
+
+// A lead the server accepted without an event. `forThisEvent` on Home used to
+// keep these, which is half of why its figure outran the list it opened.
+const UNFILED = [...MIXED, lead('unfiled', '', '2026-09-11T09:00:00+00:00')];
+mark(
+  !ids(m.narrowToEvent(UNFILED, 'imtex')).includes('unfiled'),
+  'a lead with no event is not silently filed into the scoped one'
+);
+mark(
+  ids(m.narrowToEvent(UNFILED, null)).includes('unfiled'),
+  '...and it comes back the moment the scope does'
+);
+
+// The assertion this section exists for.
+for (const scope of [null, 'imtex', 'autoexpo', 'nothing']) {
+  const viaScope = ids(m.leadsInScope(UNFILED.concat(WITH_DRAFT), scope)).sort();
+  const viaNarrow = ids(
+    m.narrowToEvent(UNFILED.concat(WITH_DRAFT), scope).filter((l) => l.syncStatus === 'synced')
+  ).sort();
+  eq(`the two narrowings agree on "${scope ?? 'all shows'}"`, viaNarrow, viaScope);
+}
+
+// ---------------------------------------------------------------------------
+// Follow-ups due — the date rule three screens used to own a copy of
+// ---------------------------------------------------------------------------
+
+// Built from the fixed `now` below, never from the real clock: a test that
+// hardcodes dates passes until the day it is read, which is the worst moment
+// for it to start failing.
+const NOW = new Date(2026, 8, 20, 14, 30); // 20 Sep 2026, 14:30 local
+const day = (offset, hour = 9) => {
+  const d = new Date(2026, 8, 20 + offset, hour, 0);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate()
+  ).padStart(2, '0')}T${String(hour).padStart(2, '0')}:00:00`;
+};
+const withFollowUp = (id, followUpDate) => ({ id, followUpDate });
+
+const DUE = [
+  withFollowUp('yesterday', day(-1)),
+  withFollowUp('this-morning', day(0, 9)),
+  // The reason the comparison is at local midnight and not at `now`: a
+  // follow-up set for this afternoon is already today's work at breakfast.
+  withFollowUp('later-today', day(0, 23)),
+  withFollowUp('tomorrow', day(1)),
+  withFollowUp('next-week', day(7)),
+  { id: 'none', followUpDate: undefined },
+  { id: 'null', followUpDate: null },
+];
+
+eq(
+  'due today or earlier, and nothing after today',
+  ids(m.followUpsDue(DUE, NOW)),
+  ['yesterday', 'this-morning', 'later-today']
+);
+mark(
+  !ids(m.followUpsDue(DUE, NOW)).includes('none') &&
+    !ids(m.followUpsDue(DUE, NOW)).includes('null'),
+  'a lead with no follow-up date is not due'
+);
+// Deliberately fed out of date order. This decides WHICH, never the order:
+// the follow-ups screen wants soonest first and the leads list wants newest
+// capture first, so a sort in here would be wrong for one of them.
+eq(
+  'the given order is kept — choosing is not sorting',
+  ids(m.followUpsDue([DUE[1], DUE[3], DUE[0], DUE[2]], NOW)),
+  ['this-morning', 'yesterday', 'later-today']
+);
+
+// ---------------------------------------------------------------------------
 // Order — the reason this file exists
 // ---------------------------------------------------------------------------
 

@@ -9,7 +9,7 @@ import { LeadScopeSheet } from '../../../components/shared/LeadScopeSheet';
 import { ChevronDownIcon, ChevronRightIcon, SearchIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useLeadScope } from '../../../hooks/useEvents';
-import { groupLeadsByEvent, leadsInScope } from '../../../lib/leadScope';
+import { followUpsDue, groupLeadsByEvent, leadsInScope } from '../../../lib/leadScope';
 import { leadMatchesQuery } from '../../../lib/leadSearch';
 import { whatsappDigits } from '../../../lib/messaging';
 import { useCardImages } from '../../../hooks/useCardImages';
@@ -43,9 +43,10 @@ export default function LeadListScreen() {
    * a list they asked to search with no keyboard and no idea why.
    */
   const searchRef = useRef<RNTextInput>(null);
-  const { focus, filter: filterParam } = useLocalSearchParams<{
+  const { focus, filter: filterParam, scope: scopeParam } = useLocalSearchParams<{
     focus?: string;
     filter?: string;
+    scope?: string;
   }>();
 
   useEffect(() => {
@@ -53,24 +54,6 @@ export default function LeadListScreen() {
     const handle = InteractionManager.runAfterInteractions(() => searchRef.current?.focus());
     return () => handle.cancel();
   }, [focus]);
-
-  /**
-   * Home's counters land here with the matching pill already chosen, so a rep
-   * who taps "22 pending" sees those 22 and nothing else.
-   *
-   * The param is cleared the moment it has been applied, and that is the whole
-   * trick. A route param persists on the tab, so without the clear: tapping the
-   * same counter twice would do nothing the second time (the value never
-   * changed, so the effect never re-runs), and coming back to the tab from the
-   * tab bar days later would silently re-apply a filter the rep had since
-   * cleared by hand. An empty string rather than `undefined`, because that is
-   * removal under every router version rather than the string "undefined".
-   */
-  useEffect(() => {
-    if (!filterParam) return;
-    if (FILTERS.some((f) => f.key === filterParam)) setFilter(filterParam);
-    router.setParams({ filter: '' });
-  }, [filterParam]);
 
   const allLeads = useLeadsStore((s) => s.leads);
   const isRefreshing = useLeadsStore((s) => s.isRefreshing);
@@ -85,6 +68,45 @@ export default function LeadListScreen() {
    * header comment on `stores/useLeadScopeStore.ts`.
    */
   const { events, scopedEvent, scopeToEvent } = useLeadScope();
+
+  /**
+   * Arriving from one of Home's counters: the pill it counts is already chosen
+   * and the list is already narrowed to the show it counted, so a rep who taps
+   * "22 pending" sees those 22 and nothing else.
+   *
+   * ONE effect making ONE `setParams` call for both keys, deliberately. Two
+   * effects each calling `setParams` clobber each other — the second write
+   * carries the first key's stale value back with it.
+   *
+   * The params are cleared the moment they have been applied, and that is the
+   * whole trick. A route param persists on the tab, so without the clear:
+   * tapping the same counter twice would do nothing the second time (the value
+   * never changed, so the effect never re-runs), and coming back to the tab
+   * from the tab bar days later would silently re-apply a filter the rep had
+   * since cleared by hand. A sticky `scope` is the worse of the two — the list
+   * would quietly stop showing shows the rep knows they captured. Empty strings
+   * rather than `undefined`, because that is removal under every router version
+   * rather than the literal string "undefined". No loop: the clear re-runs this
+   * once with both params falsy and the guard returns.
+   *
+   * `scope` narrows the VIEW and nothing else. It is applied to
+   * `useLeadScopeStore`, never to `useCurrentEventStore` — arriving here from
+   * Home must not decide where the next captured card is filed. Reached by its
+   * own tab icon this screen still opens on every show; this is a one-shot
+   * narrowing on arrival, not a default.
+   *
+   * The search box is cleared too, and that is not housekeeping: `filtered`
+   * applies the query BEFORE the pill, so a few letters left in the box
+   * yesterday would cut the list under a figure that promised the whole of it.
+   * A counter you can tap has to land on the people it counted.
+   */
+  useEffect(() => {
+    if (!filterParam && !scopeParam) return;
+    if (filterParam && FILTERS.some((f) => f.key === filterParam)) setFilter(filterParam);
+    if (scopeParam) scopeToEvent(scopeParam);
+    setQuery('');
+    router.setParams({ filter: '', scope: '' });
+  }, [filterParam, scopeParam, scopeToEvent]);
 
   /**
    * The synced leads in scope, newest capture first.
@@ -130,13 +152,9 @@ export default function LeadListScreen() {
     [leads, whatsappSent]
   );
 
-  const followUpsDue = useMemo(() => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    return leads.filter(
-      (l) => l.followUpDate && new Date(l.followUpDate).getTime() <= today.getTime()
-    ).length;
-  }, [leads]);
+  // The same rule the follow-ups screen itself uses, because this cell opens
+  // that screen. It used to be a second copy of the comparison here.
+  const followUpsDueCount = useMemo(() => followUpsDue(leads).length, [leads]);
 
   /*
     Signed against the event's whole list, not the filtered one.
@@ -259,7 +277,18 @@ export default function LeadListScreen() {
               <Typography className="text-[16px] font-extrabold text-white mt-[3px]">{leads.length}</Typography>
             </Pressable>
             <View className="w-px bg-white/[0.14]" />
-            <Pressable onPress={() => router.push('/(app)/follow-ups')} className="flex-1 px-4 py-3">
+            {/* Carries the scope across, because this figure is counted from
+                the scoped list beside it. Without it the cell says "3 due" for
+                one show and opens a screen listing every show's. */}
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/follow-ups',
+                  params: scopedEvent ? { scope: scopedEvent.id } : {},
+                })
+              }
+              className="flex-1 px-4 py-3"
+            >
               <View className="flex-row items-center justify-between">
                 <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
                   Follow-ups
@@ -268,7 +297,7 @@ export default function LeadListScreen() {
               </View>
               <View className="flex-row items-center gap-[6px] mt-[5px]">
                 <View className="w-[6px] h-[6px] rounded-full bg-gold" />
-                <Typography className="text-[13px] font-bold text-white">{followUpsDue} due</Typography>
+                <Typography className="text-[13px] font-bold text-white">{followUpsDueCount} due</Typography>
               </View>
             </Pressable>
           </View>

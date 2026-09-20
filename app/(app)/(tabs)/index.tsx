@@ -27,6 +27,7 @@ import { AttentionDot } from '../../../hooks/useAttention';
 import { useProGate } from '../../../hooks/usePlan';
 import { useCardImages } from '../../../hooks/useCardImages';
 import { whatsappDigits } from '../../../lib/messaging';
+import { followUpsDue, leadsInScope, narrowToEvent } from '../../../lib/leadScope';
 
 function timeGreeting() {
   const hour = new Date().getHours();
@@ -66,14 +67,36 @@ export default function HomeScreen() {
   ).length;
 
   /**
-   * Scoped to this event and to synced leads, which is what the leads screen
-   * shows — and these two figures are now tappable, so they have to agree with
-   * the list they open. They used to count every event, which was invisible
-   * while nothing could be tapped and would be a plain contradiction now: tap
-   * 22 and arrive at a list of 9.
+   * What the tiles below count — and the ONE thing they may count, because
+   * every one of them is a door.
+   *
+   * `leadsInScope` is the function the leads list itself uses, called here
+   * rather than reimplemented, so the figure on the tile and the list it opens
+   * are the same question asked once. `forThisEvent` above cannot be it: it
+   * keeps unsynced drafts and leads with no event, both of which the list
+   * drops, so a tile built on it reads 12 and opens a list of 9.
+   *
+   * Drafts are not hidden by this — they have their own badge on the pencil
+   * above, and "captured today" still counts them, which is the figure that
+   * should.
    */
-  const syncedThisEvent = forThisEvent.filter((l) => l.syncStatus === 'synced');
-  const NEEDS_NOTE_COUNT = syncedThisEvent.filter((l) => l.needsNote).length;
+  const tileLeads = useMemo(
+    () => leadsInScope(allLeads, event?.id ?? null),
+    [allLeads, event]
+  );
+
+  /**
+   * Carried to whichever screen a tile opens, so it lands on the show these
+   * figures were counted for.
+   *
+   * `useCurrentEvent` falls back to the live show, then the next one due, then
+   * the first — so `event` is undefined only when the rep has no events at all,
+   * and then there is nothing to narrow to. That is why there is no "all"
+   * sentinel: no param simply means the screen keeps its own scope.
+   */
+  const scopeParams = event ? { scope: event.id } : {};
+
+  const NEEDS_NOTE_COUNT = tileLeads.filter((l) => l.needsNote).length;
 
   /**
    * Pending means nobody has opened a WhatsApp draft for this lead yet, which
@@ -84,14 +107,22 @@ export default function HomeScreen() {
    */
   const whatsappSentIds = useLeadsStore((s) => s.whatsappSentIds);
   const whatsappSent = useMemo(() => new Set(whatsappSentIds), [whatsappSentIds]);
-  const WHATSAPP_PENDING_COUNT = syncedThisEvent.filter(
+  const WHATSAPP_PENDING_COUNT = tileLeads.filter(
     (l) => Boolean(whatsappDigits(l.phone)) && !whatsappSent.has(l.id)
   ).length;
 
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
-  const followUpsDue = forThisEvent.filter(
-    (l) => l.followUpDate && new Date(l.followUpDate).getTime() <= endOfToday.getTime()
+  /**
+   * The odd one out, and deliberately so. This tile opens the follow-ups
+   * screen, which shows unsynced drafts where the leads list does not — so it
+   * counts `narrowToEvent` (the show narrowing on its own) rather than
+   * `leadsInScope` (which would drop the drafts the screen is about to show).
+   *
+   * The date rule is `followUpsDue`, the same function that screen filters
+   * with, so the number on this tile and the badge in its header cannot say
+   * different things.
+   */
+  const followUpsDueCount = followUpsDue(
+    narrowToEvent(allLeads, event?.id ?? null)
   ).length;
   const selectEvent = useCurrentEventStore((s) => s.selectEvent);
   const isAdmin = user?.role === 'admin';
@@ -277,10 +308,21 @@ export default function HomeScreen() {
           "22 pending" and cannot reach those 22 has been handed a number and
           nothing to do with it.
 
-          Each one carries the matching pill to the leads screen as a `filter`
-          param, which that screen applies and then clears — see the comment
-          there for why the clearing is what makes tapping the same counter
-          twice work.
+          Each one carries two things to the screen it opens: the matching pill
+          as a `filter` param, and the show these figures were counted for as a
+          `scope` param. That screen applies both and then clears them — see the
+          comment there for why the clearing is what makes tapping the same
+          counter twice work, and why a `scope` that stuck would be worse than
+          the bug it fixes.
+
+          `scope` narrows what is SHOWN and nothing else. It never reaches
+          `useCurrentEventStore`, so tapping a tile cannot change where the next
+          captured card is filed.
+
+          A tile promises a number, so it has to hand over everything that
+          decides the list: "This event" passes `filter: 'All'` because without
+          it the screen keeps whichever pill the rep last chose by hand, and the
+          screen clears its own search box on arrival for the same reason.
 
           Every cell is a Pressable on its FIRST render, never a View that
           becomes one later: that upgrade is what catches NativeWind mid-life
@@ -290,7 +332,12 @@ export default function HomeScreen() {
         <View className="bg-navy-elevated rounded-[14px] mx-5 mt-3 overflow-hidden">
           <View className="flex-row">
             <Pressable
-              onPress={() => router.push('/(app)/(tabs)/leads')}
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/(tabs)/leads',
+                  params: { filter: 'All', ...scopeParams },
+                })
+              }
               className="flex-1 px-4 py-3"
             >
               <View className="flex-row items-center justify-between">
@@ -300,12 +347,14 @@ export default function HomeScreen() {
                 <ChevronRightIcon size={10} color="rgba(255,255,255,0.38)" strokeWidth={2.5} />
               </View>
               <Typography className="text-[16px] font-extrabold text-white mt-[3px]">
-                {forThisEvent.length}
+                {tileLeads.length}
               </Typography>
             </Pressable>
             <View className="w-px bg-white/[0.14]" />
             <Pressable
-              onPress={() => router.push('/(app)/follow-ups')}
+              onPress={() =>
+                router.push({ pathname: '/(app)/follow-ups', params: scopeParams })
+              }
               className="flex-1 px-4 py-3"
             >
               <View className="flex-row items-center justify-between">
@@ -316,7 +365,7 @@ export default function HomeScreen() {
               </View>
               <View className="flex-row items-center gap-[6px] mt-[5px]">
                 <View className="w-[6px] h-[6px] rounded-full bg-gold" />
-                <Typography className="text-[13px] font-bold text-white">{followUpsDue} due</Typography>
+                <Typography className="text-[13px] font-bold text-white">{followUpsDueCount} due</Typography>
               </View>
             </Pressable>
           </View>
@@ -326,7 +375,7 @@ export default function HomeScreen() {
               onPress={() =>
                 router.push({
                   pathname: '/(app)/(tabs)/leads',
-                  params: { filter: 'Needs a note' },
+                  params: { filter: 'Needs a note', ...scopeParams },
                 })
               }
               className="flex-1 px-4 py-3"
@@ -347,7 +396,7 @@ export default function HomeScreen() {
               onPress={() =>
                 router.push({
                   pathname: '/(app)/(tabs)/leads',
-                  params: { filter: 'WhatsApp pending' },
+                  params: { filter: 'WhatsApp pending', ...scopeParams },
                 })
               }
               className="flex-1 px-4 py-3"
