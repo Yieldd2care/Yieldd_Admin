@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { ScreenHeader } from '../../../components/app/ScreenHeader';
-import { AlertCircleIcon, CheckIcon, ClockIcon, SparkleIcon, ContactsIcon, EditIcon, LockIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../../../components/ui/icons';
+import { AlertCircleIcon, CheckIcon, ClockIcon, SparkleIcon, ContactsIcon, EditIcon, MailIcon, MicIcon, PhoneIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { STATUS_CLASSES, STATUS_TEXT } from '../../../data/leads';
 import { cardNeedsAttention, displayCompany, displayInitial, displayName } from '../../../lib/leadDisplay';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
@@ -671,7 +671,7 @@ export default function LeadDetailScreen() {
           }}
           className="flex-1 h-[52px] rounded-md bg-white border border-hairline items-center justify-center flex-row gap-[6px]"
         >
-          {locked ? <LockIcon size={13} color="#5A6B85" strokeWidth={2.2} /> : null}
+          {locked ? <ProBadge /> : null}
           <Typography className={`text-[14px] font-bold text-navy ${locked ? 'opacity-60' : ''}`}>
             Change status
           </Typography>

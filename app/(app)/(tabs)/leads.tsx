@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../../../components/ui/Typography';
 import { LeadRow } from '../../../components/app/LeadRow';
 import { LeadScopeSheet } from '../../../components/shared/LeadScopeSheet';
+import { ProBadge } from '../../../components/app/ProLock';
 import { ChevronDownIcon, ChevronRightIcon, SearchIcon, WhatsAppIcon } from '../../../components/ui/icons';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
 import { useLeadScope } from '../../../hooks/useEvents';
@@ -13,6 +14,7 @@ import { followUpsDue, groupLeadsByEvent, leadsInScope } from '../../../lib/lead
 import { leadMatchesQuery } from '../../../lib/leadSearch';
 import { whatsappDigits } from '../../../lib/messaging';
 import { useCardImages } from '../../../hooks/useCardImages';
+import { useProGate } from '../../../hooks/usePlan';
 
 // `Lost` belongs here: the status sheet offers it, so without a filter a lost
 // lead can be set and then never found again.
@@ -36,24 +38,16 @@ export default function LeadListScreen() {
 
   /**
    * Home's Search tile lands here rather than on a search screen of its own,
-   * because this is where searching already happens.
-   *
-   * The focus is deferred until the push animation has settled. Asking for it
-   * during the transition is dropped on Android, which leaves the rep looking at
-   * a list they asked to search with no keyboard and no idea why.
+   * because this is where searching already happens. The counter is how a
+   * second tap is told apart from the first — see the arrival effect below.
    */
   const searchRef = useRef<RNTextInput>(null);
+  const [focusNonce, setFocusNonce] = useState(0);
   const { focus, filter: filterParam, scope: scopeParam } = useLocalSearchParams<{
     focus?: string;
     filter?: string;
     scope?: string;
   }>();
-
-  useEffect(() => {
-    if (focus !== 'search') return;
-    const handle = InteractionManager.runAfterInteractions(() => searchRef.current?.focus());
-    return () => handle.cancel();
-  }, [focus]);
 
   const allLeads = useLeadsStore((s) => s.leads);
   const isRefreshing = useLeadsStore((s) => s.isRefreshing);
@@ -68,6 +62,8 @@ export default function LeadListScreen() {
    * header comment on `stores/useLeadScopeStore.ts`.
    */
   const { events, scopedEvent, scopeToEvent } = useLeadScope();
+  // Follow-ups is paid. Gated at the cell below, never on the screen it opens.
+  const { locked, gate } = useProGate();
 
   /**
    * Arriving from one of Home's counters: the pill it counts is already chosen
@@ -98,15 +94,51 @@ export default function LeadListScreen() {
    * The search box is cleared too, and that is not housekeeping: `filtered`
    * applies the query BEFORE the pill, so a few letters left in the box
    * yesterday would cut the list under a figure that promised the whole of it.
-   * A counter you can tap has to land on the people it counted.
+   * A counter you can tap has to land on the people it counted. Only for
+   * `filter`/`scope`, though — arriving from the Search tile must not wipe what
+   * the rep is part-way through typing.
+   *
+   * `focus` goes through a COUNTER rather than being acted on directly, and
+   * that is the whole of why the Search tile used to work only once. The
+   * obvious shapes both fail:
+   *
+   *   - focusing off the param, then clearing it, re-runs the focusing effect,
+   *     whose cleanup cancels the `InteractionManager` handle BEFORE it fires.
+   *     The keyboard then never opens at all — worse than the bug, and it reads
+   *     as correct.
+   *   - latching the param's value does nothing either: both taps send the same
+   *     `'search'`, so the latch never changes and the second tap is ignored.
+   *     That is the same bug one layer down.
+   *
+   * A counter changes on every arrival even though the param does not, which is
+   * exactly the property needed. The focusing itself lives in its own effect
+   * below, keyed on the counter, so clearing the param cannot reach it.
    */
   useEffect(() => {
-    if (!filterParam && !scopeParam) return;
+    if (!filterParam && !scopeParam && focus !== 'search') return;
     if (filterParam && FILTERS.some((f) => f.key === filterParam)) setFilter(filterParam);
     if (scopeParam) scopeToEvent(scopeParam);
-    setQuery('');
-    router.setParams({ filter: '', scope: '' });
-  }, [filterParam, scopeParam, scopeToEvent]);
+    if (filterParam || scopeParam) setQuery('');
+    if (focus === 'search') setFocusNonce((n) => n + 1);
+    router.setParams({ filter: '', scope: '', focus: '' });
+  }, [filterParam, scopeParam, focus, scopeToEvent]);
+
+  /**
+   * The deferred focus, driven by the counter above rather than by the param.
+   *
+   * Deferred until the push animation has settled: asking during the transition
+   * is dropped on Android, which leaves the rep looking at a list they asked to
+   * search with no keyboard and no idea why.
+   *
+   * Zero is the initial value and means "nobody asked" — without that guard a
+   * cold open of the tab would raise the keyboard on a rep who only wanted to
+   * look at their leads.
+   */
+  useEffect(() => {
+    if (focusNonce === 0) return;
+    const handle = InteractionManager.runAfterInteractions(() => searchRef.current?.focus());
+    return () => handle.cancel();
+  }, [focusNonce]);
 
   /**
    * The synced leads in scope, newest capture first.
@@ -279,23 +311,32 @@ export default function LeadListScreen() {
             <View className="w-px bg-white/[0.14]" />
             {/* Carries the scope across, because this figure is counted from
                 the scoped list beside it. Without it the cell says "3 due" for
-                one show and opens a screen listing every show's. */}
+                one show and opens a screen listing every show's.
+
+                Paid, and gated at this tap for the same reason Home's copy of
+                this cell is: `gate` navigates when it refuses, which from a
+                screen body would be a push during render. The count stays
+                visible on Free — see `components/app/ProLock.tsx`. */}
             <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: '/(app)/follow-ups',
-                  params: scopedEvent ? { scope: scopedEvent.id } : {},
-                })
-              }
+              onPress={() => {
+                if (gate('follow-ups')) {
+                  router.push({
+                    pathname: '/(app)/follow-ups',
+                    params: scopedEvent ? { scope: scopedEvent.id } : {},
+                  });
+                }
+              }}
               className="flex-1 px-4 py-3"
             >
-              <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center justify-between gap-2">
                 <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
                   Follow-ups
                 </Typography>
+                {locked ? <ProBadge tone="dark" /> : null}
+                <View className="flex-1" />
                 <ChevronRightIcon size={10} color="rgba(255,255,255,0.38)" strokeWidth={2.5} />
               </View>
-              <View className="flex-row items-center gap-[6px] mt-[5px]">
+              <View className={`flex-row items-center gap-[6px] mt-[5px] ${locked ? 'opacity-70' : ''}`}>
                 <View className="w-[6px] h-[6px] rounded-full bg-gold" />
                 <Typography className="text-[13px] font-bold text-white">{followUpsDueCount} due</Typography>
               </View>

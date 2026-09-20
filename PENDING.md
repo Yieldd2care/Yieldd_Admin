@@ -82,8 +82,9 @@ Full diagnosis for each is in its numbered section below.
 | 70 | A revoked rep can still read the leads already on their phone | `[x]` done 2026-09-20 — the device now tears itself down and says why. Asserted end to end by `npm run verify:deactivation`, including that the revoked path is reachable at all. See the section for what it does NOT do |
 | 71 | Lead detail never shows the deal value that was entered | `[ ]` reported 2026-09-18. Qualified and Won both take a value and neither is shown back. See the section |
 | 72 | Signing out left the previous account's leads on the handset | `[x]` done 2026-09-20 — found while building 70, and wider than it. See the section |
-| 73 | Two of the three doors to the Pro follow-ups screen are not gated | `[ ]` found 2026-09-20 while building 67, not caused by it. The icon row gates with `gate('follow-ups')`; the blue tile beside it and the Leads-screen cell both push straight through. See the section |
-| 74 | Tapping Home's Search tile twice in a row does not focus the box the second time | `[ ]` found 2026-09-20 while building 67, not caused by it. `focus` is the one route param never cleared — the exact bug the comment on the param beside it describes. See the section |
+| 73 | Two of the three doors to the Pro follow-ups screen are not gated | `[x]` done 2026-09-20 — both now `gate('follow-ups')` at the tap, keeping the `scope` param so 67 does not come back for Pro users only. **The screen-level backstop was deliberately NOT built**: `useIsPro` waits on a react-query call and reads false while it does not know, so a guard would redirect genuine paying customers. Reasons in the section. **Not yet confirmed on a handset** |
+| 74 | Tapping Home's Search tile twice in a row does not focus the box the second time | `[x]` done 2026-09-20 — the arrival effect now owns all three params and raises a **counter**; a second effect keyed on it does the focusing. Neither obvious fix works, and both fail silently — see the section before changing this. **Not yet confirmed on a handset, and this one cannot be called done without it** |
+| 75 | A padlock on its own does not say "Pro" | `[x]` done 2026-09-20 — asked for by the user while 73 was being built. `ProBadge` already showed a lock **and** the word; it simply was not used everywhere. Five bare locks now carry it, and the rule is written into `components/app/ProLock.tsx` so the next one does too |
 
 **Parked for Phase 2 — decided 2026-09-14**
 
@@ -316,7 +317,7 @@ device. This raises the floor honestly; it is not a remote wipe.
 
 ---
 
-### 73. Two of the three doors to the Pro follow-ups screen are not gated — found 2026-09-20 `[ ]`
+### 73. Two of the three doors to the Pro follow-ups screen are not gated — found 2026-09-20, DONE 2026-09-20 `[x]`
 
 **Not reported — found while auditing the tile paths for 67, and not caused by it.** Nothing in
 67 changed who may open that screen; this was already true.
@@ -340,7 +341,99 @@ place to decide it.
 
 ---
 
-### 74. Home's Search tile does not focus the box when tapped twice in a row — found 2026-09-20 `[ ]`
+**DONE 2026-09-20.**
+
+**The decision:** the tile stays visible and keeps showing its count; the **tap** is what is
+gated. A rep who can see "3 due" and is offered Pro on tapping is a better offer than a number
+that vanishes, and it matches the icon row that was already right.
+
+Both pushes now go through `gate('follow-ups')`, **keeping the `scope` param they already
+carried** — gating must not drop the show, or item 67 comes back for Pro users only, which is
+the worst kind because it looks fixed. `leads.tsx` had never used `useProGate` and now does.
+
+**`gate('roi')` was checked and there is nothing to do.** `events/reports` has exactly ONE
+door — `app/(app)/(tabs)/index.tsx:294` — and it is already gated. The note above to "check the
+same pattern" resolves to nothing; do not re-open it.
+
+**The screen-level backstop was deliberately NOT built, and this is the part worth reading.**
+A guard inside `app/(app)/follow-ups/index.tsx` looks free and is not: it would redirect genuine
+paying customers off a feature they bought.
+
+`useIsPro()` (`hooks/usePlan.ts:15-19`) is not a synchronous store read. It is
+`isProPlan(organization?.planTier, profileTier)` over **two** sources — a persisted profile field
+*and* `useOrganization()`, which is react-query. `useIsPro` discards that query's `isLoading`
+entirely, and `isProPlan` returns **false when it knows nothing**. Its own comment calls Free
+"the safe direction to be wrong in" — true when the consequence is *drawing a lock*, false when
+it is *redirecting*.
+
+Two real windows where a Pro account reads `isPro === false` on first render:
+
+- a cold start where the cached profile was dropped as stale — `stores/useSessionStore.ts:287`
+  does that on purpose — so there is no `profileTier` and the org has not loaded;
+- an account upgraded on the website: `profileTier` is a stale `'free'` until the org query
+  lands with `'pro'`. `scripts/verify-plan.mjs:56` asserts exactly that precedence, so it is a
+  supported state, not an edge case.
+
+There is no `isPlanLoading` anywhere in the repo to wait on. Two further reasons: **no screen in
+this app has a plan guard at all**, so it would be a new pattern; and
+`app/(app)/events/reports.tsx:23-27` already documents the refusal, naming `follow-ups` —
+*"`useProGate.gate` navigates when it refuses, which from a screen body would be a push during
+render."*
+
+A safe version is possible later, but it needs `usePlan` to expose a settled flag so the guard
+can **wait** rather than guess. That is its own item, not a line in this one.
+
+Changed: [app/(app)/(tabs)/index.tsx](app/(app)/(tabs)/index.tsx),
+[app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx).
+
+---
+
+### 75. A padlock on its own does not say "Pro" — asked for 2026-09-20, DONE 2026-09-20 `[x]`
+
+**Asked for by the user while 73 was being built:** wherever the app marks a paid feature, write
+the word rather than showing only a padlock, *"so the user can easily identify that this is the
+pro feature"*.
+
+A lock on its own reads as "broken", or "ask your admin", as readily as it reads as "buy this".
+The word is what turns a refusal into an offer.
+
+**Most of it already existed.** `ProBadge` in `components/app/ProLock.tsx` has always rendered a
+lock **and** the word "Pro" — it simply was not used everywhere. Three call sites were already
+right (profile, event edit, reassign) and are untouched. Five were a bare `LockIcon`:
+
+| Where | Was | Now |
+|---|---|---|
+| `events/[id]/dashboard.tsx` — custom fields | lock | `<ProBadge />` |
+| `events/[id]/dashboard.tsx` — ROI, on navy | lock | `<ProBadge tone="dark" />` |
+| `leads/[id].tsx` — Change status | lock | `<ProBadge />` |
+| Home — Follow-ups and Reports icon tiles | 17px lock circle | `ProTileBadge`, a **PRO** pill |
+| Home + Leads — the blue Follow-ups cells | nothing at all | `<ProBadge tone="dark" />` |
+
+Two supporting changes: `ProBadge` gained `tone` (`light` default, `dark` for navy surfaces —
+the grey pill disappears on the navy buttons), and `ProTileLock` was **renamed `ProTileBadge`**,
+because "TileLock" would be a lie once it says PRO. Its old comment claimed a badge "would not
+fit" in the corner of the icon square; the lock was dropped and the word kept instead, which is
+the half that carries the meaning — and at 9px a padlock was a smudge anyway.
+
+`app/(app)/(modals)/pro-feature.tsx:37` keeps its lock: that is the explanation sheet's own
+eyebrow, and it already says **PAID FEATURE** in words beside it.
+
+**The rule is written into the header of `components/app/ProLock.tsx`**, not just applied — that
+is what stops the next bare `LockIcon` being added. There is deliberately no lock-only export to
+reach for.
+
+Not asserted by any script: `verify:plan` only reflects on `lib/plan.ts` and never sees a call
+site. Checking this means looking at the five screens.
+
+Changed: [components/app/ProLock.tsx](components/app/ProLock.tsx),
+[app/(app)/(tabs)/index.tsx](app/(app)/(tabs)/index.tsx),
+[app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx),
+[app/(app)/events/[id]/dashboard.tsx](app/(app)/events/[id]/dashboard.tsx),
+[app/(app)/leads/[id].tsx](app/(app)/leads/[id].tsx).
+
+---
+
+### 74. Home's Search tile does not focus the box when tapped twice in a row — found 2026-09-20, DONE 2026-09-20 `[x]`
 
 **Not reported — found while auditing the route params for 67.** Home's Search tile pushes
 `/(app)/(tabs)/leads` with `focus: 'search'`, and the effect that reads it focuses the field.
@@ -357,6 +450,37 @@ effect deliberately returns early when only `focus` is set. It needs its own cle
 effect, and two effects each calling `router.setParams` is the clobbering problem the combined
 one exists to avoid — so the clears have to be reconciled, not just added. That is why it is a
 separate item rather than a line in 67.
+
+---
+
+**DONE 2026-09-20.** One effect now owns all three params and makes ONE
+`router.setParams({ filter: '', scope: '', focus: '' })` call. When it sees `focus === 'search'`
+it raises a **counter**; a second effect keyed on that counter does the deferred focus and keeps
+the `handle.cancel()` cleanup.
+
+**Read this before changing it. Both obvious fixes are wrong, and both fail silently.**
+
+1. **Adding `focus: ''` to the existing clear, or merging the two effects, breaks it
+   completely.** Clearing the param re-runs the focusing effect, and the cleanup from the
+   previous run calls `handle.cancel()` on the `InteractionManager` handle **before it ever
+   fires**. The keyboard then never opens at all — "works once" becomes "works never", and it
+   reviews as correct.
+2. **Latching the param's value does not work either.** Both taps send the same `'search'`, so a
+   latched string never changes and the second tap is ignored. That is this exact bug, moved one
+   layer down and made harder to find.
+
+A counter changes on every arrival even though the param does not, which is the one property
+needed. `focusNonce === 0` means "nobody asked", so a cold open of the tab does not raise the
+keyboard on a rep who only wanted to read their leads.
+
+**`setQuery('')` stays conditional on `filter`/`scope` only** — arriving from the Search tile
+does not clear the box today, and folding `focus` into that branch would start wiping what a rep
+was part-way through typing. Nobody asked for that.
+
+No script can catch this. It is a two-taps bug on a real device and a single tap always worked,
+so it is confirmed by tapping Search, going back, and tapping it again.
+
+Changed: [app/(app)/(tabs)/leads.tsx](app/(app)/(tabs)/leads.tsx).
 
 ---
 

@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
 import { LeadRow } from '../../../components/app/LeadRow';
-import { ProTileLock } from '../../../components/app/ProLock';
+import { ProBadge, ProTileBadge } from '../../../components/app/ProLock';
 import { FirstRunTutorial } from '../../../components/app/FirstRunTutorial';
 import { markTutorialSeen } from '../../../lib/auth/tutorial';
 import {
@@ -244,9 +244,13 @@ export default function HomeScreen() {
         <View className="flex-row justify-between mx-5 mt-3">
           {/*
             Follow-ups and Reports are Pro. Both tiles stay on screen for a Free
-            rep, greyed with a small lock, rather than disappearing — the agreed
+            rep, greyed and tagged PRO, rather than disappearing — the agreed
             rule, and the only version where someone can want what they cannot
             see. Tapping opens the explanation instead of the screen.
+
+            The tag says the word rather than showing a padlock: a lock alone
+            reads as "broken" or "ask your admin" as easily as it reads as
+            something to buy. See `components/app/ProLock.tsx`.
 
             `opacity-60` carries no CSS variable, so toggling it is safe where a
             shadow or a transform would not be. See AGENTS.md.
@@ -259,7 +263,7 @@ export default function HomeScreen() {
           >
             <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
               <ClockIcon size={19} />
-              {locked ? <ProTileLock ringColor="#F5F7FB" /> : null}
+              {locked ? <ProTileBadge ringColor="#F5F7FB" /> : null}
             </View>
             <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Follow-ups</Typography>
           </Pressable>
@@ -297,7 +301,7 @@ export default function HomeScreen() {
           >
             <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center">
               <BarChartIcon size={19} />
-              {locked ? <ProTileLock ringColor="#F5F7FB" /> : null}
+              {locked ? <ProTileBadge ringColor="#F5F7FB" /> : null}
             </View>
             <Typography className="text-[10.5px] font-bold text-navy text-center" numberOfLines={1}>Reports</Typography>
           </Pressable>
@@ -351,19 +355,29 @@ export default function HomeScreen() {
               </Typography>
             </Pressable>
             <View className="w-px bg-white/[0.14]" />
+            {/*
+              Paid, and gated here rather than on the screen — `gate` navigates
+              when it refuses, which from a screen body would be a push during
+              render. The count stays: a rep who can see "3 due" and is offered
+              Pro on tapping is the version of this that sells anything.
+            */}
             <Pressable
-              onPress={() =>
-                router.push({ pathname: '/(app)/follow-ups', params: scopeParams })
-              }
+              onPress={() => {
+                if (gate('follow-ups')) {
+                  router.push({ pathname: '/(app)/follow-ups', params: scopeParams });
+                }
+              }}
               className="flex-1 px-4 py-3"
             >
-              <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center justify-between gap-2">
                 <Typography className="text-[9.5px] font-bold tracking-[0.08em] text-white/45" style={{ textTransform: 'uppercase' }}>
                   Follow-ups
                 </Typography>
+                {locked ? <ProBadge tone="dark" /> : null}
+                <View className="flex-1" />
                 <ChevronRightIcon size={10} color="rgba(255,255,255,0.38)" strokeWidth={2.5} />
               </View>
-              <View className="flex-row items-center gap-[6px] mt-[5px]">
+              <View className={`flex-row items-center gap-[6px] mt-[5px] ${locked ? 'opacity-70' : ''}`}>
                 <View className="w-[6px] h-[6px] rounded-full bg-gold" />
                 <Typography className="text-[13px] font-bold text-white">{followUpsDueCount} due</Typography>
               </View>

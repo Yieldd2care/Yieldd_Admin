@@ -6,7 +6,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Typography } from '../../../../components/ui/Typography';
 import { Toggle } from '../../../../components/ui/Toggle';
 import { ScreenHeader } from '../../../../components/app/ScreenHeader';
-import { LockIcon, RefreshIcon } from '../../../../components/ui/icons';
+import { RefreshIcon } from '../../../../components/ui/icons';
+import { ProBadge } from '../../../../components/app/ProLock';
 import { useEvent, useUpdateEvent } from '../../../../hooks/useEvents';
 import { useEventStats, useHourlyCapture, useLeaderboard } from '../../../../hooks/useEventStats';
 import { useSessionStore } from '../../../../stores/useSessionStore';
@@ -219,9 +220,13 @@ export default function EventDashboardScreen() {
 
           {/*
             Custom fields and the ROI dashboard are Pro, and both buttons stay
-            where they are on Free with a lock on them. The row order does not
+            where they are on Free with a Pro chip on them. The row order does not
             change with the plan: a rep who has seen this screen on a colleague's
             phone should find the same buttons in the same places on their own.
+
+            The chip says the word, not just a padlock — a lock alone reads as
+            "broken" or "ask your admin" as readily as it reads as "buy this".
+            See the header comment on `components/app/ProLock.tsx`.
           */}
           {!isClosed ? (
             <Pressable
@@ -232,7 +237,7 @@ export default function EventDashboardScreen() {
               }}
               className="h-[52px] rounded-md border border-hairline bg-white items-center justify-center flex-row gap-[7px]"
             >
-              {locked ? <LockIcon size={14} color="#5A6B85" strokeWidth={2.2} /> : null}
+              {locked ? <ProBadge /> : null}
               <Typography className={`text-[14.5px] font-bold text-navy ${locked ? 'opacity-60' : ''}`}>
                 Manage custom fields
               </Typography>
@@ -257,7 +262,7 @@ export default function EventDashboardScreen() {
             }}
             className="h-[52px] rounded-md bg-navy items-center justify-center flex-row gap-[7px]"
           >
-            {locked ? <LockIcon size={14} color="#FFFFFF" strokeWidth={2.2} /> : null}
+            {locked ? <ProBadge tone="dark" /> : null}
             <Typography className={`text-[14.5px] font-bold text-white ${locked ? 'opacity-70' : ''}`}>
               View ROI dashboard
             </Typography>
