@@ -101,7 +101,7 @@ this table gets started until the launch queue above is clear.
 | # | Item | Waiting on |
 |---|---|---|
 | 11 | Pricing — app publishes the ₹10,000 sales-room price | Your decision on the number |
-| 7 | Password reset | A merge to master; until then the emailed link 404s |
+| ~~7~~ | ~~Password reset~~ | **DONE — merged, and verified live end to end 2026-09-21.** |
 | — | App Links | Android SHA-256 fingerprint + Apple Team ID |
 | — | EAS build | A Yieldd-owned Expo account (blocks Google sign-in testing) |
 | ~~27a~~ | ~~Play billing~~ | **DECIDED 2026-09-08 — sell on yieldd.co only. Not blocked any more; it is now code to remove.** |
@@ -3943,17 +3943,42 @@ stored preference on 2026-08-31 — before that the toggle forgot on close.
 - **Blocks:** every Phase 4 and Phase 5 screen shows this number. Nothing in the upgrade
   funnel should be built until it is settled, or it gets built twice.
 
-### 7. ~~"Forgot password?"~~ — BUILT 2026-08-31, one thing left
+### 7. ~~"Forgot password?"~~ — BUILT 2026-08-31, VERIFIED LIVE 2026-09-21 `[x]`
 - **Where:** [app/(auth)/forgot-password.tsx](app/(auth)/forgot-password.tsx) (request),
   [app/auth/reset-password.tsx](app/auth/reset-password.tsx) (set the new one),
   [lib/auth/passwordReset.ts](lib/auth/passwordReset.ts), and the link is back on both
   sign-in forms.
 - **Unblocked by** the Google Workspace SMTP setup (#12). Every other piece was already in
   place — PKCE, `detectSessionInUrl`, the root-route pattern.
-- ⚠️ **Left to do: merge to master.** The emailed link points at
-  `https://yieldd.co/auth/reset-password`, and that page only exists on yieldd.co once master
-  is deployed. **Until the merge, a real reset email leads to a 404.** The redirect allow list
-  is already updated, so nothing else is needed.
+- ~~Left to do: merge to master.~~ **Done.** `origin/master` carries
+  `app/auth/reset-password.tsx` and `https://yieldd.co/auth/reset-password` answers 200 (via a
+  308 to `www`). The emailed link no longer 404s.
+- **VERIFIED END TO END 2026-09-21, both ways.**
+  - **By script:** `npm run verify:password-reset` — all 13 checks PASS, cleaned up after
+    itself. Includes the two that matter: the OLD password stops working, and the link is
+    single-use.
+  - **By hand on yieldd.co,** in a browser, on a throwaway account created for it and deleted
+    afterwards. All eight steps passed: identical confirmation for a known and an unknown
+    address (and only ONE email was actually sent, so the unknown address leaked nothing);
+    subject line `Reset your password`; the link landed on `/auth/reset-password`, not a 404
+    and not the dashboard; the save signed us out for real (`localStorage` empty, and a
+    dashboard route bounced); the new password signed in; the old one was refused with
+    HTTP 400 `invalid_credentials`; and the same link on second use showed
+    "This link has expired".
+- ⚠️ **Known limitation found while verifying — a reset requested on one device cannot be
+  finished on another.** The client is `flowType: 'pkce'`, so the code verifier is stored by
+  whichever client *asked* for the reset. A brand-new, never-opened link, minutes old, opened
+  in a different browser shows **"This link has expired"**. That is not an expiry — the
+  verifier simply is not there. It works perfectly when the same browser does both, which is
+  the desktop path. It does **not** work for the phone case this item describes ("they set the
+  password in a browser and then sign in to the app with it") unless the app's own WebView or
+  the same browser is used. Not fixed here; this item was a verification, not a rebuild.
+- **Note for the next person on the access token:** the token that was in `.env` returned 401
+  (see #56). The replacement is **project-scoped**, so account-level endpoints like
+  `/v1/projects` and `/v1/organizations` return **403** while the two endpoints this script
+  actually uses — `/v1/projects/{ref}/api-keys?reveal=true` and
+  `/v1/projects/{ref}/database/query` — work fine. A 403 on `/v1/projects` therefore does
+  **not** mean the script will fail; test the endpoint the script really calls.
 - **The link always goes to the web, even on a phone.** A `yieldd://` recovery link cannot
   resolve in Expo Go — the same constraint as 8c — and someone locked out is the last person
   to tell "install a different build first". They set the password in the browser and sign in
