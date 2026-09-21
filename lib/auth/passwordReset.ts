@@ -109,3 +109,33 @@ export async function hasRecoverySession(): Promise<boolean> {
   const { data } = await supabase.auth.getSession();
   return Boolean(data.session);
 }
+
+/**
+ * Redeems the `token_hash` the emailed link carries.
+ *
+ * THIS IS WHAT MAKES THE LINK WORK ON A SECOND DEVICE. The client is
+ * `flowType: 'pkce'`, so the older `?code=` form of the link can only be
+ * exchanged by the client that ASKED for the reset — it is the only one holding
+ * the code verifier. Someone who taps "Forgot password?" in the app on their
+ * phone and then opens the mail on a laptop has no verifier there, the exchange
+ * fails, and this screen reported "This link has expired" about a link that was
+ * minutes old and never used. Verified live 2026-09-21; it is the whole reason
+ * this function exists.
+ *
+ * `verifyOtp` needs no verifier, so it works from any device, and it is the
+ * same call `npm run verify:password-reset` has always made — which is why that
+ * script passed while a real second device could not get in.
+ *
+ * Returns false for a token that is genuinely expired, already used, or forged.
+ */
+export async function redeemRecoveryToken(tokenHash: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !tokenHash) return false;
+
+  const { error } = await supabase.auth.verifyOtp({
+    type: 'recovery',
+    token_hash: tokenHash,
+  });
+
+  if (error && __DEV__) console.warn('[passwordReset] verifyOtp:', error.message);
+  return !error;
+}
