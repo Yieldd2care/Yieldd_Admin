@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../components/ui/Typography';
 import { Button } from '../../components/ui/Button';
@@ -11,7 +11,11 @@ import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
 import { KeyboardSafe } from '../../components/app/KeyboardSafe';
 import { CheckIcon } from '../../components/ui/icons';
 import { MIN_PASSWORD } from '../../components/auth/useAuthForm';
-import { hasRecoverySession, setNewPassword } from '../../lib/auth/passwordReset';
+import {
+  hasRecoverySession,
+  redeemRecoveryToken,
+  setNewPassword,
+} from '../../lib/auth/passwordReset';
 import { useSessionStore } from '../../stores/useSessionStore';
 import { supabase } from '../../lib/supabase';
 
@@ -54,6 +58,13 @@ function StatusLayout({ children }: { children: ReactNode }) {
 }
 
 export default function ResetPasswordScreen() {
+  // The emailed link carries `?token_hash=…&type=recovery`. See the note on
+  // redeemRecoveryToken: this is what lets the link be opened on a device other
+  // than the one that asked for the reset.
+  const params = useLocalSearchParams<{ token_hash?: string | string[] }>();
+  const raw = params.token_hash;
+  const tokenHash = (Array.isArray(raw) ? raw[0] : raw) ?? '';
+
   const [checking, setChecking] = useState(true);
   const [valid, setValid] = useState(false);
   const [password, setPassword] = useState('');
@@ -62,14 +73,15 @@ export default function ResetPasswordScreen() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // The code exchange happens asynchronously as the page loads, so a single
-  // check on mount can run before the session exists. Poll briefly instead of
-  // telling someone with a perfectly good link that it expired.
   useEffect(() => {
     let cancelled = false;
     let attempts = 0;
 
-    const check = async () => {
+    // The OLD link shape (`?code=`). The exchange happens asynchronously as the
+    // page loads, so a single check on mount can run before the session exists.
+    // Poll briefly instead of telling someone with a perfectly good link that it
+    // expired. Kept so links already sitting in an inbox still work.
+    const pollForSession = async () => {
       const ok = await hasRecoverySession();
       if (cancelled) return;
       if (ok) {
@@ -82,14 +94,37 @@ export default function ResetPasswordScreen() {
         setChecking(false);
         return;
       }
-      setTimeout(() => void check(), 500);
+      setTimeout(() => void pollForSession(), 500);
     };
 
-    void check();
+    const start = async () => {
+      if (tokenHash) {
+        const ok = await redeemRecoveryToken(tokenHash);
+        if (cancelled) return;
+        if (ok) {
+          setValid(true);
+          setChecking(false);
+          return;
+        }
+        // A refresh of this page replays a token that is already spent, but the
+        // session it created is still here and still good. Without this, using
+        // the link and then hitting reload would say "expired" to someone who is
+        // one field away from finishing.
+        const existing = await hasRecoverySession();
+        if (cancelled) return;
+        setValid(existing);
+        setChecking(false);
+        return;
+      }
+
+      void pollForSession();
+    };
+
+    void start();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tokenHash]);
 
   const tooShort = password.length > 0 && password.length < MIN_PASSWORD;
   const mismatch = confirm.length > 0 && password !== confirm;
