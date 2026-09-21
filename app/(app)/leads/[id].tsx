@@ -24,6 +24,9 @@ import { summariseCompany } from '../../../lib/api/companySummary';
 import type { CustomFieldDef } from '../../../stores/useEventFieldsStore';
 import { formatDateRange } from '../../../lib/dates';
 import { captureLocationLine, mapsUrl } from '../../../lib/captureLocation';
+import { formatPaise, rupeesToPaise } from '../../../lib/db';
+import { dealValueRow } from '../../../lib/leadValue';
+import { DealValueEditSheet } from '../../../components/app/DealValueEditSheet';
 
 /** `Follow up tomorrow`, `Follow up 4 Mar 2026`, `Follow-up overdue`. */
 function followUpLabel(date: string | undefined): string | null {
@@ -47,6 +50,7 @@ export default function LeadDetailScreen() {
 
   const { data: members } = useTeam();
   const isAdmin = useSessionStore((s) => s.user?.role === 'admin');
+  const userId = useSessionStore((s) => s.user?.id);
   const { locked, gate } = useProGate();
 
   /**
@@ -61,6 +65,7 @@ export default function LeadDetailScreen() {
 
   const [rereading, setRereading] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [valueSheetOpen, setValueSheetOpen] = useState(false);
 
   /**
    * Reads the company's own website and summarises what is actually on it.
@@ -256,6 +261,17 @@ export default function LeadDetailScreen() {
   // the signed-in user.
   const assignee = lead.assignedToId ? members?.find((m) => m.id === lead.assignedToId) : undefined;
   const assignedLabel = !assignee || assignee.isSelf ? 'Assigned to you' : `Assigned to ${assignee.name}`;
+
+  // Null means no money row at all — wrong status, not this viewer's lead, or
+  // no usable value (a legacy Qualified row can hold none). Never a blank row.
+  const moneyRow = dealValueRow({
+    status: lead.status,
+    dealValue: lead.dealValue,
+    isAdmin,
+    userId,
+    capturedBy: lead.capturedBy,
+    assignedToId: lead.assignedToId,
+  });
 
   const followUp = followUpLabel(lead.followUpDate);
 
@@ -582,6 +598,30 @@ export default function LeadDetailScreen() {
               })}
             </>
           ) : null}
+
+          {/* The deal's money, labelled by status so a forecast is never read
+              as revenue (PENDING 71). Hand-inlined rather than a FieldRow
+              because the value carries the pencil — keep its layout classes in
+              step with FieldRow below. Tapping the number does nothing; the
+              pencil is the affordance, by decision 2026-09-20. */}
+          {moneyRow ? (
+            <>
+              <Typography className="text-[10px] font-bold tracking-[0.1em] text-blue mt-3 mb-1" style={{ textTransform: 'uppercase' }}>
+                Deal
+              </Typography>
+              <View className="flex-row justify-between items-start gap-[12px] py-[10px] border-b border-section">
+                <Typography className="text-[12.5px] text-slate shrink-0">{moneyRow.label}</Typography>
+                <View className="flex-row items-center justify-end gap-[8px] flex-1 min-w-0">
+                  <Typography className="text-[12.5px] font-bold text-navy">
+                    {formatPaise(rupeesToPaise(lead.dealValue ?? 0))}
+                  </Typography>
+                  <Pressable onPress={() => setValueSheetOpen(true)} hitSlop={10}>
+                    <EditIcon size={14} />
+                  </Pressable>
+                </View>
+              </View>
+            </>
+          ) : null}
         </View>
 
         <View className="bg-white border border-hairline rounded-2xl p-4 mt-[18px]">
@@ -683,6 +723,19 @@ export default function LeadDetailScreen() {
           <Typography className="text-[14px] font-bold text-navy">Log outcome</Typography>
         </Pressable>
       </View>
+
+      {/* A Modal, so it has no layout in this tree and can sit after the
+          footer. Amount only — deliberately NOT the status-change modal, which
+          is Pro-gated and changes far more than a typo. */}
+      {moneyRow ? (
+        <DealValueEditSheet
+          visible={valueSheetOpen}
+          label={moneyRow.label}
+          initialValue={lead.dealValue}
+          onSave={(rupees) => useLeadsStore.getState().saveLeadEdits(lead.id, { dealValue: rupees })}
+          onClose={() => setValueSheetOpen(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
