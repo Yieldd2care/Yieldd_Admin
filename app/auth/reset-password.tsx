@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { Typography } from '../../components/ui/Typography';
 import { Button } from '../../components/ui/Button';
 import { AuthPillInput } from '../../components/auth/AuthPillInput';
+import { AuthWebShell } from '../../components/auth/AuthWebShell';
 import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
 import { KeyboardSafe } from '../../components/app/KeyboardSafe';
 import { CheckIcon } from '../../components/ui/icons';
@@ -28,6 +29,30 @@ import { supabase } from '../../lib/supabase';
  * null and no guard anywhere reacts. The supabase client still holds the
  * session, which is what authorises updateUser().
  */
+
+/**
+ * The three states that carry no input — checking, done and expired. Centred
+ * either way; on the website they sit in the same two-column shell as the
+ * sign-in page, so following the emailed link does not drop someone onto a
+ * different-looking site than the one they asked for the link on.
+ */
+function StatusLayout({ children }: { children: ReactNode }) {
+  if (Platform.OS === 'web') {
+    return (
+      <AuthWebShell>
+        <View className="items-center">{children}</View>
+      </AuthWebShell>
+    );
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <NavyGlowBackdrop />
+      <View className="flex-1 items-center justify-center px-8">{children}</View>
+    </SafeAreaView>
+  );
+}
+
 export default function ResetPasswordScreen() {
   const [checking, setChecking] = useState(true);
   const [valid, setValid] = useState(false);
@@ -100,20 +125,15 @@ export default function ResetPasswordScreen() {
 
   if (checking) {
     return (
-      <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
-        <NavyGlowBackdrop />
-        <View className="flex-1 items-center justify-center px-8">
-          <Typography className="text-[14px] text-white/[0.62]">Checking your link…</Typography>
-        </View>
-      </SafeAreaView>
+      <StatusLayout>
+        <Typography className="text-[14px] text-white/[0.62]">Checking your link…</Typography>
+      </StatusLayout>
     );
   }
 
   if (done) {
     return (
-      <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
-        <NavyGlowBackdrop />
-        <View className="flex-1 items-center justify-center px-8">
+      <StatusLayout>
           <View className="w-[68px] h-[68px] rounded-full bg-gold items-center justify-center">
             <CheckIcon size={30} color="#0B132B" strokeWidth={2.6} />
           </View>
@@ -132,16 +152,13 @@ export default function ResetPasswordScreen() {
             onPress={() => router.replace('/(auth)')}
             className="mt-8 w-full max-w-[320px]"
           />
-        </View>
-      </SafeAreaView>
+      </StatusLayout>
     );
   }
 
   if (!valid) {
     return (
-      <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
-        <NavyGlowBackdrop />
-        <View className="flex-1 items-center justify-center px-8">
+      <StatusLayout>
           <Typography className="text-[21px] font-extrabold text-white text-center tracking-[-0.01em]">
             This link has expired
           </Typography>
@@ -157,32 +174,12 @@ export default function ResetPasswordScreen() {
             onPress={() => router.replace('/(auth)/forgot-password')}
             className="mt-8 w-full max-w-[320px]"
           />
-        </View>
-      </SafeAreaView>
+      </StatusLayout>
     );
   }
 
-  return (
-    <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
-      <NavyGlowBackdrop />
-      {/*
-        Two password fields and a Save button stacked below the middle of the
-        screen, so the keyboard covered the lower half with nothing to scroll
-        (#69). Only this branch changes — the checking, done and expired states
-        above have no input on them.
-
-        Note this route is reached from the emailed link, which opens in a
-        BROWSER even on a phone (see the note on forgot-password), so this is
-        the one screen in #69 that cannot be checked on a handset today. It
-        becomes a real phone screen the moment App Links ship.
-      */}
-      <KeyboardSafe>
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-8 py-10"
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+  const body = (
+    <>
         <Typography className="text-[26px] font-extrabold text-white tracking-[-0.01em]">
           Set a new password
         </Typography>
@@ -244,6 +241,38 @@ export default function ResetPasswordScreen() {
         <Pressable onPress={() => router.replace('/(auth)')} className="mt-7 self-center">
           <Typography className="text-[13.5px] font-semibold text-white/[0.75]">Cancel</Typography>
         </Pressable>
+    </>
+  );
+
+  // Same reason as forgot-password: this is the middle of the website's own
+  // sign-in flow, so it keeps the website's two-column layout instead of
+  // stretching two password fields across a 1536px window.
+  if (Platform.OS === 'web') {
+    return <AuthWebShell>{body}</AuthWebShell>;
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <NavyGlowBackdrop />
+      {/*
+        Two password fields and a Save button stacked below the middle of the
+        screen, so the keyboard covered the lower half with nothing to scroll
+        (#69). Only this branch changes — the checking, done and expired states
+        above have no input on them.
+
+        Note this route is reached from the emailed link, which opens in a
+        BROWSER even on a phone (see the note on forgot-password), so this is
+        the one screen in #69 that cannot be checked on a handset today. It
+        becomes a real phone screen the moment App Links ship.
+      */}
+      <KeyboardSafe>
+        <ScrollView
+          contentContainerClassName="flex-grow justify-center px-8 py-10"
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {body}
         </ScrollView>
       </KeyboardSafe>
     </SafeAreaView>

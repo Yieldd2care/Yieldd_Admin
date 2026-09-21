@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Typography } from '../../components/ui/Typography';
 import { Button } from '../../components/ui/Button';
 import { AuthPillInput } from '../../components/auth/AuthPillInput';
+import { AuthWebShell } from '../../components/auth/AuthWebShell';
 import { NavyGlowBackdrop } from '../../components/app/NavyGlowBackdrop';
 import { KeyboardSafe } from '../../components/app/KeyboardSafe';
 import { MailIcon } from '../../components/ui/icons';
@@ -40,25 +41,8 @@ export default function ForgotPasswordScreen() {
     else setError(outcome.message);
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
-      <NavyGlowBackdrop />
-
-      {/*
-        A ScrollView rather than a plain centred View (#69). The Send button
-        sits below the field, so on a short Android screen the keyboard reached
-        it first and there was nothing to scroll. `flex-grow justify-center` on
-        the content container keeps the centred look exactly as it was whenever
-        the content fits, and lets it scroll when it does not — the same shape
-        complete-profile and verify-code already use.
-      */}
-      <KeyboardSafe>
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-8 py-10"
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+  const body = (
+    <>
         {sent ? (
           <View className="items-center">
             <View className="w-[68px] h-[68px] rounded-full bg-gold items-center justify-center">
@@ -146,12 +130,41 @@ export default function ForgotPasswordScreen() {
             </Pressable>
           </>
         )}
+    </>
+  );
+
+  // The desktop site is two columns from the sign-in page onwards; a full-bleed
+  // column here stretched the email field across the whole window.
+  if (Platform.OS === 'web') {
+    return <AuthWebShell>{body}</AuthWebShell>;
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <NavyGlowBackdrop />
+
+      {/*
+        A ScrollView rather than a plain centred View (#69). The Send button
+        sits below the field, so on a short Android screen the keyboard reached
+        it first and there was nothing to scroll. `flex-grow justify-center` on
+        the content container keeps the centred look exactly as it was whenever
+        the content fits, and lets it scroll when it does not — the same shape
+        complete-profile and verify-code already use.
+      */}
+      <KeyboardSafe>
+        <ScrollView
+          contentContainerClassName="flex-grow justify-center px-8 py-10"
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {body}
         </ScrollView>
         {/* Inside the wrapper, not after it, so this rides up with the content
             when the keyboard pushes it — and so nothing sits between
             </KeyboardSafe> and </SafeAreaView>, which is what verify:keyboard
             checks for. */}
-        {Platform.OS === 'web' ? null : <View className="h-4" />}
+        <View className="h-4" />
       </KeyboardSafe>
     </SafeAreaView>
   );
