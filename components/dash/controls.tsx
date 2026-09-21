@@ -53,6 +53,8 @@ export const ICON = {
   trendUp: 'M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z|M12 16v-4|M12 8h.01',
   award: 'M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14z|M8.2 13.9 7 22l5-3 5 3-1.2-8.1',
+  // Same glyph as the phone's EditIcon, so "edit" looks like one thing.
+  pencil: 'M12 20h9|M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z',
 } as const;
 
 export function Icon({

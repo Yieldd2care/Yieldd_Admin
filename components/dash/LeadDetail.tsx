@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, TextInput as RNTextInput, View } from 'react-native';
 
 import { DashShell } from '../dash/DashShell';
@@ -17,6 +17,8 @@ import { summariseCompany } from '../../lib/api/companySummary';
 import { activityLabel, fetchLeadActivity, logLeadActivity, OUTCOME_FROM_LABEL, type LeadActivity } from '../../lib/api/leadActivity';
 import type { CustomFieldDef } from '../../stores/useEventFieldsStore';
 import { toDateOnly } from '../../lib/dates';
+import { formatPaise, rupeesToPaise } from '../../lib/db';
+import { dealValueRow } from '../../lib/leadValue';
 
 const STATUSES = ['New', 'Contacted', 'Qualified', 'Won', 'Lost'] as const;
 const TEMPS = ['Hot', 'Warm', 'Cold'] as const;
@@ -149,6 +151,7 @@ export function LeadDetailBody({ leadId }: { leadId: string }) {
   const [status, setStatus] = useState<string>('New');
   const [dealValue, setDealValue] = useState('');
   const [temperature, setTemperature] = useState<string | undefined>(undefined);
+  const dealInputRef = useRef<RNTextInput>(null);
 
   // Follow-up panel
   const [outcome, setOutcome] = useState<string>('Connected');
@@ -216,6 +219,30 @@ export function LeadDetailBody({ leadId }: { leadId: string }) {
     (valueNeeded && valueAmount !== (lead.dealValue ?? 0));
   const canSaveStatus = statusDirty && (!valueNeeded || valueAmount > 0);
 
+  // The SAVED lead's money, not the editor's draft — the row reports what is
+  // stored, whatever the pills below it are doing. Null means no row at all
+  // (PENDING 71): wrong status, not this viewer's lead, or no usable value.
+  const moneyRow = dealValueRow({
+    status: lead.status,
+    dealValue: lead.dealValue,
+    isAdmin,
+    userId: user?.id,
+    capturedBy: lead.capturedBy,
+    assignedToId: lead.assignedToId,
+  });
+
+  /**
+   * The pencil opens the EXISTING editor rather than an amount-only modal —
+   * a deliberate asymmetry with the phone, by decision 2026-09-20; a second
+   * editor on the dashboard is not worth its upkeep. Reset the pills to the
+   * saved status first: the amount input only mounts while the selected
+   * status carries a value, and it cannot be focused before it exists.
+   */
+  function editDealValue() {
+    setStatus(lead!.status);
+    requestAnimationFrame(() => dealInputRef.current?.focus());
+  }
+
   function saveStatus() {
     if (!canSaveStatus) return;
     useLeadsStore.getState().editLead(lead!.id, {
@@ -223,7 +250,11 @@ export function LeadDetailBody({ leadId }: { leadId: string }) {
       temperature: temperature as never,
       // Written with the status, never after it.
       ...(valueNeeded ? { dealValue: valueAmount } : {}),
-      ...(status === 'Won' ? { dealClosedAt: new Date().toISOString() } : {}),
+      // Stamped only on the way INTO Won. Correcting the amount on a lead that
+      // is already Won must not quietly move its close date to today.
+      ...(status === 'Won' && lead!.status !== 'Won'
+        ? { dealClosedAt: new Date().toISOString() }
+        : {}),
     });
     void useLeadsStore.getState().syncDrafts(user?.id);
     setSaved('Status saved.');
@@ -498,6 +529,25 @@ export function LeadDetailBody({ leadId }: { leadId: string }) {
         <View className="flex-1 gap-4">
           <Panel className="px-[22px] py-5">
             <Typography className="text-[17px] font-bold text-navy">Status</Typography>
+
+            {/* The stored money, outside the editor's inputs, so it does not
+                vanish with them (PENDING 71). Labelled by the SAVED status —
+                a forecast is never read as revenue. The pencil is the only
+                affordance; the number itself is not tappable. */}
+            {moneyRow ? (
+              <View className="flex-row items-center justify-between py-[10px] mt-2 border-b border-hairline">
+                <Cap>{moneyRow.label}</Cap>
+                <View className="flex-row items-center gap-[8px]">
+                  <Typography className="text-[15px] font-bold text-navy">
+                    {formatPaise(rupeesToPaise(lead.dealValue ?? 0))}
+                  </Typography>
+                  <Pressable onPress={editDealValue} hitSlop={8}>
+                    <Icon d={ICON.pencil} size={13} color="#8A98B0" />
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
             <View className="flex-row flex-wrap gap-2 mt-3">
               {STATUSES.map((s) => (
                 <Pill key={s} label={s} active={status === s} onPress={() => setStatus(s)} />
@@ -508,6 +558,7 @@ export function LeadDetailBody({ leadId }: { leadId: string }) {
               <View className="mt-4">
                 <Cap>Deal value (₹)</Cap>
                 <RNTextInput
+                  ref={dealInputRef}
                   value={dealValue}
                   onChangeText={setDealValue}
                   keyboardType="number-pad"

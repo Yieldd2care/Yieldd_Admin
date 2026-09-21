@@ -19,6 +19,7 @@ import { pathToFileURL } from 'node:url';
 
 const out = mkdtempSync(join(tmpdir(), 'yieldd-leadedit-'));
 let m;
+let mv;
 try {
   writeFileSync(join(out, 'package.json'), '{"type":"commonjs"}\n');
   execFileSync(
@@ -30,6 +31,10 @@ try {
       // standalone — the flag says so instead of letting tsc refuse.
       '--ignoreConfig',
       'lib/leadEdit.ts',
+      // The deal-value display rules (PENDING 71) ride the same compile: also
+      // runtime-import-free, also a file where a quiet mistake shows the
+      // wrong money to the wrong person.
+      'lib/leadValue.ts',
       '--outDir', out,
       '--module', 'commonjs',
       '--target', 'es2022',
@@ -44,6 +49,7 @@ try {
     { stdio: 'inherit' }
   );
   m = await import(pathToFileURL(join(out, 'lib', 'leadEdit.js')).href);
+  mv = await import(pathToFileURL(join(out, 'lib', 'leadValue.js')).href);
 } finally {
   rmSync(out, { recursive: true, force: true });
 }
@@ -300,6 +306,64 @@ mark(
   m.canSaveLeadEdits({ phone: '', extraPhones: [] }, formFrom(MANY, { phones: [''] })) === true,
   'a lead may still be left with no number at all'
 );
+
+// --- the deal-value row on the lead detail (PENDING 71) -------------------
+//
+// lib/leadValue.ts is the one place both detail screens take "is there a
+// money row, and what is it called" from. The label rule keeps a forecast
+// from reading as revenue; the visibility rule is the user's decision of
+// 2026-09-20 (admin on any lead, a rep on a lead that is theirs). It is a UI
+// rule, not a security boundary — the row read still carries the column.
+
+mark(mv.dealValueLabel('Qualified') === 'Expected value', 'a Qualified lead calls its money an expectation');
+mark(mv.dealValueLabel('Won') === 'Deal value', 'a Won lead calls its money the deal');
+for (const status of ['New', 'Contacted', 'Lost']) {
+  mark(mv.dealValueLabel(status) === null, `${status} gets no money row at all, not a blank one`);
+}
+
+const ADMIN = { isAdmin: true, userId: 'admin-1' };
+const REP = { isAdmin: false, userId: 'rep-1' };
+mark(
+  mv.canSeeDealValue({ ...ADMIN, capturedBy: 'rep-2', assignedToId: undefined }) === true,
+  'an admin sees the value on anyone’s lead'
+);
+mark(
+  mv.canSeeDealValue({ ...REP, capturedBy: 'rep-1', assignedToId: undefined }) === true,
+  'the rep who captured a lead sees its value'
+);
+mark(
+  mv.canSeeDealValue({ ...REP, capturedBy: 'rep-2', assignedToId: 'rep-1' }) === true,
+  '  ...and so does the rep it is assigned to'
+);
+mark(
+  mv.canSeeDealValue({ ...REP, capturedBy: 'rep-2', assignedToId: 'rep-3' }) === false,
+  'an unrelated rep does not'
+);
+mark(
+  mv.canSeeDealValue({ isAdmin: false, userId: undefined, capturedBy: undefined, assignedToId: undefined }) === false,
+  'no signed-in user, no row — undefined must not match undefined'
+);
+
+const WON_MINE = { status: 'Won', dealValue: 420000, ...ADMIN, capturedBy: 'rep-2', assignedToId: undefined };
+eq('a visible Won lead with a value gets the row', mv.dealValueRow(WON_MINE), { label: 'Deal value' });
+mark(
+  mv.dealValueRow({ ...WON_MINE, status: 'Qualified', dealValue: undefined }) === null,
+  'a legacy Qualified lead with no value gets no row (the constraint is NOT VALID for old rows)'
+);
+mark(
+  mv.dealValueRow({ ...WON_MINE, dealValue: 0 }) === null,
+  '  ...and a value of zero gets no ₹0 row either'
+);
+mark(
+  mv.dealValueRow({ ...WON_MINE, isAdmin: false, userId: 'rep-1' }) === null,
+  'the row decision applies the visibility rule too'
+);
+
+// The sheet's parse: only the digits count, and empty is refused, never sent
+// to the server to bounce off the NOT NULL constraints.
+mark(mv.parseDealValueInput('') === 0, 'an empty amount parses to nothing and is refused');
+mark(mv.parseDealValueInput('4,20,000') === 420000, 'Indian grouping parses');
+mark(mv.parseDealValueInput('Rs 420000') === 420000, '  ...and so does a typed Rs prefix');
 
 console.log(`\n${failed === 0 ? 'All checks passed.' : `${failed} check(s) FAILED.`}`);
 process.exitCode = failed ? 1 : 0;

@@ -80,7 +80,7 @@ Full diagnosis for each is in its numbered section below.
 | 68 | Lead detail — a long address runs outside the white card | `[x]` done 2026-09-18 (`092fa9a`) — `FieldRow` now lets the value take the remaining width and wrap: `flex-1 min-w-0 text-right` on the value, `shrink-0` on the label. RN defaults `flexShrink` to 0 unlike the web, which is why it looked fine in a browser and wrong on a handset. Fixes every long value on the screen, not only the address |
 | 69 | Sign-in: the keyboard covers the boxes you are typing into, and the screen will not scroll | `[x]` done 2026-09-18 — **two faults, and the reported one is a flexbox bug not a keyboard bug**: `flex-1` inside a `flex-grow` scroll container capped the content at the viewport, so there was nothing to scroll, ever. The sweep found 8 more screens. All 16 now go through one wrapper, asserted by `npm run verify:keyboard`. **Confirmed on an Android handset by the user the same day** |
 | 70 | A revoked rep can still read the leads already on their phone | `[x]` done 2026-09-20 — the device now tears itself down and says why. Asserted end to end by `npm run verify:deactivation`, including that the revoked path is reachable at all. See the section for what it does NOT do |
-| 71 | Lead detail never shows the deal value that was entered | `[ ]` reported 2026-09-18. Qualified and Won both take a value and neither is shown back. See the section |
+| 71 | Lead detail never shows the deal value that was entered | `[x]` done 2026-09-21 — a money row on both detail screens, labelled **Expected value** (Qualified) or **Deal value** (Won), with a pencil that edits the amount alone. Visibility (admin, capturer, assignee) is a UI rule, not enforcement — see the section. Asserted by `npm run verify:lead-edit`. **Not yet confirmed on a handset** |
 | 72 | Signing out left the previous account's leads on the handset | `[x]` done 2026-09-20 — found while building 70, and wider than it. See the section |
 | 73 | Two of the three doors to the Pro follow-ups screen are not gated | `[x]` done 2026-09-20 — both now `gate('follow-ups')` at the tap, keeping the `scope` param so 67 does not come back for Pro users only. **The screen-level backstop was deliberately NOT built**: `useIsPro` waits on a react-query call and reads false while it does not know, so a guard would redirect genuine paying customers. Reasons in the section. **Not yet confirmed on a handset** |
 | 74 | Tapping Home's Search tile twice in a row does not focus the box the second time | `[x]` done 2026-09-20 — the arrival effect now owns all three params and raises a **counter**; a second effect keyed on it does the focusing. Neither obvious fix works, and both fail silently — see the section before changing this. **Not yet confirmed on a handset, and this one cannot be called done without it** |
@@ -210,41 +210,74 @@ to entering the URL in the Data Safety form. **Read the page before writing anyt
 
 ## Open
 
-### 71. Lead detail never shows the deal value that was entered — reported 2026-09-18
+### 71. Lead detail never shows the deal value that was entered — reported 2026-09-18, DONE 2026-09-21
 
 **Reported by the user:** open a lead and there is no money on the screen. If that lead is Won,
 it should say what the deal was worth. If it is Qualified, it should say the amount the rep
-entered when they qualified it. Today neither is shown anywhere on the lead.
+entered when they qualified it. The value was already captured, stored and constraint-enforced —
+this was a display gap, and it was closed without any migration, RLS change, or new column.
 
-**The value is already captured and already stored.** `leads.deal_value_paisa` is filled at
-Qualified as the expected value and at Won as the closed value, and the database enforces both
-(`leads_qualified_requires_value`, and the existing Won rule). `lib/mappers/lead.ts` already maps
-it onto the lead as `dealValue`. So this is a display gap, not missing data, and it needs no
-migration.
+**The user decided both open questions on 2026-09-20:**
 
-**Where it is missing:**
+1. **The amount is shown with a pencil beside it.** Not read-only, and not a tappable row — a
+   visible value with an explicit pencil that opens editing. Tapping the number itself does
+   nothing.
+2. **Who sees it: an admin on any lead, and a rep on a lead that is theirs** — captured by them
+   or assigned to them.
 
-- **Phone, [app/(app)/leads/[id].tsx](app/(app)/leads/[id].tsx)** — no deal value at all. This is
-  the screen the report is about.
-- **Web, [components/dash/LeadDetail.tsx](components/dash/LeadDetail.tsx)** — the only place the
-  number appears is the *input box* inside the status editor, and only while a value is being
-  asked for. Close the editor and it disappears again, so the dashboard has the same gap.
+**What was built.** Both detail screens now render a money row from one shared decision,
+`dealValueRow` in [lib/leadValue.ts](lib/leadValue.ts): labelled **Expected value** while
+Qualified and **Deal value** once Won — so a forecast is never read as revenue — and no row at
+all for New, Contacted or Lost. Formatted with `formatPaise`, the same helper the ROI screens
+use. On the phone the row sits in the Captured details card of
+[app/(app)/leads/[id].tsx](app/(app)/leads/[id].tsx); its pencil opens
+[components/app/DealValueEditSheet.tsx](components/app/DealValueEditSheet.tsx), a small amount-only
+sheet that writes `dealValue` and nothing else, and refuses an empty or unparseable amount with a
+plain sentence before the NOT NULL constraints ever see it. An unchanged amount writes nothing.
+On the web the row sits in the Status panel of
+[components/dash/LeadDetail.tsx](components/dash/LeadDetail.tsx), outside the editor's inputs, so
+it no longer vanishes when no value is being asked for.
 
-**What to build:**
+**"The rep who entered it" is implemented as captured-or-assigned, deliberately.** There is no
+column recording who typed the amount, and none was added — `deal_value_set_by` would be a
+migration for a distinction the product does not otherwise keep. `captured_by`/`assigned_to` is
+the same shape the server already uses everywhere it gates a lead (see
+20260915100000_lead_extra_photo.sql), and it also matches RLS `leads_update_own_or_admin`
+exactly, so everyone who is shown the pencil can actually save.
 
-1. A money row on the phone lead detail, shown whenever the lead carries a value. Label it by
-   status so a forecast is never mistaken for revenue: **Expected value** while Qualified,
-   **Deal value** once Won. Nothing shown for New, Contacted, or Lost.
-2. The same read-only row on the web lead detail, outside the status editor.
-3. Format with `formatPaise`, the same helper the ROI screens use, so one lead and the event
-   total never disagree on how a number is written.
-4. Admin only, matching `event_stats`: money is already admin-gated on the server, and a rep
-   would otherwise see a blank row with no explanation. Decide whether a rep sees the value on a
-   lead **they themselves** entered it on — probably yes, since they typed it.
+**The visibility rule is presentation, not enforcement.** `deal_value_paisa` is NOT column-gated
+on the `leads` table: a rep's row read still carries the value, and hiding the row is a UI
+decision. Money is enforced server-side where it matters — the export function
+(20260915130000_export_leads_money.sql) and the stats functions. Adding column privileges to
+`leads` would be a separate change with its own blast radius; do not fold it into a display item.
+In practice the rule is also mostly latent for reps: RLS SELECT already keeps a colleague's lead
+off their device entirely, so what the client rule protects is intent — and the admin-populated
+web store.
 
-**Open question for the user:** should the row be tappable to edit the amount, or read-only with
-editing left where it is today, inside the status change? Read-only is the smaller change and
-keeps one path for writing money.
+**No new Pro gate, deliberately.** Reaching Qualified or Won requires the status modal, which is
+already `gate('lead-status')`, so a Free account has no lead carrying a value and the row never
+appears. The pencil is ungated for the same reason a second lock would be dead code — and a
+pencil that demanded an upgrade to fix a typo would be worse than no pencil.
+
+**One deliberate asymmetry: the web pencil opens the existing status editor**, resetting the
+pills to the saved status and focusing the amount input that already lives there, rather than
+duplicating the phone's amount-only sheet on the dashboard. A matching web sheet is a possible
+follow-on if ever wanted, not an oversight.
+
+**Fixed on the way, because the pencil would have amplified it:** the dashboard's Save status
+used to rewrite `deal_closed_at` to *today* on every save while the lead was Won, so correcting
+an amount typo would silently move the close date. It now stamps only on the transition into Won.
+
+**Two data edges, both handled by showing no row rather than a wrong one:**
+`leads_qualified_requires_value` is `NOT VALID`, so a lead Qualified before 2026-09-02 can hold no
+value until its next status touch — it gets no row, not a blank one. And a zero, which the
+constraints technically allow but every input refuses, gets no ₹0 row either.
+
+**Asserted by `npm run verify:lead-edit`:** the label per status including no-row for
+New/Contacted/Lost, the admin/capturer/assignee/stranger visibility matrix, that an undefined
+user never matches an undefined `captured_by`, the legacy-null and zero no-row rules, and that an
+empty amount parses to nothing and is refused. `verify:keyboard` and `verify:plan` still pass.
+**Not yet confirmed on a handset.**
 
 ---
 
