@@ -2827,7 +2827,7 @@ but it is the better pattern if the subject is ever revisited.
 
 ---
 
-### 56. Abandoned signups leave an empty organisation behind — found 2026-09-14 `[ ]`
+### 56. Abandoned signups leave an empty organisation behind — found 2026-09-14, DECIDED + WRITTEN 2026-09-21 `[ ]`
 
 A consequence of #33a, found while testing it. `signInWithOtp` creates the user the moment the
 code is **sent**, not when it is entered, so `handle_new_user()` fires then — creating an
@@ -2842,6 +2842,48 @@ to answer "how many customers do we have?".
 Options, none urgent: a periodic sweep of organisations with no members and no events; a
 `provisional` flag cleared when complete-profile finishes; or simply excluding zero-member orgs
 wherever orgs get counted. Worth deciding before anyone builds a metrics screen, not before.
+
+**Decided 2026-09-21 — derive the answer, never delete the rows.** The third option, written as
+a single definition rather than a filter copied into each caller:
+[supabase/migrations/20260921100000_real_organizations.sql](supabase/migrations/20260921100000_real_organizations.sql)
+adds the view **`public.real_organizations`**. Whoever builds a metrics screen counts that, not
+`public.organizations`.
+
+- **"Real" is the app's own rule, not a new one.** Primarily: the org has a profile with a phone
+  number and a name that is no longer the `New user` placeholder — which is exactly
+  `profileNeedsCompletion()` in [types/session.ts](types/session.ts), inverted. Six other arms
+  are OR'd onto it (a second member, an invite sent, an event, a lead, money now or ever, an
+  onboarding question answered) so that an old or unusual account cannot fall out of the count.
+  The bias is deliberate: a false positive costs one row in a number nobody bills against, a
+  false negative is a paying customer who does not appear.
+- **A deleting sweep was rejected, and should stay rejected.** An abandoned signup and a real
+  customer who has not finished onboarding are the same row shape, and this project has no
+  rollback net — the day the predicate is slightly wrong, real organisations are gone. The risk
+  buys nothing, because nothing is broken today. The view is the predicate a sweep would need
+  if one is ever genuinely wanted; the migration header carries the complement query.
+- **A `provisional` flag in `handle_new_user()` was rejected too.** GoTrue rewrites every
+  exception raised in that trigger into the opaque "Database error saving new user" (the whole
+  reason 20260914150000 exists). A new write there risks live signup for everyone and would
+  fail unreadably.
+- **Nothing is rewired, because nothing counts organisations yet.** Every
+  `count(*) from public.organizations` in the repo is a leak assertion inside a verify script,
+  and those must keep counting every row or they stop detecting the leak they exist for.
+- **Readable by `service_role` only** — `anon` and `authenticated` are both revoked. Under RLS a
+  signed-in caller would count their own row, get `1`, and think it was an answer; same trap as
+  counting a rep's leads on the device.
+
+**Still open, and the reason this row is not ticked: the migration has never touched the
+database.** `npm run db:rehearse` and `npm run verify:otp` both authenticate with
+`SUPABASE_ACCESS_TOKEN`, and the token in `.env` now returns `401 Unauthorized` from the
+management API — revoked or rotated. The project itself is fine (GoTrue answers on the anon
+key). **Do not `npm run db:push` this file until it has been rehearsed.** Put a fresh personal
+access token in `.env`, then:
+
+```
+npm run db:rehearse -- supabase/migrations/20260921100000_real_organizations.sql
+npm run db:push
+npm run verify:otp
+```
 
 ---
 
