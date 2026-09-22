@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../components/ui/Typography';
@@ -51,6 +52,7 @@ function StatusLayout({ children }: { children: ReactNode }) {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <View className="flex-1 items-center justify-center px-8">{children}</View>
     </SafeAreaView>
@@ -288,6 +290,7 @@ export default function ResetPasswordScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       {/*
         Two password fields and a Save button stacked below the middle of the

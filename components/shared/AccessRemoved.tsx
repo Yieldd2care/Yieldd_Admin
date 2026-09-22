@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 import { Typography } from '../ui/Typography';
 import { Button } from '../ui/Button';
@@ -41,6 +42,7 @@ export function AccessRemoved({ notice }: { notice: AccessRevocation }) {
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 50, elevation: 50 }]}>
       <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+        <StatusBar style="light" />
         <NavyGlowBackdrop />
         <View className="flex-1 justify-center px-8">
           <Typography className="text-[12px] font-bold tracking-[0.14em] text-gold text-center">

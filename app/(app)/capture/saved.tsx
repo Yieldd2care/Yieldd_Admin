@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
@@ -60,6 +61,7 @@ export default function SaveConfirmationScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <RadialGlow
         color={unread ? '#8A6100' : '#F4B000'}
         size={480}

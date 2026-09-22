@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { Typography } from '../ui/Typography';
@@ -116,6 +117,7 @@ export function FirstRunTutorial({ visible, onDone }: { visible: boolean; onDone
   return (
     <Modal visible={visible} animationType="fade" transparent={false} onRequestClose={onDone}>
       <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+        <StatusBar style="light" />
         <NavyGlowBackdrop />
 
         <View className="flex-row justify-end px-5 pt-2">

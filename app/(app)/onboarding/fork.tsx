@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
@@ -90,6 +91,7 @@ export default function ForkScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <View className="flex-1 items-center">
         <CenterColumn max="max-w-[460px]" className="flex-1">

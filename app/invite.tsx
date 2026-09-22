@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../components/ui/Typography';
@@ -73,6 +74,7 @@ export default function InviteScreen() {
 
   const Frame = ({ children }: { children: React.ReactNode }) => (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <View className="flex-1 justify-center px-8">{children}</View>
     </SafeAreaView>

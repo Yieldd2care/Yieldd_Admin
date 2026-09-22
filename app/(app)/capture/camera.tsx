@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Platform, Pressable, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +10,7 @@ import { Typography } from '../../../components/ui/Typography';
 import { CheckIcon, CloseIcon, FlashIcon, ImageIcon, KeyboardIcon } from '../../../components/ui/icons';
 import { RadialGlow } from '../../../components/ui/RadialGlow';
 import { GUIDE_BOX, cropToGuideBox, normaliseCardPhoto } from '../../../lib/cardPhoto';
-import { persistCapture } from '../../../lib/captureFiles';
+import { persistCapture, sweepOrphanedCaptures } from '../../../lib/captureFiles';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { primeCaptureLocation } from '../../../lib/location';
 import { CaptureLocationNotice } from '../../../components/capture/CaptureLocationNotice';
@@ -281,6 +282,40 @@ export default function CameraScreen() {
   const locationNoticeReady =
     !isProfileScan && permission != null && (permission.granted || !permission.canAskAgain);
 
+  /**
+   * Throw away card photos nobody is holding on to any more.
+   *
+   * Every way out of this screen that is not "carry on to the details" ends up
+   * here, including the ones no handler can see - the hardware back button, the
+   * edge swipe, the app being killed mid-capture - because it also runs on
+   * mount. Anything left in `pending/` that the draft does not reference is an
+   * orphan, and an orphan is what `claimCaptureFiles()` would otherwise fold
+   * into the NEXT lead saved.
+   *
+   * Referenced, not named: a voice note recorded on the manual path lives in
+   * the same directory, and deleting by role would take it with us.
+   */
+  const sweepAbandoned = () => {
+    const draft = useCaptureDraftStore.getState();
+    sweepOrphanedCaptures([
+      draft.imageUri,
+      draft.backImageUri,
+      draft.extraPhotoUri,
+      draft.voiceUri,
+    ]);
+  };
+
+  useEffect(sweepAbandoned, []);
+
+  /** The close button: these photos are being given up, the rest of the draft is not. */
+  const closeCamera = () => {
+    setImageUri(null);
+    setBackImageUri(null);
+    const draft = useCaptureDraftStore.getState();
+    sweepOrphanedCaptures([draft.extraPhotoUri, draft.voiceUri]);
+    router.back();
+  };
+
   const retakeFront = () => {
     if (busy) return;
     setCaptureError(null);
@@ -290,7 +325,12 @@ export default function CameraScreen() {
   };
 
   if (!permission) {
-    return <View className="flex-1 bg-[#05070d]" />;
+    return (
+      <>
+        <StatusBar style="light" />
+        <View className="flex-1 bg-[#05070d]" />
+      </>
+    );
   }
 
   if (!permission.granted) {
@@ -305,6 +345,7 @@ export default function CameraScreen() {
     const canAsk = permission.canAskAgain;
     return (
       <>
+      <StatusBar style="light" />
       <View className="flex-1 bg-[#05070d] items-center justify-center px-8 gap-5">
         <Typography className="text-[15px] font-semibold text-white text-center">
           Camera access is needed to scan business cards
@@ -367,6 +408,7 @@ export default function CameraScreen() {
 
   return (
     <View className="flex-1 bg-[#05070d]">
+      <StatusBar style="light" />
       <CameraView ref={cameraRef} style={{ flex: 1, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} facing="back" flash={flashOn ? 'on' : 'off'} />
       <RadialGlow color="#1D3F8A" size={600} style={{ top: -180, left: 30, opacity: 0.3 }} />
 
@@ -416,7 +458,7 @@ export default function CameraScreen() {
       </View>
 
       <View className="absolute top-0 left-0 right-0 flex-row items-center justify-between px-5 pt-14">
-        <Pressable onPress={() => router.back()} className="w-[38px] h-[38px] rounded-full bg-navy/[0.55] border border-white/[0.14] items-center justify-center">
+        <Pressable onPress={closeCamera} className="w-[38px] h-[38px] rounded-full bg-navy/[0.55] border border-white/[0.14] items-center justify-center">
           <CloseIcon size={14} color="#fff" />
         </Pressable>
         <Pressable

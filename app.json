@@ -130,7 +130,18 @@
       ],
       "expo-asset",
       "expo-sharing",
-      "expo-status-bar"
-    ]
+      [
+        "expo-status-bar",
+        {
+          "style": "light"
+        }
+      ]
+    ],
+    "owner": "yieldds-team",
+    "extra": {
+      "eas": {
+        "projectId": "fe7b950a-13a2-44d6-99ca-c5f60372a157"
+      }
+    }
   }
 }

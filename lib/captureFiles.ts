@@ -52,29 +52,112 @@ function ensureDir(dir: Directory): void {
 }
 
 /**
+ * A capture is identified by its URI, so two captures must never share one.
+ *
+ * This file used to write every front to `pending/front.jpg`, on the reasoning
+ * that a fixed name keeps the directory self-describing and makes a retake
+ * overwrite its predecessor. Both halves were true and the conclusion was still
+ * wrong: the second card of the day got the same URI string as the first, and
+ * React Native's `<Image>` caches decoded bitmaps against that string with no
+ * mtime or inode in the key — Fresco's `DefaultCacheKeyFactory` on Android,
+ * `RCTImageCache` on iOS. So the details screen re-served the PREVIOUS card's
+ * photo while the file on disk held the new one, and only stopped once
+ * `claimCaptureFiles()` rebased the URI under a lead id and changed the string.
+ *
+ * A rep proof-reading a preview that shows somebody else's card is the whole
+ * job of that screen failing silently, so the name now carries a counter.
+ */
+let sequence = 0;
+
+/** `'front.jpg'` -> `['front', '.jpg']`. A name with no dot keeps an empty one. */
+function splitRole(name: string): [string, string] {
+  const dot = name.lastIndexOf('.');
+  return dot <= 0 ? [name, ''] : [name.slice(0, dot), name.slice(dot)];
+}
+
+/**
+ * Drop the previous file for one role, now that its replacement is on disk.
+ *
+ * Self-guarding, and returns nothing, because of where it is called from: this
+ * runs AFTER the copy whose result the caller returns. Letting a failed delete
+ * escape would turn a capture that succeeded into a fallback to the cache URI,
+ * which is the one thing this module exists to avoid.
+ */
+function sweepPreviousRole(dir: Directory, role: string, keepUri: string): void {
+  try {
+    if (!dir.exists) return;
+    for (const entry of dir.list()) {
+      if (entry instanceof File && entry.name.startsWith(`${role}-`) && entry.uri !== keepUri) {
+        entry.delete();
+      }
+    }
+  } catch {
+    /* A leftover file is disk space, never correctness. */
+  }
+}
+
+/**
  * Copy one freshly captured file into durable storage.
  *
  * `name` is the role, not the original filename — `front.jpg`, `back.jpg`,
- * `extra.jpg`, `voice.m4a`. Fixed names make the directory self-describing and
- * make a retake overwrite its predecessor instead of accumulating.
+ * `extra.jpg`, `voice.m4a`. The role survives as the prefix, so the directory
+ * still reads at a glance; what is appended is what keeps the URI unique.
+ *
+ * Copy first, sweep second, and that order is load-bearing. Deleting the old
+ * photo before writing the new one is what the previous version did, and on a
+ * copy that then failed it would have destroyed the shot the rep already had
+ * AND handed back a cache URI the OS may reclaim — a durability helper causing
+ * the loss it was added to prevent.
  */
 export async function persistCapture(uri: string, name: string): Promise<string> {
   if (isWeb || !uri) return uri;
 
+  const [role, extension] = splitRole(name);
+  let dir: Directory;
+  let destination: File;
+
   try {
-    const dir = capturesDir(PENDING);
+    dir = capturesDir(PENDING);
     ensureDir(dir);
 
-    const destination = new File(dir, name);
-    // A retake writes the same name; without overwrite the copy would throw and
-    // the rep would silently keep the first photo.
-    if (destination.exists) destination.delete();
-
+    destination = new File(dir, `${role}-${Date.now()}-${++sequence}${extension}`);
     await new File(uri).copy(destination);
-    return destination.uri;
   } catch {
     // Deliberately silent. See the header: the cache URI still works today.
     return uri;
+  }
+
+  sweepPreviousRole(dir, role, destination.uri);
+  return destination.uri;
+}
+
+/**
+ * Delete everything in `pending/` that the capture draft no longer references.
+ *
+ * The abandoned-capture problem, solved by what is referenced rather than by
+ * what is named. A rep who photographs a card and then leaves — the close
+ * button, the hardware back, the app being killed — used to leave the photo in
+ * `pending/`, and `claimCaptureFiles()` moves that whole directory into the
+ * next lead saved. A stranger's business card, filed under someone else.
+ *
+ * Deleting the directory wholesale is not the fix, and this is the trap worth
+ * recording: `pending/` is shared with the manual-entry path, so a rep who
+ * recorded a voice note, tapped the camera button and backed out would have the
+ * recording deleted from under them. Passing the URIs the draft is holding
+ * makes that impossible by construction — a live file is a referenced file.
+ */
+export function sweepOrphanedCaptures(keep: (string | null | undefined)[]): void {
+  if (isWeb) return;
+  try {
+    const dir = capturesDir(PENDING);
+    if (!dir.exists) return;
+
+    const referenced = new Set(keep.filter((uri): uri is string => Boolean(uri)));
+    for (const entry of dir.list()) {
+      if (entry instanceof File && !referenced.has(entry.uri)) entry.delete();
+    }
+  } catch {
+    /* As elsewhere: a leftover file is disk space, never correctness. */
   }
 }
 
@@ -148,16 +231,14 @@ export function discardAllCaptureFiles(): void {
   }
 }
 
-/** Throw away a half-finished capture the rep abandoned. */
-export function discardPendingCapture(): void {
-  if (isWeb) return;
-  try {
-    const dir = capturesDir(PENDING);
-    if (dir.exists) dir.delete();
-  } catch {
-    /* As above. */
-  }
-}
+/*
+ * There was a discardPendingCapture() here, which deleted `pending/` whole.
+ * It was never called from anywhere, and it is deliberately not revived: the
+ * directory is shared with the manual-entry path, so emptying it to throw away
+ * an abandoned card photo also throws away a voice note that belongs to a
+ * different draft. sweepOrphanedCaptures() above does the same job by what is
+ * still referenced, which cannot make that mistake.
+ */
 
 /**
  * Whether a URI still points at a real file.

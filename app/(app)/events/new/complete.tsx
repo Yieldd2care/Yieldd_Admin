@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 
 import { Typography } from '../../../../components/ui/Typography';
@@ -94,6 +95,7 @@ export default function EventSetupCompleteScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <ScrollView contentContainerClassName="items-center px-8 pt-[76px]" showsVerticalScrollIndicator={false}>
         <View className="w-[76px] h-[76px] rounded-full bg-gold items-center justify-center">

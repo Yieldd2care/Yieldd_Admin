@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { Redirect, Stack, usePathname } from 'expo-router';
 
 import { Typography } from '../../components/ui/Typography';
@@ -28,6 +29,7 @@ function AccountUnavailable() {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <View className="flex-1 justify-center px-8">
         <Typography className="text-[22px] font-extrabold text-white text-center tracking-[-0.01em]">

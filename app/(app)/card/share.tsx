@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, Share, View } from 'react-native';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import * as Clipboard from 'expo-clipboard';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { File, Paths } from 'expo-file-system';
@@ -184,6 +185,8 @@ export default function ShareSheetScreen() {
 
   return (
     <Pressable className="flex-1 bg-navy/[0.55]" onPress={() => router.back()}>
+      {/* Its own dim, so its own bar. Same reasoning as SheetShell. */}
+      <StatusBar style="light" />
       <Pressable className="mt-auto bg-white rounded-t-[20px] pt-[10px] px-5 pb-8" onPress={(e) => e.stopPropagation()}>
         <View className="w-9 h-1 rounded-full bg-hairline self-center mb-4" />
         <Typography className="text-[14px] font-bold text-navy mb-1">Share your card</Typography>

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
 import { KeyboardSafe } from './KeyboardSafe';
 
@@ -33,6 +34,11 @@ interface Props {
 export function SheetShell({ children }: Props) {
   return (
     <KeyboardSafe className="flex-1 justify-end bg-navy/[0.55]">
+      {/* These are `transparentModal` routes, so the dim covers the status bar
+          too and the clock would otherwise be dark-on-dim. One line here
+          covers all eight (modals) screens; they unmount on dismiss, which
+          hands the bar back to whatever is underneath. */}
+      <StatusBar style="light" />
       {/* Tap-outside-to-close. Kept above the sheet in source order so it does
           not sit over the content. */}
       <Pressable className="flex-1" onPress={() => router.back()} />
