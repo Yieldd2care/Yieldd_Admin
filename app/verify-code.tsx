@@ -7,7 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Typography } from '../components/ui/Typography';
 import { Button } from '../components/ui/Button';
 import { AuthPillInput } from '../components/auth/AuthPillInput';
-import { AuthLeftPanel } from '../components/auth/AuthLeftPanel';
+import { AuthWebShell } from '../components/auth/AuthWebShell';
 import { NavyGlowBackdrop } from '../components/app/NavyGlowBackdrop';
 import { KeyboardSafe } from '../components/app/KeyboardSafe';
 import { MailIcon } from '../components/ui/icons';
@@ -96,17 +96,23 @@ export default function VerifyCodeScreen() {
     else setCooldown(RESEND_SECONDS);
   };
 
+  // The same body serves both platforms, on two different surfaces: a white
+  // card on the web, navy on a phone. Platform.OS cannot change during a
+  // session, so this never flips under a mounted component - the file already
+  // branches on it below for the same reason.
+  const onLight = Platform.OS === 'web';
+
   const body = (
     <View className="w-full max-w-[420px] self-center">
       <View className="items-center">
         <View className="w-[68px] h-[68px] rounded-full bg-gold items-center justify-center">
           <MailIcon size={28} color="#0B132B" strokeWidth={1.9} />
         </View>
-        <Typography className="mt-6 text-[23px] font-extrabold text-white text-center tracking-[-0.01em]">
+        <Typography className={`mt-6 text-[23px] font-extrabold text-center tracking-[-0.01em] ${onLight ? 'text-navy' : 'text-white'}`}>
           Check your email
         </Typography>
         <Typography
-          className="mt-3 text-[14px] text-white/[0.62] text-center max-w-[300px]"
+          className={`mt-3 text-[14px] text-center max-w-[300px] ${onLight ? 'text-slate' : 'text-white/[0.62]'}`}
           style={{ lineHeight: 21 }}
         >
           We sent a {CODE_LENGTH}-digit code to {email || 'your address'}. It expires in an hour.
@@ -125,12 +131,12 @@ export default function VerifyCodeScreen() {
           autoFocus
           returnKeyType="go"
           onSubmitEditing={() => void submit()}
-          className="text-center tracking-[0.4em] text-[18px] font-bold"
+          className={`text-center tracking-[0.4em] text-[18px] font-bold ${onLight ? 'border border-hairline' : ''}`}
         />
       </View>
 
       {error ? (
-        <Typography className="mt-4 text-[12.5px] font-semibold text-[#FF8A8A] text-center leading-[1.45]">
+        <Typography className={`mt-4 text-[12.5px] font-semibold text-center leading-[1.45] ${onLight ? 'text-[#C23B3B]' : 'text-[#FF8A8A]'}`}>
           {error}
         </Typography>
       ) : null}
@@ -152,7 +158,7 @@ export default function VerifyCodeScreen() {
       >
         <Typography
           className={`text-[12.5px] font-bold text-center ${
-            cooldown > 0 ? 'text-white/[0.38]' : 'text-gold'
+            cooldown > 0 ? (onLight ? 'text-placeholder' : 'text-white/[0.38]') : (onLight ? 'text-blue' : 'text-gold')
           }`}
         >
           {resending
@@ -164,33 +170,23 @@ export default function VerifyCodeScreen() {
       </Pressable>
 
       <Pressable onPress={() => router.back()} className="self-center mt-2 px-6 py-2 active:opacity-60">
-        <Typography className="text-[12.5px] font-semibold text-white/[0.62] text-center">
+        <Typography className={`text-[12.5px] font-semibold text-center ${onLight ? 'text-slate' : 'text-white/[0.62]'}`}>
           Use a different email
         </Typography>
       </Pressable>
     </View>
   );
 
-  // The website's sign-in page is a two-column layout and this screen is on the
-  // main signup path, so dropping to a bare narrow column here would break the
-  // page in the middle of creating an account. The panel is reused, not copied.
+  // This screen sits in the middle of creating an account, so it uses the same
+  // shell as the page before and after it. Changing shape mid-flow is what the
+  // old two-column version was guarding against, and the answer is the same
+  // now that sign-in is a card: share the shell, do not copy a layout.
   if (Platform.OS === 'web') {
     return (
-      <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <>
         <StatusBar style="light" />
-        <ScrollView
-          contentContainerClassName="flex-grow lg:flex-row"
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <AuthLeftPanel />
-          <View className="flex-1 items-center justify-center px-6 py-10 lg:px-14">
-            <NavyGlowBackdrop />
-            {body}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+        <AuthWebShell>{body}</AuthWebShell>
+      </>
     );
   }
 

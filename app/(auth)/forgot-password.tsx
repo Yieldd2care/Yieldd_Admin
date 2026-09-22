@@ -42,6 +42,11 @@ export default function ForgotPasswordScreen() {
     else setError(outcome.message);
   };
 
+  // The same body on two surfaces: a white card on the web, navy on a phone.
+  // Platform.OS cannot change during a session, so this never flips under a
+  // mounted component - the file already branches on it below.
+  const onLight = Platform.OS === 'web';
+
   const body = (
     <>
         {sent ? (
@@ -49,34 +54,34 @@ export default function ForgotPasswordScreen() {
             <View className="w-[68px] h-[68px] rounded-full bg-gold items-center justify-center">
               <MailIcon size={28} color="#0B132B" strokeWidth={1.9} />
             </View>
-            <Typography className="mt-6 text-[23px] font-extrabold text-white text-center tracking-[-0.01em]">
+            <Typography className={`mt-6 text-[23px] font-extrabold text-center tracking-[-0.01em] ${onLight ? 'text-navy' : 'text-white'}`}>
               Check your email
             </Typography>
             <Typography
-              className="mt-3 text-[14px] text-white/[0.62] text-center max-w-[300px]"
+              className={`mt-3 text-[14px] text-center max-w-[300px] ${onLight ? 'text-slate' : 'text-white/[0.62]'}`}
               style={{ lineHeight: 21 }}
             >
               If there is an account for {email.trim()}, a link to set a new password is on its
               way. It works once, and expires in an hour.
             </Typography>
             <Typography
-              className="mt-4 text-[12.5px] text-white/[0.45] text-center max-w-[300px]"
+              className={`mt-4 text-[12.5px] text-center max-w-[300px] ${onLight ? 'text-label' : 'text-white/[0.45]'}`}
               style={{ lineHeight: 18 }}
             >
               Nothing after a few minutes? Check spam, then try again.
             </Typography>
 
             <Pressable onPress={() => router.replace('/(auth)')} className="mt-8">
-              <Typography className="text-[13.5px] font-bold text-gold">Back to sign in</Typography>
+              <Typography className={`text-[13.5px] font-bold ${onLight ? 'text-blue' : 'text-gold'}`}>Back to sign in</Typography>
             </Pressable>
           </View>
         ) : (
           <>
-            <Typography className="text-[26px] font-extrabold text-white tracking-[-0.01em]">
+            <Typography className={`text-[26px] font-extrabold tracking-[-0.01em] ${onLight ? 'text-navy' : 'text-white'}`}>
               Reset your password
             </Typography>
             <Typography
-              className="mt-3 text-[14px] text-white/[0.62]"
+              className={`mt-3 text-[14px] ${onLight ? 'text-slate' : 'text-white/[0.62]'}`}
               style={{ lineHeight: 21 }}
             >
               Enter the email you sign in with and we&rsquo;ll send a link to set a new password.
@@ -84,6 +89,7 @@ export default function ForgotPasswordScreen() {
 
             <View className="mt-7">
               <AuthPillInput
+                className={onLight ? 'border border-hairline' : ''}
                 placeholder="you@company.com"
                 value={email}
                 onChangeText={(v) => {
@@ -99,7 +105,7 @@ export default function ForgotPasswordScreen() {
             </View>
 
             {error ? (
-              <Typography className="mt-4 text-[12.5px] font-semibold text-[#FF8A8A] text-center leading-[1.45]">
+              <Typography className={`mt-4 text-[12.5px] font-semibold text-center leading-[1.45] ${onLight ? 'text-[#C23B3B]' : 'text-[#FF8A8A]'}`}>
                 {error}
               </Typography>
             ) : null}
@@ -108,7 +114,8 @@ export default function ForgotPasswordScreen() {
               label={sending ? 'Sending…' : 'Send reset link'}
               onPress={() => void submit()}
               disabled={sending || !email.trim()}
-              className="mt-6"
+              shape={onLight ? 'pill' : 'default'}
+              className="mt-6 w-full"
             />
 
             {/*
@@ -118,14 +125,14 @@ export default function ForgotPasswordScreen() {
               "install a different build first".
             */}
             <Typography
-              className="mt-4 text-[12px] text-white/[0.42] text-center"
+              className={`mt-4 text-[12px] text-center ${onLight ? 'text-label' : 'text-white/[0.42]'}`}
               style={{ lineHeight: 17 }}
             >
               The link opens in your browser. Set the password there, then sign in here.
             </Typography>
 
             <Pressable onPress={() => router.back()} className="mt-7 self-center">
-              <Typography className="text-[13.5px] font-semibold text-white/[0.75]">
+              <Typography className={`text-[13.5px] font-semibold ${onLight ? 'text-slate' : 'text-white/[0.75]'}`}>
                 Back to sign in
               </Typography>
             </Pressable>

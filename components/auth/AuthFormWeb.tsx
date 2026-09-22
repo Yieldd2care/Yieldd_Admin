@@ -1,24 +1,28 @@
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { Typography } from '../ui/Typography';
 import { Button } from '../ui/Button';
 import { TextInput } from '../ui/TextInput';
-import { AuthLeftPanel } from './AuthLeftPanel';
+import { FOCUS } from '../web/primitives/focus';
 import { AuthTabsWeb } from './AuthTabsWeb';
+import { AuthWebShell } from './AuthWebShell';
 import { GoogleButton } from './GoogleButton';
 import { MIN_PASSWORD, type AuthFormState } from './useAuthForm';
 
 /**
- * The website's sign-in page: navy marketing panel on the left from `lg` up,
- * white form on the right, capped at 420px so it stays a form rather than
- * stretching across a desktop monitor.
+ * The website's sign-in page.
  *
- * This is the layout yieldd.co has always had and it stays that way. The mobile
- * app's navy screen is a different presentation of the same logic — see
- * useAuthForm. Only the wiring underneath changed: real Supabase auth, a
- * required contact number, a working Google button, and inline errors.
+ * One white card centred on the navy gradient, from AuthWebShell — the same
+ * shell forgot-password and reset-password use, so the three screens in a
+ * single flow cannot drift apart.
+ *
+ * This replaces the two-column layout the site had before. The left marketing
+ * panel is gone with it: it only appeared from `lg` up, which meant the page
+ * was already two different designs depending on the window, and the card
+ * carries the brand well enough on its own.
+ *
+ * Only the presentation changed. Every piece of behaviour still comes from
+ * useAuthForm, and the mobile app's own screen (AuthFormNative) is untouched.
  */
 
 const COPY = {
@@ -38,144 +42,120 @@ const COPY = {
   },
 } as const;
 
+const BODY = '[font-family:Figtree,system-ui,sans-serif]';
+
 export function AuthFormWeb(form: AuthFormState) {
   const copy = COPY[form.mode];
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <AuthWebShell>
+      <AuthTabsWeb mode={form.mode} onChange={form.changeMode} />
+
+      <Text
+        className={`[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[24px] leading-[1.2] tracking-[-0.02em] text-navy mt-6`}
       >
-        <ScrollView
-          contentContainerClassName="flex-grow lg:flex-row"
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        {copy.heading}
+      </Text>
+      {copy.subheading ? (
+        <Text className={`${BODY} text-[14.5px] leading-[1.55] text-slate mt-[8px]`}>
+          {copy.subheading}
+        </Text>
+      ) : null}
+
+      <View className="mt-5">
+        <GoogleButton
+          onPress={form.handleGoogle}
+          disabled={form.isSubmitting || form.inviteBlocksGoogle}
+          className={`border border-hairline ${form.inviteBlocksGoogle ? 'opacity-40' : ''}`}
+        />
+        {form.inviteBlocksGoogle ? (
+          <Text className={`${BODY} mt-[10px] text-[12.5px] leading-[1.45] text-slate text-center`}>
+            To accept your invite, create the account with an email and password.
+          </Text>
+        ) : null}
+      </View>
+
+      <View className="flex-row items-center gap-[14px] my-5">
+        <View className="flex-1 h-px bg-hairline" />
+        <Text
+          className={`${BODY} [font-weight:600] text-[11.5px] tracking-[0.16em] text-placeholder`}
         >
-          <AuthLeftPanel />
+          OR
+        </Text>
+        <View className="flex-1 h-px bg-hairline" />
+      </View>
 
-          <View className="flex-1 items-center justify-center px-6 py-6 lg:px-14">
-            <View className="w-full max-w-[420px] gap-0">
-              {/* The panel carries the logo from `lg` up; below that there is
-                  no panel, so the form needs its own way back to the site. */}
-              <Pressable
-                className="flex-row items-center justify-center gap-[10px] mb-6 lg:hidden"
-                onPress={() => router.push('/(web)')}
-              >
-                <Image
-                  source={require('../../assets/brand/yieldd-mark-transparent.png')}
-                  style={{ width: 30, height: 36 }}
-                  resizeMode="contain"
-                />
-                <Typography className="text-[22px] font-extrabold tracking-[0.02em] text-navy">
-                  YIELDD
-                </Typography>
-              </Pressable>
+      {/* Creating an account is one field (#33a): the rest is asked for on
+          complete-profile, after a code proves the address. */}
+      <View className="gap-3">
+        <TextInput
+          label="Work email"
+          placeholder="you@company.com"
+          value={form.email}
+          onChangeText={form.setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoComplete="email"
+          returnKeyType={form.isCreate ? 'go' : 'next'}
+          onSubmitEditing={form.submitFromEmail}
+        />
+        {form.isCreate ? null : (
+          <TextInput
+            label="Password"
+            placeholder={`At least ${MIN_PASSWORD} characters`}
+            value={form.password}
+            onChangeText={form.setPassword}
+            secureTextEntry
+            autoComplete="password"
+            ref={form.passwordRef}
+            returnKeyType="go"
+            onSubmitEditing={() => void form.handleSubmit()}
+          />
+        )}
+      </View>
 
-              <AuthTabsWeb mode={form.mode} onChange={form.changeMode} />
+      {/* Sign-in only — nothing has been forgotten on the create tab. */}
+      {form.isCreate ? null : (
+        <Pressable
+          onPress={() => router.push('/(auth)/forgot-password')}
+          className={`self-end mt-3 ${FOCUS}`}
+          accessibilityRole="link"
+        >
+          <Text className={`${BODY} [font-weight:600] text-[13px] text-blue`}>
+            Forgot password?
+          </Text>
+        </Pressable>
+      )}
 
-              <Typography variant="display-md" className="text-navy mt-6">
-                {copy.heading}
-              </Typography>
-              {copy.subheading ? (
-                <Typography variant="body-md" className="text-slate mt-[8px]">
-                  {copy.subheading}
-                </Typography>
-              ) : null}
+      {form.error ? (
+        <Text
+          className={`${BODY} [font-weight:600] mt-4 text-[13px] leading-[1.45] text-[#C23B3B] text-center`}
+        >
+          {form.error}
+        </Text>
+      ) : null}
 
-              <View className="mt-5">
-                <GoogleButton
-                  onPress={form.handleGoogle}
-                  disabled={form.isSubmitting || form.inviteBlocksGoogle}
-                  className={`border border-hairline ${form.inviteBlocksGoogle ? 'opacity-40' : ''}`}
-                />
-                {form.inviteBlocksGoogle ? (
-                  <Typography className="mt-[10px] text-[12.5px] leading-[1.45] text-slate text-center">
-                    To accept your invite, create the account with an email and password.
-                  </Typography>
-                ) : null}
-              </View>
+      <Button
+        label={
+          form.isCreate
+            ? form.sendingCode
+              ? copy.pending
+              : copy.submit
+            : form.isSubmitting
+              ? copy.pending
+              : copy.submit
+        }
+        onPress={form.handleSubmit}
+        disabled={!form.canSubmit || form.isSubmitting || form.sendingCode}
+        shape="pill"
+        className={`w-full mt-6 ${
+          !form.canSubmit || form.isSubmitting || form.sendingCode ? 'opacity-50' : ''
+        }`}
+      />
 
-              <View className="flex-row items-center gap-[14px] my-5">
-                <View className="flex-1 h-px bg-hairline" />
-                <Typography className="text-[11.5px] font-semibold tracking-[0.16em] text-placeholder">
-                  OR
-                </Typography>
-                <View className="flex-1 h-px bg-hairline" />
-              </View>
-
-              {/* Creating an account is one field (#33a): the rest is asked
-                  for on complete-profile, after a code proves the address. */}
-              <View className="gap-3">
-                <TextInput
-                  label="Work email"
-                  placeholder="you@company.com"
-                  value={form.email}
-                  onChangeText={form.setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  returnKeyType={form.isCreate ? 'go' : 'next'}
-                  onSubmitEditing={form.submitFromEmail}
-                />
-                {form.isCreate ? null : (
-                  <TextInput
-                    label="Password"
-                    placeholder={`At least ${MIN_PASSWORD} characters`}
-                    value={form.password}
-                    onChangeText={form.setPassword}
-                    secureTextEntry
-                    autoComplete="password"
-                    ref={form.passwordRef}
-                    returnKeyType="go"
-                    onSubmitEditing={() => void form.handleSubmit()}
-                  />
-                )}
-              </View>
-
-              {/* Sign-in only — nothing has been forgotten on the create tab. */}
-              {form.isCreate ? null : (
-                <Pressable
-                  onPress={() => router.push('/(auth)/forgot-password')}
-                  className="self-end mt-3"
-                >
-                  <Typography className="text-[13px] font-semibold text-blue">
-                    Forgot password?
-                  </Typography>
-                </Pressable>
-              )}
-
-              {form.error ? (
-                <Typography className="mt-4 text-[13px] font-semibold text-[#C23B3B] leading-[1.45] text-center">
-                  {form.error}
-                </Typography>
-              ) : null}
-
-              <Button
-                label={
-                  form.isCreate
-                    ? form.sendingCode
-                      ? copy.pending
-                      : copy.submit
-                    : form.isSubmitting
-                      ? copy.pending
-                      : copy.submit
-                }
-                onPress={form.handleSubmit}
-                disabled={!form.canSubmit || form.isSubmitting || form.sendingCode}
-                className={`w-full mt-6 ${
-                  !form.canSubmit || form.isSubmitting || form.sendingCode ? 'opacity-50' : ''
-                }`}
-              />
-
-              <Typography className="text-[13.5px] text-slate mt-4 text-center">
-                {copy.footnote}
-              </Typography>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <Text className={`${BODY} text-[13px] leading-[1.5] text-slate mt-4 text-center`}>
+        {copy.footnote}
+      </Text>
+    </AuthWebShell>
   );
 }

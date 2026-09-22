@@ -60,6 +60,12 @@ function StatusLayout({ children }: { children: ReactNode }) {
 }
 
 export default function ResetPasswordScreen() {
+  // Every state of this screen renders on two surfaces: a white card on the
+  // web, navy on a phone. Platform.OS cannot change during a session, so this
+  // never flips under a mounted component - the file already branches on it
+  // in StatusLayout and at the end.
+  const onLight = Platform.OS === 'web';
+
   // The emailed link carries `?token_hash=…&type=recovery`. See the note on
   // redeemRecoveryToken: this is what lets the link be opened on a device other
   // than the one that asked for the reset.
@@ -163,7 +169,7 @@ export default function ResetPasswordScreen() {
   if (checking) {
     return (
       <StatusLayout>
-        <Typography className="text-[14px] text-white/[0.62]">Checking your link…</Typography>
+        <Typography className={`text-[14px] ${onLight ? 'text-slate' : 'text-white/[0.62]'}`}>Checking your link…</Typography>
       </StatusLayout>
     );
   }
@@ -174,11 +180,11 @@ export default function ResetPasswordScreen() {
           <View className="w-[68px] h-[68px] rounded-full bg-gold items-center justify-center">
             <CheckIcon size={30} color="#0B132B" strokeWidth={2.6} />
           </View>
-          <Typography className="mt-6 text-[23px] font-extrabold text-white text-center tracking-[-0.01em]">
+          <Typography className={`mt-6 text-[23px] font-extrabold text-center tracking-[-0.01em] ${onLight ? 'text-navy' : 'text-white'}`}>
             Password changed
           </Typography>
           <Typography
-            className="mt-3 text-[14px] text-white/[0.62] text-center max-w-[300px]"
+            className={`mt-3 text-[14px] text-center max-w-[300px] ${onLight ? 'text-slate' : 'text-white/[0.62]'}`}
             style={{ lineHeight: 21 }}
           >
             Sign in with your new password. If you were signed in anywhere else, that stays
@@ -196,11 +202,11 @@ export default function ResetPasswordScreen() {
   if (!valid) {
     return (
       <StatusLayout>
-          <Typography className="text-[21px] font-extrabold text-white text-center tracking-[-0.01em]">
+          <Typography className={`text-[21px] font-extrabold text-center tracking-[-0.01em] ${onLight ? 'text-navy' : 'text-white'}`}>
             This link has expired
           </Typography>
           <Typography
-            className="mt-3 text-[14px] text-white/[0.62] text-center max-w-[300px]"
+            className={`mt-3 text-[14px] text-center max-w-[300px] ${onLight ? 'text-slate' : 'text-white/[0.62]'}`}
             style={{ lineHeight: 21 }}
           >
             Reset links work once and last an hour. Ask for a new one and open it as soon as it
@@ -217,15 +223,16 @@ export default function ResetPasswordScreen() {
 
   const body = (
     <>
-        <Typography className="text-[26px] font-extrabold text-white tracking-[-0.01em]">
+        <Typography className={`text-[26px] font-extrabold tracking-[-0.01em] ${onLight ? 'text-navy' : 'text-white'}`}>
           Set a new password
         </Typography>
-        <Typography className="mt-3 text-[14px] text-white/[0.62]" style={{ lineHeight: 21 }}>
+        <Typography className={`mt-3 text-[14px] ${onLight ? 'text-slate' : 'text-white/[0.62]'}`} style={{ lineHeight: 21 }}>
           At least {MIN_PASSWORD} characters. Choose something you have not used here before.
         </Typography>
 
         <View className="mt-7 gap-3">
           <AuthPillInput
+            className={onLight ? 'border border-hairline' : ''}
             placeholder="New password"
             value={password}
             onChangeText={(v) => {
@@ -236,6 +243,7 @@ export default function ResetPasswordScreen() {
             autoComplete="new-password"
           />
           <AuthPillInput
+            className={onLight ? 'border border-hairline' : ''}
             placeholder="Type it again"
             value={confirm}
             onChangeText={(v) => {
@@ -252,18 +260,18 @@ export default function ResetPasswordScreen() {
         {/* Told while typing rather than on submit — the second field is where
             a typo actually happens, and finding out after a round trip is worse. */}
         {tooShort ? (
-          <Typography className="mt-4 text-[12.5px] font-semibold text-white/[0.55] text-center">
+          <Typography className={`mt-4 text-[12.5px] font-semibold text-center ${onLight ? 'text-slate' : 'text-white/[0.55]'}`}>
             {MIN_PASSWORD - password.length} more character
             {MIN_PASSWORD - password.length === 1 ? '' : 's'} needed.
           </Typography>
         ) : mismatch ? (
-          <Typography className="mt-4 text-[12.5px] font-semibold text-[#FF8A8A] text-center">
+          <Typography className={`mt-4 text-[12.5px] font-semibold text-center ${onLight ? 'text-[#C23B3B]' : 'text-[#FF8A8A]'}`}>
             Those two do not match.
           </Typography>
         ) : null}
 
         {error ? (
-          <Typography className="mt-4 text-[12.5px] font-semibold text-[#FF8A8A] text-center leading-[1.45]">
+          <Typography className={`mt-4 text-[12.5px] font-semibold text-center leading-[1.45] ${onLight ? 'text-[#C23B3B]' : 'text-[#FF8A8A]'}`}>
             {error}
           </Typography>
         ) : null}
@@ -276,7 +284,7 @@ export default function ResetPasswordScreen() {
         />
 
         <Pressable onPress={() => router.replace('/(auth)')} className="mt-7 self-center">
-          <Typography className="text-[13.5px] font-semibold text-white/[0.75]">Cancel</Typography>
+          <Typography className={`text-[13.5px] font-semibold ${onLight ? 'text-slate' : 'text-white/[0.75]'}`}>Cancel</Typography>
         </Pressable>
     </>
   );
