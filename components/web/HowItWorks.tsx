@@ -4,6 +4,7 @@ import { Text, View, type LayoutChangeEvent } from 'react-native';
 import { AutoGrid } from './primitives/AutoGrid';
 import { Display } from './primitives/Display';
 import { Mark } from './primitives/Mark';
+import { Reveal } from './primitives/Reveal';
 import { Section } from './primitives/Section';
 import { SectionHeader } from './primitives/SectionHeader';
 
@@ -139,6 +140,7 @@ interface Props {
 export function HowItWorks({ onLayout }: Props) {
   return (
     <Section tone="section" pad="lg" onLayout={onLayout}>
+      <Reveal>
       <SectionHeader
         tone="onLight"
         eyebrow="One simple workflow"
@@ -149,8 +151,9 @@ export function HowItWorks({ onLayout }: Props) {
         }
         align="center"
       />
+      </Reveal>
 
-      <AutoGrid min={260} gap={18} className="mt-11">
+      <AutoGrid min={260} gap={18} reveal className="mt-11">
         <Step
           step="Step 1"
           title="Capture"

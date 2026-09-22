@@ -26,16 +26,30 @@ interface Props {
   delay?: number;
   once?: boolean;
   distance?: number;
+  /**
+   * Make both wrappers fill their parent. Needed inside AutoGrid, where the
+   * cell stretches to the row height and the card is expected to fill it - an
+   * un-filled Animated.View would collapse to its content and the cards in a
+   * row would stop lining up.
+   */
+  fill?: boolean;
   className?: string;
   children: ReactNode;
 }
 
-export function Reveal({ delay = 0, once = true, distance = 18, className = '', children }: Props) {
+export function Reveal({
+  delay = 0,
+  once = true,
+  distance = 18,
+  fill = false,
+  className = '',
+  children,
+}: Props) {
   const { hostRef, style } = useReveal({ delay, once, distance });
 
   return (
-    <View ref={hostRef as never} className={className}>
-      <Animated.View style={style}>{children}</Animated.View>
+    <View ref={hostRef as never} className={`${fill ? 'flex-1' : ''} ${className}`}>
+      <Animated.View style={fill ? [style, { flex: 1 }] : style}>{children}</Animated.View>
     </View>
   );
 }

@@ -26,7 +26,7 @@ const STATS = [
 export function StatStrip() {
   return (
     <Section tone="section" pad="md">
-      <AutoGrid min={210} gap={16}>
+      <AutoGrid min={210} gap={16} reveal>
         {STATS.map((stat) => (
           <WebCard key={stat.value} pad="md" className="h-full">
             <Text className="[font-family:Figtree,system-ui,sans-serif] [font-weight:800] text-[clamp(24px,2.4vw,32px)] leading-[1.1] tracking-[-0.02em] text-navy">

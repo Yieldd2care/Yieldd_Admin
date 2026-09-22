@@ -1,6 +1,8 @@
 import { Children, type ReactNode, useState } from 'react';
 import { View, type LayoutChangeEvent } from 'react-native';
 
+import { Reveal } from './Reveal';
+
 /**
  * The substitute for `repeat(auto-fit, minmax(<min>px, 1fr))`, which the
  * reference uses for every card grid. React Native has no CSS grid.
@@ -34,6 +36,16 @@ interface Props {
    * usually looks worse than leaving it at its track size.
    */
   stretch?: boolean;
+  /**
+   * Reveal the cells in sequence as the grid scrolls into view.
+   *
+   * It lives here rather than in a <Deck> wrapped around the children because
+   * AutoGrid counts and measures its own children - a wrapper between them
+   * would leave it sizing one child instead of six.
+   */
+  reveal?: boolean;
+  /** Milliseconds between each cell. */
+  revealStep?: number;
   className?: string;
   children: ReactNode;
 }
@@ -43,6 +55,8 @@ export function AutoGrid({
   gap = 16,
   max,
   stretch = false,
+  reveal = false,
+  revealStep = 70,
   className = '',
   children,
 }: Props) {
@@ -90,7 +104,13 @@ export function AutoGrid({
             marginBottom: gap,
           }}
         >
-          <View className="flex-1">{child}</View>
+          {reveal ? (
+            <Reveal fill delay={i * revealStep}>
+              {child}
+            </Reveal>
+          ) : (
+            <View className="flex-1">{child}</View>
+          )}
         </View>
       ))}
     </View>

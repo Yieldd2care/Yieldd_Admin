@@ -117,7 +117,7 @@ export function IndustryGrid({ onLayout }: Props) {
             </Text>
           </View>
 
-          <AutoGrid min={244} gap={16} className="mt-11">
+          <AutoGrid min={244} gap={16} reveal className="mt-11">
             {INDUSTRIES.map((industry) => (
               <View
                 key={industry.title}

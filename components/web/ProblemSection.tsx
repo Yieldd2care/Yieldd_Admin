@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { AutoGrid } from './primitives/AutoGrid';
 import { Mark } from './primitives/Mark';
 import { ProgressBar } from './primitives/ProgressBar';
+import { Reveal } from './primitives/Reveal';
 import { Section } from './primitives/Section';
 import { SectionHeader } from './primitives/SectionHeader';
 import { WebCard } from './primitives/WebCard';
@@ -107,6 +108,7 @@ function Timeline() {
 export function ProblemSection() {
   return (
     <Section tone="white" pad="lg">
+      <Reveal>
       <SectionHeader
         tone="onLight"
         eyebrow="After the handshake"
@@ -116,10 +118,13 @@ export function ProblemSection() {
           </>
         }
       />
+      </Reveal>
 
-      <Timeline />
+      <Reveal delay={60}>
+        <Timeline />
+      </Reveal>
 
-      <AutoGrid min={300} gap={16} className="mt-4">
+      <AutoGrid min={300} gap={16} reveal className="mt-4">
         {POINTS.map((point) => (
           <WebCard key={point.n} pad="md" className="h-full">
             <View className="flex-row gap-[14px]">

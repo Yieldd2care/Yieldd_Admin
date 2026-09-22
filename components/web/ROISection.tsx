@@ -3,6 +3,7 @@ import { Text, View, type LayoutChangeEvent } from 'react-native';
 import { AutoGrid } from './primitives/AutoGrid';
 import { ComparisonTable } from './primitives/ComparisonTable';
 import { Mark } from './primitives/Mark';
+import { Reveal } from './primitives/Reveal';
 import { Section } from './primitives/Section';
 import { SectionHeader } from './primitives/SectionHeader';
 import { WebCard } from './primitives/WebCard';
@@ -63,6 +64,7 @@ interface Props {
 export function ROISection({ onLayout }: Props) {
   return (
     <Section tone="section" pad="lg" onLayout={onLayout}>
+      <Reveal>
       <SectionHeader
         tone="onLight"
         eyebrow="Built for business leaders"
@@ -73,8 +75,9 @@ export function ROISection({ onLayout }: Props) {
         }
         lede="Every event holds its own venue, stall, dates, organiser and cost. Leads, lists and fields sit inside it, so the report writes itself. Next year you book the show that paid for itself and skip the one that didn't."
       />
+      </Reveal>
 
-      <AutoGrid min={210} gap={16} className="mt-10">
+      <AutoGrid min={210} gap={16} reveal className="mt-10">
         {STATS.map((stat) => (
           <WebCard key={stat.label} pad="md" className="h-full">
             <Text
@@ -91,11 +94,13 @@ export function ROISection({ onLayout }: Props) {
         ))}
       </AutoGrid>
 
+      <Reveal>
       <ComparisonTable
         columns={['', 'Cards and a spreadsheet', 'With Yieldd']}
         rows={ROWS}
         className="mt-[18px]"
       />
+      </Reveal>
 
       <Text className={`${BODY} text-[13px] text-label mt-[14px]`}>
         Figures are what the product is built to do, measured on a four-day show.

@@ -5,6 +5,7 @@ import Svg, { Line } from 'react-native-svg';
 
 import { FOCUS } from './primitives/focus';
 import { Mark } from './primitives/Mark';
+import { Reveal } from './primitives/Reveal';
 import { Section } from './primitives/Section';
 import { SectionHeader } from './primitives/SectionHeader';
 
@@ -148,6 +149,7 @@ export function FAQAccordion({ onLayout }: Props) {
 
   return (
     <Section tone="section" pad="lg" onLayout={onLayout} max="max-w-[880px]">
+      <Reveal>
       <SectionHeader
         tone="onLight"
         eyebrow="Questions"
@@ -158,6 +160,7 @@ export function FAQAccordion({ onLayout }: Props) {
         }
         align="center"
       />
+      </Reveal>
 
       <View className="gap-3 mt-10">
         {FAQS.map((item, i) => (

@@ -5,6 +5,7 @@ import { AutoGrid } from './primitives/AutoGrid';
 import { Display } from './primitives/Display';
 import { Donut } from './primitives/Donut';
 import { Mark } from './primitives/Mark';
+import { Reveal } from './primitives/Reveal';
 import { Section } from './primitives/Section';
 import { SectionHeader } from './primitives/SectionHeader';
 import { StackedBar } from './primitives/StackedBar';
@@ -171,6 +172,7 @@ interface Props {
 export function FeatureQuad({ onLayout }: Props) {
   return (
     <Section tone="white" pad="lg" onLayout={onLayout}>
+      <Reveal>
       <SectionHeader
         tone="onLight"
         eyebrow="What you get"
@@ -182,12 +184,13 @@ export function FeatureQuad({ onLayout }: Props) {
         lede="Mobile for the booth, web for the office. One login, same data."
         align="center"
       />
+      </Reveal>
 
       {/* Two-up, capped. Left to fit, a 1200px container takes three 300px
           tracks and the fourth card is orphaned on a row of its own. Four
           across would fit at ~288px each, but that is too narrow for the data
           panels — 2x2 gives each card room and keeps the row balanced. */}
-      <AutoGrid min={300} max={2} gap={16} className="mt-11">
+      <AutoGrid min={300} max={2} gap={16} reveal className="mt-11">
         {FEATURES.map((feature) => (
           <WebCard key={feature.n} pad="md" className="h-full">
             <View className="flex-row items-center justify-between gap-3">

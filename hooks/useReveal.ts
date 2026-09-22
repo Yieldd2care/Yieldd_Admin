@@ -62,30 +62,40 @@ export function useReveal({
   threshold = 0.16,
   distance = 18,
 }: Options = {}) {
-  // `null` until the effect decides. Starting at 1 means a bail-out at any
-  // point below leaves the content on screen.
-  const progress = useSharedValue(1);
+  // Decided at render, not in the effect. Starting at 1 and hiding afterwards
+  // would paint the content, remove it, then fade it back in — one frame of
+  // flicker on every element on the page. Anywhere the animation cannot run,
+  // this is 1 and the content is simply there.
+  const animates = canAnimate();
+  const progress = useSharedValue(animates ? 0 : 1);
   const hostRef = useRef<unknown>(null);
 
   useEffect(() => {
-    if (!canAnimate()) return;
+    if (!animates) return;
 
     const node = hostRef.current as Element | null;
     // react-native-web hands back the host DOM node, but guard rather than
     // trust it — a future wrapper component would return an instance instead.
-    if (!node || typeof (node as { nodeType?: number }).nodeType !== 'number') return;
+    if (!node || typeof (node as { nodeType?: number }).nodeType !== 'number') {
+      progress.value = 1;
+      return;
+    }
 
-    progress.value = 0;
+    let shown = false;
+    const show = () => {
+      shown = true;
+      progress.value = withDelay(
+        delay,
+        withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }),
+      );
+    };
 
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
         if (!entry) return;
         if (entry.isIntersecting) {
-          progress.value = withDelay(
-            delay,
-            withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }),
-          );
+          show();
           if (once) observer.disconnect();
         } else if (!once) {
           progress.value = withTiming(0, { duration: 200 });
@@ -95,7 +105,21 @@ export function useReveal({
     );
 
     observer.observe(node);
-    return () => observer.disconnect();
+
+    // The whole point of a reveal failing safe: if the observer never fires —
+    // a browser quirk, a detached node, a zero-size ancestor — the content
+    // would sit at opacity 0 for ever. After a second, show it regardless.
+    const failsafe = setTimeout(() => {
+      if (!shown) {
+        shown = true;
+        progress.value = withTiming(1, { duration: 200 });
+      }
+    }, 1000);
+
+    return () => {
+      clearTimeout(failsafe);
+      observer.disconnect();
+    };
     // Deliberately mount-only: these options never change for a given element,
     // and re-running would re-hide content mid-scroll.
     // eslint-disable-next-line react-hooks/exhaustive-deps
