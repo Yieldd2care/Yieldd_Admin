@@ -155,7 +155,7 @@ export function FAQAccordion({ onLayout }: Props) {
         eyebrow="Questions"
         title={
           <>
-            What teams <Mark>ask us first</Mark>.
+            What teams <Mark>ask us first.</Mark>
           </>
         }
         align="center"

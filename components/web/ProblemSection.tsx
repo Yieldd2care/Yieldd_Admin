@@ -114,7 +114,7 @@ export function ProblemSection() {
         eyebrow="After the handshake"
         title={
           <>
-            A stall costs lakhs. The leads <Mark>leak out for free</Mark>.
+            A stall costs lakhs. The leads <Mark>leak out for free.</Mark>
           </>
         }
       />

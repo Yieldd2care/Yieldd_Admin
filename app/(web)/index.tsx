@@ -20,9 +20,10 @@ import { WebFooter } from '../../components/web/WebFooter';
  * wrapper, so the hero scrolls up beneath the floating pill. Two details make
  * that work:
  *
- *   - Painting it last puts it on top without needing a z-index, and keeps it
- *     out of the scroller's flow so it no longer consumes 94px of layout
- *     height the way a sibling above the ScrollView did.
+ *   - It is out of the scroller's flow, so it no longer consumes 94px of
+ *     layout height the way a sibling above the ScrollView did. It sits first
+ *     in the DOM so it comes first in the tab order, and carries an explicit
+ *     z-index so it still paints on top.
  *   - `pointerEvents="box-none"` lets clicks through the empty area around the
  *     pill to the page underneath, which is the reference's click-through
  *     header wrapper exactly. The wrapper has no fixed height, so the mobile
@@ -54,6 +55,15 @@ export default function LandingScreen() {
 
   return (
     <View className="flex-1 bg-navy">
+      {/* First in the DOM, on purpose. Painted last it still sat on top - an
+          absolutely positioned element paints above a static sibling whatever
+          the source order - but it came LAST in the tab order, so a keyboard
+          user had to traverse the entire page before reaching the header.
+          An explicit z-index keeps it on top now that order no longer does. */}
+      <View pointerEvents="box-none" className="absolute top-0 left-0 right-0 z-50">
+        <WebNav onNavigate={scrollToSection} />
+      </View>
+
       <ScrollView ref={scrollRef} className="flex-1" showsVerticalScrollIndicator={false}>
         <Hero onLayout={registerSection('top')} onNavigate={scrollToSection} />
         <StatStrip />
@@ -66,10 +76,6 @@ export default function LandingScreen() {
         <CTABanner />
         <WebFooter onLogoPress={() => scrollToSection('top')} />
       </ScrollView>
-
-      <View pointerEvents="box-none" className="absolute top-0 left-0 right-0">
-        <WebNav onNavigate={scrollToSection} />
-      </View>
     </View>
   );
 }

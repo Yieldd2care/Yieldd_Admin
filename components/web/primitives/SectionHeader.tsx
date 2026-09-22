@@ -34,7 +34,13 @@ export function SectionHeader({
 
   return (
     <View className={`${centered ? 'items-center' : 'items-start'} ${className}`}>
-      {eyebrow ? <Eyebrow tone={tone}>{eyebrow}</Eyebrow> : null}
+      {/* The alignment has to be handed down: Eyebrow sets its own
+          align-self, which beats this container's items-center. */}
+      {eyebrow ? (
+        <Eyebrow tone={tone} align={centered ? 'center' : 'start'}>
+          {eyebrow}
+        </Eyebrow>
+      ) : null}
 
       <Display
         step="h2"

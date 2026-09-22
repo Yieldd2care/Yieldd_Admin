@@ -32,6 +32,28 @@ const LOCKUP_HEIGHT = 34;
 export function AuthWebShell({ children }: { children: ReactNode }) {
   return (
     <View className="flex-1 bg-navy">
+      {/* First in the DOM so it is first in the tab order; an explicit z-index
+          keeps it painted above the scroller. Click-through, so the empty
+          space beside the logo does not swallow taps. */}
+      <View pointerEvents="box-none" className="absolute top-0 left-0 right-0 z-50">
+        <View className="w-full items-center px-4 md:px-8 pt-[22px]">
+          <View className="w-full max-w-[1200px] flex-row">
+            <Pressable
+              onPress={() => router.push('/(web)')}
+              className={FOCUS}
+              accessibilityRole="link"
+              accessibilityLabel="Yieldd home"
+            >
+              <Image
+                source={LOCKUP}
+                style={{ height: LOCKUP_HEIGHT, width: LOCKUP_HEIGHT * LOCKUP_ASPECT }}
+                resizeMode="contain"
+              />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -61,27 +83,6 @@ export function AuthWebShell({ children }: { children: ReactNode }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Painted after the scroller so it sits on top, and click-through so
-          the empty space beside the logo does not swallow taps. */}
-      <View pointerEvents="box-none" className="absolute top-0 left-0 right-0">
-        <View className="w-full items-center px-4 md:px-8 pt-[22px]">
-          <View className="w-full max-w-[1200px] flex-row">
-            <Pressable
-              onPress={() => router.push('/(web)')}
-              className={FOCUS}
-              accessibilityRole="link"
-              accessibilityLabel="Yieldd home"
-            >
-              <Image
-                source={LOCKUP}
-                style={{ height: LOCKUP_HEIGHT, width: LOCKUP_HEIGHT * LOCKUP_ASPECT }}
-                resizeMode="contain"
-              />
-            </Pressable>
-          </View>
-        </View>
-      </View>
     </View>
   );
 }

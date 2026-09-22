@@ -146,7 +146,7 @@ export function HowItWorks({ onLayout }: Props) {
         eyebrow="One simple workflow"
         title={
           <>
-            Three steps. <Mark>About thirty seconds</Mark>.
+            Three steps. <Mark>About thirty seconds.</Mark>
           </>
         }
         align="center"

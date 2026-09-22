@@ -178,7 +178,7 @@ export function FeatureQuad({ onLayout }: Props) {
         eyebrow="What you get"
         title={
           <>
-            Everything <Mark>the booth needs</Mark>.
+            Everything <Mark>the booth needs.</Mark>
           </>
         }
         lede="Mobile for the booth, web for the office. One login, same data."

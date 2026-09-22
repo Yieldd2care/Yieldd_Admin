@@ -70,7 +70,7 @@ export function ROISection({ onLayout }: Props) {
         eyebrow="Built for business leaders"
         title={
           <>
-            You paid to get the lead. Know <Mark>what it was worth</Mark>.
+            You paid to get the lead. Know <Mark>what it was worth.</Mark>
           </>
         }
         lede="Every event holds its own venue, stall, dates, organiser and cost. Leads, lists and fields sit inside it, so the report writes itself. Next year you book the show that paid for itself and skip the one that didn't."

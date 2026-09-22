@@ -15,6 +15,10 @@ import { Text, View } from 'react-native';
  *
  * Row separators are drawn per cell, not across the row, because a hairline in
  * the light border colour would otherwise run straight over the band.
+ *
+ * Padding and the header's letter-spacing both tighten below `md`. At 390px
+ * each column is about 116px wide, and the desktop values pushed the last
+ * letter of "SPREADSHEET" onto a line of its own.
  */
 
 export interface ComparisonRow {
@@ -29,8 +33,9 @@ interface Props {
   className?: string;
 }
 
-const CELL = 'flex-1 px-4 md:px-6 py-[18px] justify-center';
-const BODY = '[font-family:Figtree,system-ui,sans-serif] text-[14px] leading-[1.5]';
+const CELL = 'flex-1 px-3 md:px-6 py-[14px] md:py-[18px] justify-center';
+const BODY =
+  '[font-family:Figtree,system-ui,sans-serif] text-[13px] md:text-[14px] leading-[1.5]';
 
 export function ComparisonTable({ columns, rows, className = '' }: Props) {
   return (
@@ -45,14 +50,14 @@ export function ComparisonTable({ columns, rows, className = '' }: Props) {
         <View className={CELL} />
         <View className={CELL}>
           <Text
-            className={`[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[11px] tracking-[0.12em] uppercase text-label`}
+            className={`[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[10px] md:text-[11px] tracking-[0.04em] md:tracking-[0.12em] uppercase text-label`}
           >
             {columns[1]}
           </Text>
         </View>
         <View className={CELL}>
           <Text
-            className={`[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[11px] tracking-[0.12em] uppercase text-gold`}
+            className={`[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[10px] md:text-[11px] tracking-[0.04em] md:tracking-[0.12em] uppercase text-gold`}
           >
             {columns[2]}
           </Text>
