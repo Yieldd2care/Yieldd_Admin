@@ -60,58 +60,70 @@ function Tick() {
  * The product shot.
  *
  * A real screenshot of the Yieldd web dashboard, not a drawn approximation.
- * An earlier version of this file rebuilt a fake dashboard out of Views — it
+ * An earlier version of this file rebuilt a fake dashboard out of Views - it
  * looked plausible and showed nothing the product actually does.
  *
- * The asset is CROPPED AT BUILD TIME, not at render: the top 70% of the
- * 3024x2400 source, scaled to 2000x1111 (968KB -> 190KB, still 2x for the
- * ~1000px it displays at). Cropping here rather than in the layout is what
- * keeps this component trivial — the frame and the image share one aspect
- * ratio, so nothing has to overflow and nothing has to be clipped.
+ * The asset is rendered and cropped AT BUILD TIME from the HTML source in
+ * design/dash-home-redesign, not trimmed at render: 1891x963, cut just above
+ * the "Team today" row so the shot stays shallow and every card in it is
+ * whole. Cropping the file rather than the layout is what keeps this
+ * component simple - the frame and the image share one aspect ratio, so
+ * nothing overflows and nothing is clipped.
  *
- * Trying it the other way round is a trap worth recording. react-native-web's
- * Image renders <div><img></div> and moves an `aspectRatio` style onto that
- * wrapper div, not onto the <img>. So a frame with one aspect and an image
- * with another does not clip the way it reads: resizeMode="cover" resolves
- * against the wrapper's box and crops the SIDES instead, which quietly cut
- * the sidebar and the search field off this screenshot.
+ * Doing it the other way round is a trap worth recording. react-native-web
+ * renders Image as <div><img>, moves an `aspectRatio` style onto that wrapper,
+ * and - for a require()d asset - also writes the intrinsic pixel size out as
+ * an explicit width/height. That explicit height beats both the aspect ratio
+ * and `inset: 0`, so the element keeps its natural height inside a shorter
+ * frame and resizeMode="cover" crops the SIDES to compensate, quietly cutting
+ * off the sidebar and the search field. Absolute positioning plus an explicit
+ * 100%/100% is what finally overrides it.
  * ---------------------------------------------------------------------- */
 
 const DASHBOARD = require('../../assets/product/dashboard-home.jpg');
-const DASHBOARD_ASPECT = 2000 / 1111;
+const DASHBOARD_ASPECT = 1891 / 963;
 
 function ProductShot() {
   return (
-    <View className="rounded-t-[16px] overflow-hidden bg-white shadow-[0_-18px_50px_rgba(4,12,30,0.24),0_40px_90px_rgba(4,12,30,0.32)]">
-      {/* Browser chrome, so the screenshot reads as a product in a window
-          rather than a picture dropped onto the page. */}
-      <View className="flex-row items-center gap-[7px] px-4 py-[11px] border-b border-hairline bg-white">
-        <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
-        <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
-        <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
-        <Text className="[font-family:Figtree,system-ui,sans-serif] text-[11.5px] text-label ml-[10px]">
-          app.yieldd.co
-        </Text>
-      </View>
+    /* A slight backward tilt. Written as a raw `transform` property rather
+       than Tailwind's rotate-x/perspective utilities: those compile to
+       --tw-* variables, and AGENTS.md records that a component gaining a
+       variable-backed class trips react-native-css-interop. A plain CSS
+       transform carries no variables. The origin is the top edge so the shot
+       leans away from the reader rather than sinking into the page. */
+    <View className="[transform:perspective(2200px)_rotateX(3deg)] [transform-origin:50%_0%]">
+      {/* Bezel. A translucent outer shell with its own hairline, so the white
+          screenshot has something to sit in instead of ending abruptly
+          against the navy. */}
+      <View className="rounded-[20px] bg-white/[0.07] border border-white/[0.16] p-[7px] shadow-[0_2px_6px_rgba(4,12,30,0.22),0_20px_44px_rgba(4,12,30,0.38),0_64px_120px_rgba(4,12,30,0.46)]">
+        {/* The window itself. */}
+        <View className="rounded-[14px] overflow-hidden bg-white">
+          {/* A one-pixel highlight along the top edge. This is what sells the
+              bevel - a lit edge reads as a raised surface where a flat border
+              reads as a sticker. */}
+          <View pointerEvents="none" className="absolute top-0 left-0 right-0 h-px bg-white/[0.55] z-10" />
 
-      {/* The wrapper owns the aspect ratio; the image fills it absolutely.
-          Putting `aspectRatio` on the Image itself does not work here:
-          react-native-web resolves a require()d asset's intrinsic size and
-          writes it out as an explicit `height`, which beats the aspect-ratio
-          it sets alongside. The element then stays 1111px tall instead of
-          555px, and resizeMode crops to compensate.
+          <View className="flex-row items-center gap-[7px] px-4 py-[11px] border-b border-hairline bg-white">
+            <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
+            <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
+            <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
+            <Text className="[font-family:Figtree,system-ui,sans-serif] text-[11.5px] text-label ml-[10px]">
+              app.yieldd.co
+            </Text>
+          </View>
 
-          Absolute positioning alone is not enough either - the intrinsic
-          width/height still beat `inset: 0`. The explicit 100%/100% is what
-          finally overrides them, so the image is exactly the wrapper's box
-          and resizeMode has nothing left to crop. */}
-      <View className="w-full overflow-hidden" style={{ aspectRatio: DASHBOARD_ASPECT }}>
-        <Image
-          source={DASHBOARD}
-          style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
-          resizeMode="cover"
-          accessibilityLabel="The Yieldd dashboard showing leads captured, cost per lead and return on spend for a live event"
-        />
+          {/* The wrapper owns the aspect ratio; the image fills it absolutely
+              with explicit 100%/100%, which is what overrides the intrinsic
+              size react-native-web writes onto a require()d asset. */}
+          <View className="w-full overflow-hidden" style={{ aspectRatio: DASHBOARD_ASPECT }}>
+            <Image
+              source={DASHBOARD}
+              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+              resizeMode="cover"
+              accessibilityLabel="The Yieldd dashboard showing leads captured, cost per lead and return on spend for a live event"
+            />
+          </View>
+        </View>
       </View>
     </View>
   );

@@ -22,7 +22,11 @@ interface Props {
   /** The minmax() floor: the narrowest a column may get before one is dropped. */
   min: number;
   gap?: number;
-  /** Cap the column count regardless of available width. */
+  /**
+   * Cap the column count regardless of available width. Defaults to the
+   * number of children, which is almost always what you want - more tracks
+   * than items just leaves a hole at the end of the row.
+   */
   max?: number;
   /**
    * Let a short last row stretch to fill, as CSS Grid's 1fr does. Off by
@@ -43,11 +47,18 @@ export function AutoGrid({
   children,
 }: Props) {
   const [width, setWidth] = useState(0);
+  const count = Children.count(children);
 
   // Before measurement, render a single column. Any other guess flashes a
   // wrong layout on first paint.
+  //
+  // The column count is capped at the number of children as well as at `max`.
+  // Without that cap a container wide enough for five tracks lays four cards
+  // out in five, and the row stops short with an empty fifth cell's worth of
+  // space on the right - which is exactly what happened to the four stat
+  // cards under the hero.
   const columns = width
-    ? Math.min(max ?? 99, Math.max(1, Math.floor((width + gap) / (min + gap))))
+    ? Math.min(max ?? count, count, Math.max(1, Math.floor((width + gap) / (min + gap))))
     : 1;
   // Typed as a percentage literal so it satisfies DimensionValue; a plain
   // string is rejected by ViewStyle.
