@@ -11,6 +11,7 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCaptureDraftStore } from '../../../stores/useCaptureDraftStore';
 import { useMyCard } from '../../../hooks/useBusinessCard';
 import { scanCard } from '../../../lib/api/cardScan';
+import { sweepOrphanedCaptures } from '../../../lib/captureFiles';
 import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 
 /**
@@ -210,6 +211,12 @@ export default function ScanOwnCardConfirmScreen() {
               // stranger's name.
               useCaptureDraftStore.getState().setImageUri(null);
               useCaptureDraftStore.getState().setBackImageUri(null);
+              // Clearing the draft was only half of it: the files stayed in
+              // `pending/`, which claimCaptureFiles() folds into the next lead
+              // saved. Swept by what is still referenced, so a voice note held
+              // by an unrelated draft is left where it is.
+              const draft = useCaptureDraftStore.getState();
+              sweepOrphanedCaptures([draft.extraPhotoUri, draft.voiceUri]);
 
               // The rest goes to the card builder as a starting point rather
               // than straight to the database: creating the row here would put a

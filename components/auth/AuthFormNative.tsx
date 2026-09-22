@@ -1,5 +1,6 @@
 import { Image, Linking, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
 
@@ -35,6 +36,7 @@ const COPY: Record<AuthMode, { headline: string; subhead: string }> = {
 export function AuthFormNative(form: AuthFormState) {
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <RadialGlow color="#F4B000" size={280} style={{ bottom: -190, right: -90 }} />
       <KeyboardSafe>

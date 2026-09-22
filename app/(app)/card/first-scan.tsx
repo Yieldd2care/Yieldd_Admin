@@ -1,5 +1,6 @@
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
@@ -12,6 +13,7 @@ import { CenterColumn } from '../../../components/shared/CenterColumn';
 export default function FirstScanPromptScreen() {
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <View className="flex-1 items-center pt-[88px] px-8">
         <View className="w-[220px] h-[220px] rounded-full bg-white/[0.05] border border-white/[0.14] items-center justify-center">

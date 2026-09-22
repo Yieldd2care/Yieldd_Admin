@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Typography } from '../components/ui/Typography';
@@ -176,6 +177,7 @@ export default function VerifyCodeScreen() {
   if (Platform.OS === 'web') {
     return (
       <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+        <StatusBar style="light" />
         <ScrollView
           contentContainerClassName="flex-grow lg:flex-row"
           bounces={false}
@@ -194,6 +196,7 @@ export default function VerifyCodeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       {/* The code field autofocuses, so the keyboard is already up when this
           screen arrives — it needs the wrapper more than most (#69). The

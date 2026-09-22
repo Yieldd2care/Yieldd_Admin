@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 
 import { Typography } from '../../components/ui/Typography';
@@ -41,6 +42,7 @@ export default function AuthCallbackScreen() {
   if (oauthErrorFromLandingUrl) {
     return (
       <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+        <StatusBar style="light" />
         <NavyGlowBackdrop />
         <View className="flex-1 justify-center px-8">
           <Typography className="text-[22px] font-extrabold text-white text-center tracking-[-0.01em]">
@@ -62,6 +64,7 @@ export default function AuthCallbackScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <View className="flex-1 items-center justify-center px-8">
         <Typography className="text-[14px] text-white/[0.55] text-center">

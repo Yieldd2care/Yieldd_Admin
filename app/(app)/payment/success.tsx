@@ -1,5 +1,6 @@
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
@@ -11,6 +12,7 @@ const UNLOCKS = ['Unlimited leads unlocked', 'Follow-up pipeline unlocked', 'ROI
 export default function PaymentSuccessScreen() {
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <RadialGlow color="#F4B000" size={480} style={{ top: -200, left: '50%', marginLeft: -240, opacity: 0.6 }} />
 
       <View className="flex-1 items-center justify-center px-9">

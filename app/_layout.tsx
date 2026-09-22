@@ -4,6 +4,7 @@ import '../lib/nativewind-interop';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -78,6 +79,29 @@ export default function RootLayout() {
   // app/index.tsx holds its redirect until the session is known.
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      {/*
+        The clock and the battery, in a colour you can see.
+
+        There was nothing here at all, so the status bar kept the Android
+        default of white icons - invisible against the #F5F7FB every signed-in
+        screen is painted, because SDK 57 draws edge-to-edge and the bar is
+        transparent over whatever the screen puts behind it.
+
+        Dark is the default rather than the only value: the app has no dark
+        palette, but it does have a navy family - sign-in, onboarding, the
+        camera, "Saved" - and each of those screens mounts its own
+        `<StatusBar style="light" />`. RN keeps these on a stack, so the last
+        one mounted wins and unmounting restores the one beneath, which is what
+        makes pushing to a dark screen and coming back flip correctly in both
+        directions with nothing else to maintain.
+
+        The light screens deliberately declare nothing and inherit this. Tab
+        screens stay mounted together, so competing entries there would resolve
+        by mount order rather than by which tab is being looked at.
+
+        No `backgroundColor`: under edge-to-edge it does nothing.
+      */}
+      <StatusBar style="dark" />
       <QueryClientProvider client={queryClient}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />

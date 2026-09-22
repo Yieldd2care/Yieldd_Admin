@@ -20,7 +20,7 @@ import { useSessionStore } from '../../../stores/useSessionStore';
 import { useCurrentEvent } from '../../../hooks/useEvents';
 import { fetchEventFields } from '../../../lib/api/eventFields';
 import { normaliseCardPhoto } from '../../../lib/cardPhoto';
-import { persistCapture } from '../../../lib/captureFiles';
+import { persistCapture, sweepOrphanedCaptures } from '../../../lib/captureFiles';
 import type { Recording } from '../../../hooks/useVoiceRecorder';
 import type { CustomFieldValue } from '../../../data/leads';
 
@@ -148,6 +148,25 @@ export default function CaptureDetailsScreen() {
     router.replace('/(app)/capture/camera');
   };
 
+  /**
+   * Back from here abandons the lead, not just the photo.
+   *
+   * The camera was replaced rather than pushed, so there is no live camera to
+   * return to - back leaves the capture flow entirely. Everything gathered goes
+   * with it: the card, the back, the extra photo, the voice note. Without this
+   * the files stayed in `pending/`, and `claimCaptureFiles()` moves that whole
+   * directory into whichever lead is saved next.
+   *
+   * Sweeping with nothing to keep is safe here in a way it is not on the camera
+   * screen: reset() has just emptied the draft, and only one draft exists at a
+   * time, so there is no manual-entry recording left to protect.
+   */
+  const abandon = () => {
+    useCaptureDraftStore.getState().reset();
+    sweepOrphanedCaptures([]);
+    router.back();
+  };
+
   const missingRequired = customFields.some(
     (f) => f.required && !isCustomFieldFilled(f, customValues[f.id])
   );
@@ -191,7 +210,7 @@ export default function CaptureDetailsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
-      <ScreenHeader title="Add details" />
+      <ScreenHeader title="Add details" onBack={abandon} />
 
       <KeyboardSafe>
         <ScrollView

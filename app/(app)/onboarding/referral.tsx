@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 
 import { Typography } from '../../../components/ui/Typography';
@@ -162,6 +163,7 @@ export default function ReferralScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <NavyGlowBackdrop />
       <ScrollView
         contentContainerClassName="flex-grow justify-center items-center px-8 py-10"
