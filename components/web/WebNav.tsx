@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { BrandRow } from './primitives/BrandRow';
 import { FOCUS } from './primitives/focus';
 import { CloseIcon } from '../ui/icons';
 
@@ -24,6 +23,20 @@ import { CloseIcon } from '../ui/icons';
  * left-aligned, not centred.
  */
 
+/**
+ * The pill is navy rather than the reference's light tone because the brand
+ * lockup it carries has a WHITE wordmark on transparent. On a light pill the
+ * word "Yieldd" would simply not be there.
+ *
+ * Every lockup in assets/brand is light-on-transparent today
+ * (yieldd-lockup-transparent.png also has a navy rectangle baked in despite
+ * its name), so making the pill light again needs a dark-wordmark asset first.
+ */
+const LOCKUP = require('../../assets/brand/transparenet secondary logo.png');
+/** 2172x724 in the source file. */
+const LOCKUP_ASPECT = 2172 / 724;
+const LOCKUP_HEIGHT = 38;
+
 const LINKS: { key: string; label: string }[] = [
   { key: 'how', label: 'How it works' },
   { key: 'features', label: 'Features' },
@@ -33,7 +46,7 @@ const LINKS: { key: string; label: string }[] = [
 ];
 
 const LINK_TEXT =
-  '[font-family:Figtree,system-ui,sans-serif] [font-weight:500] text-[14px] text-slate hover:text-navy transition-colors duration-200';
+  '[font-family:Figtree,system-ui,sans-serif] [font-weight:500] text-[14px] text-white/[0.76] hover:text-white transition-colors duration-200';
 
 const BTN_TEXT =
   '[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[14px] text-navy';
@@ -64,9 +77,14 @@ export function WebNav({ onNavigate }: Props) {
   return (
     <View className="w-full items-center px-4 md:px-8 pt-[14px]">
       <View className="w-full max-w-[1200px]">
-        <View className="flex-row items-center gap-6 rounded-full bg-surface border-[3px] border-white pl-[16px] pr-[7px] py-[7px] shadow-[0_12px_30px_rgba(7,22,51,0.18)]">
+        <View className="flex-row items-center gap-6 rounded-full bg-navy-elevated border-[3px] border-white/[0.14] pl-[16px] pr-[7px] py-[7px] shadow-[0_12px_30px_rgba(4,12,30,0.42)]">
           <Pressable onPress={() => go('top')} className={FOCUS} accessibilityRole="link">
-            <BrandRow tone="onLight" size={26} />
+            <Image
+              source={LOCKUP}
+              style={{ height: LOCKUP_HEIGHT, width: LOCKUP_HEIGHT * LOCKUP_ASPECT }}
+              resizeMode="contain"
+              accessibilityLabel="Yieldd"
+            />
           </Pressable>
 
           <View className="hidden lg:flex flex-row items-center gap-[22px] mr-auto">
@@ -88,10 +106,12 @@ export function WebNav({ onNavigate }: Props) {
           <View className="hidden lg:flex flex-row items-center gap-[8px]">
             <Pressable
               onPress={() => router.push('/(auth)')}
-              className={`rounded-full bg-white px-[18px] py-[11px] hover:bg-white/80 transition-colors duration-200 ${FOCUS}`}
+              className={`rounded-full bg-white/[0.10] hover:bg-white/[0.18] border border-white/[0.18] px-[18px] py-[11px] transition-colors duration-200 ${FOCUS}`}
               accessibilityRole="link"
             >
-              <Text className={BTN_TEXT}>Sign in</Text>
+              <Text className="[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[14px] text-white">
+                Sign in
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => router.push('/(auth)')}

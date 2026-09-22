@@ -1,4 +1,4 @@
-import { Text, View, type LayoutChangeEvent } from 'react-native';
+import { Image, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { router } from 'expo-router';
 import { MotiView } from 'moti';
 
@@ -57,135 +57,61 @@ function Tick() {
 }
 
 /* -------------------------------------------------------------------------
- * The product mock. Everything in it is Yieldd's own sample data and is
- * labelled as such — no figures carried over from the reference design.
+ * The product shot.
+ *
+ * A real screenshot of the Yieldd web dashboard, not a drawn approximation.
+ * An earlier version of this file rebuilt a fake dashboard out of Views — it
+ * looked plausible and showed nothing the product actually does.
+ *
+ * The asset is CROPPED AT BUILD TIME, not at render: the top 70% of the
+ * 3024x2400 source, scaled to 2000x1111 (968KB -> 190KB, still 2x for the
+ * ~1000px it displays at). Cropping here rather than in the layout is what
+ * keeps this component trivial — the frame and the image share one aspect
+ * ratio, so nothing has to overflow and nothing has to be clipped.
+ *
+ * Trying it the other way round is a trap worth recording. react-native-web's
+ * Image renders <div><img></div> and moves an `aspectRatio` style onto that
+ * wrapper div, not onto the <img>. So a frame with one aspect and an image
+ * with another does not clip the way it reads: resizeMode="cover" resolves
+ * against the wrapper's box and crops the SIDES instead, which quietly cut
+ * the sidebar and the search field off this screenshot.
  * ---------------------------------------------------------------------- */
 
-const REPORTS = [
-  'Leads today',
-  'Hot leads',
-  'Follow-ups due',
-  'Event ROI',
-  'Exports',
-];
+const DASHBOARD = require('../../assets/product/dashboard-home.jpg');
+const DASHBOARD_ASPECT = 2000 / 1111;
 
-const KPIS = [
-  { label: 'Leads captured', value: '248', tone: 'ink' as const },
-  { label: 'Marked hot', value: '61', tone: 'gold' as const },
-  { label: 'First follow-up', value: '4 min', tone: 'ink' as const },
-];
-
-function HeroMock() {
+function ProductShot() {
   return (
-    <View className="rounded-t-[16px] bg-white overflow-hidden shadow-[0_-18px_50px_rgba(4,12,30,0.28),0_40px_90px_rgba(4,12,30,0.30)]">
-      {/* Chrome */}
+    <View className="rounded-t-[16px] overflow-hidden bg-white shadow-[0_-18px_50px_rgba(4,12,30,0.24),0_40px_90px_rgba(4,12,30,0.32)]">
+      {/* Browser chrome, so the screenshot reads as a product in a window
+          rather than a picture dropped onto the page. */}
       <View className="flex-row items-center gap-[7px] px-4 py-[11px] border-b border-hairline bg-white">
         <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
         <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
         <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
         <Text className="[font-family:Figtree,system-ui,sans-serif] text-[11.5px] text-label ml-[10px]">
-          Yieldd · IMTEX 2026 · Sample data
+          app.yieldd.co
         </Text>
       </View>
 
-      <View className="flex-row">
-        {/* Sidebar */}
-        <View className="hidden md:flex w-[186px] bg-section border-r border-hairline px-3 py-4">
-          <Text className="[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[10px] tracking-[0.14em] uppercase text-label px-2 mb-[10px]">
-            Reports
-          </Text>
-          {REPORTS.map((report, i) => (
-            <View
-              key={report}
-              className={`rounded-[9px] px-2 py-[9px] ${i === 0 ? 'bg-navy' : ''}`}
-            >
-              <Text
-                className={`[font-family:Figtree,system-ui,sans-serif] text-[12.5px] ${
-                  i === 0 ? '[font-weight:600] text-white' : 'text-slate'
-                }`}
-              >
-                {report}
-              </Text>
-            </View>
-          ))}
+      {/* The wrapper owns the aspect ratio; the image fills it absolutely.
+          Putting `aspectRatio` on the Image itself does not work here:
+          react-native-web resolves a require()d asset's intrinsic size and
+          writes it out as an explicit `height`, which beats the aspect-ratio
+          it sets alongside. The element then stays 1111px tall instead of
+          555px, and resizeMode crops to compensate.
 
-          <View className="mt-auto rounded-[10px] border border-hairline bg-white px-[10px] py-[9px]">
-            <Text className="[font-family:Figtree,system-ui,sans-serif] text-[10px] tracking-[0.1em] uppercase [font-weight:700] text-label">
-              Sync
-            </Text>
-            <View className="flex-row items-center gap-[6px] mt-[5px]">
-              <View className="w-[6px] h-[6px] rounded-full bg-success" />
-              <Text className="[font-family:Figtree,system-ui,sans-serif] text-[11.5px] text-navy">
-                Live · 3 devices
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Main */}
-        <View className="flex-1 p-4 md:p-5">
-          <View className="flex-row items-center justify-between">
-            <Text className="[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[15px] text-navy">
-              Today
-            </Text>
-            <Text className="[font-family:Figtree,system-ui,sans-serif] text-[11.5px] text-label">
-              Synced 2 min ago
-            </Text>
-          </View>
-
-          <View className="flex-row flex-wrap gap-[10px] mt-[14px]">
-            {KPIS.map((kpi) => (
-              <View
-                key={kpi.label}
-                className="flex-1 min-w-[104px] rounded-[12px] bg-section px-[13px] py-[11px]"
-              >
-                <Text
-                  className={`[font-family:Figtree,system-ui,sans-serif] [font-weight:800] text-[22px] leading-none ${
-                    kpi.tone === 'gold' ? 'text-gold' : 'text-navy'
-                  }`}
-                >
-                  {kpi.value}
-                </Text>
-                <Text className="[font-family:Figtree,system-ui,sans-serif] text-[11px] text-slate mt-[6px]">
-                  {kpi.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View className="gap-[8px] mt-[12px]">
-            {[
-              { name: 'Rajesh Menon', role: 'Purchase Head · Northline', score: '82', hot: true },
-              { name: 'Sneha Kulkarni', role: 'Plant Manager · Vertex', score: '64', hot: false },
-            ].map((lead) => (
-              <View
-                key={lead.name}
-                className="flex-row items-center gap-[10px] rounded-[12px] border border-hairline px-[12px] py-[10px]"
-              >
-                <View
-                  className={`w-[30px] h-[30px] rounded-[9px] ${
-                    lead.hot ? 'bg-gold' : 'bg-surface'
-                  }`}
-                />
-                <View className="flex-1">
-                  <Text className="[font-family:Figtree,system-ui,sans-serif] [font-weight:600] text-[13px] text-navy">
-                    {lead.name}
-                  </Text>
-                  <Text className="[font-family:Figtree,system-ui,sans-serif] text-[11px] text-slate mt-[2px]">
-                    {lead.role}
-                  </Text>
-                </View>
-                <Text
-                  className={`[font-family:Figtree,system-ui,sans-serif] [font-weight:700] text-[12px] ${
-                    lead.hot ? 'text-gold' : 'text-label'
-                  }`}
-                >
-                  {lead.score}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+          Absolute positioning alone is not enough either - the intrinsic
+          width/height still beat `inset: 0`. The explicit 100%/100% is what
+          finally overrides them, so the image is exactly the wrapper's box
+          and resizeMode has nothing left to crop. */}
+      <View className="w-full overflow-hidden" style={{ aspectRatio: DASHBOARD_ASPECT }}>
+        <Image
+          source={DASHBOARD}
+          style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+          resizeMode="cover"
+          accessibilityLabel="The Yieldd dashboard showing leads captured, cost per lead and return on spend for a live event"
+        />
       </View>
     </View>
   );
@@ -273,7 +199,7 @@ export function Hero({ onLayout, onNavigate }: Props) {
         </View>
 
         <View className="max-w-[1000px] w-full mx-auto mt-[48px] md:mt-[56px]">
-          <HeroMock />
+          <ProductShot />
         </View>
       </View>
     </View>
