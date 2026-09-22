@@ -38,7 +38,7 @@ interface Props extends TextProps {
 export function Mark({ tone = 'gold', nowrap = true, className = '', ...rest }: Props) {
   return (
     <Text
-      className={`${TONES[tone]} marker-clone rounded-[0.16em] px-[0.2em] py-[0.06em] ${
+      className={`${TONES[tone]} marker-clone rounded-[0.16em] px-[0.16em] py-[0.05em] ${
         nowrap ? 'whitespace-nowrap' : ''
       } ${className}`}
       {...rest}

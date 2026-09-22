@@ -1,11 +1,32 @@
-import { Linking, Pressable, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 
-import { Typography } from '../ui/Typography';
+import { FOCUS } from './primitives/focus';
 import { BrandLockup } from '../ui/BrandLockup';
 import { FacebookIcon, InstagramIcon, LinkedInIcon } from '../ui/icons';
 import { SOCIAL_ACCOUNTS } from '../../lib/social';
+
+/**
+ * The footer.
+ *
+ * Keeps the brand lockup — this is a navy surface, which is the one place the
+ * white-wordmark asset in assets/brand is correct.
+ *
+ * The chip row above the columns is the reference's; the social row is
+ * Yieldd's own and the reference has no equivalent, so it stays.
+ */
+
+const TOPIC_CHIPS = [
+  'Card scan',
+  'Voice notes',
+  'Offline capture',
+  'Duplicate check',
+  'Lead scoring',
+  'WhatsApp follow-up',
+  'Event ROI',
+  'Excel export',
+];
 
 const PRODUCT_LINKS = ['How it works', 'Features', 'Event ROI', 'Industries', 'FAQ', 'Sign in'];
 const COMPANY_LINKS = ['About Yieldd', 'Book a demo', 'Privacy policy', 'Terms of use'];
@@ -22,13 +43,21 @@ const LINK_TARGETS: Record<string, string> = {
   'Terms of use': '/terms',
 };
 
+const BODY = '[font-family:Figtree,system-ui,sans-serif]';
+
 function FooterLink({ label }: { label: string }) {
   const target = LINK_TARGETS[label];
   return (
-    <Pressable onPress={target ? () => router.push(target) : undefined}>
-      <Typography className="text-[15px] text-white/[0.70] hover:text-gold transition-colors duration-200">
+    <Pressable
+      onPress={target ? () => router.push(target) : undefined}
+      className={target ? FOCUS : undefined}
+      accessibilityRole={target ? 'link' : undefined}
+    >
+      <Text
+        className={`${BODY} text-[14px] text-white/[0.70] hover:text-white transition-colors duration-200`}
+      >
         {label}
-      </Typography>
+      </Text>
     </Pressable>
   );
 }
@@ -36,9 +65,11 @@ function FooterLink({ label }: { label: string }) {
 function FooterColumn({ title, links }: { title: string; links: string[] }) {
   return (
     <View className="flex-1 min-w-[140px]">
-      <Typography className="text-[11.5px] font-bold tracking-[0.16em] uppercase text-white">
+      <Text
+        className={`${BODY} [font-weight:800] text-[11.5px] tracking-[0.1em] uppercase text-white/[0.45]`}
+      >
         {title}
-      </Typography>
+      </Text>
       <View className="gap-[11px] mt-[18px]">
         {links.map((l) => (
           <FooterLink key={l} label={l} />
@@ -50,7 +81,9 @@ function FooterColumn({ title, links }: { title: string; links: string[] }) {
 
 function PlayBadge() {
   return (
-    <Pressable className="flex-row items-center gap-[11px] mt-3 px-4 py-[10px] border border-white/[0.28] rounded-md bg-white/[0.04] hover:border-gold hover:bg-gold/[0.08] transition-all duration-200">
+    <Pressable
+      className={`flex-row items-center gap-[11px] mt-3 px-4 py-[10px] border border-white/[0.28] rounded-md bg-white/[0.04] hover:border-gold hover:bg-gold/[0.08] transition-all duration-200 ${FOCUS}`}
+    >
       <Svg width={22} height={24} viewBox="0 0 24 26">
         <Path d="M2.3 1.1a1.9 1.9 0 0 0-.6 1.4v21a1.9 1.9 0 0 0 .6 1.4l11-11.9z" fill="#F4B000" />
         <Path d="M2.3 1.1 15.5 8.6l-2.2 4.4z" fill="#FFFFFF" opacity={0.9} />
@@ -58,10 +91,14 @@ function PlayBadge() {
         <Path d="M15.5 8.6l6.3 3.6a1.5 1.5 0 0 1 0 2.6l-6.3 3.6-2.2-4.4z" fill="#FFC53D" />
       </Svg>
       <View>
-        <Typography className="text-[9.5px] font-semibold tracking-[0.14em] text-white/[0.75]">
+        <Text
+          className={`${BODY} [font-weight:600] text-[9.5px] tracking-[0.14em] text-white/[0.75]`}
+        >
           GET IT ON
-        </Typography>
-        <Typography className="text-[15px] font-bold text-white mt-px">Google Play</Typography>
+        </Text>
+        <Text className={`${BODY} [font-weight:700] text-[15px] text-white mt-px`}>
+          Google Play
+        </Text>
       </View>
     </Pressable>
   );
@@ -93,7 +130,7 @@ function SocialRow() {
             // `aria-label` because the button has no text — a screen reader
             // otherwise announces three unlabelled buttons in a row.
             aria-label={`Yieldd on ${account.label}`}
-            className="w-10 h-10 rounded-full border border-white/[0.28] bg-white/[0.04] items-center justify-center hover:border-gold hover:bg-gold/[0.10] transition-all duration-200"
+            className={`w-10 h-10 rounded-full border border-white/[0.28] bg-white/[0.04] items-center justify-center hover:border-gold hover:bg-gold/[0.10] transition-all duration-200 ${FOCUS}`}
           >
             <Icon size={17} color="#FFFFFF" />
           </Pressable>
@@ -108,20 +145,41 @@ interface Props {
 }
 
 export function WebFooter({ onLogoPress }: Props) {
+  // Computed, not written down. A hardcoded year is correct for exactly one
+  // year and then quietly wrong on every page of the site.
+  const year = new Date().getFullYear();
+
   return (
     <View className="bg-navy border-t border-white/[0.12]">
-      <View className="max-w-[1200px] w-full mx-auto px-8 pt-16 pb-10 flex-col md:flex-row gap-10 md:gap-12">
+      <View className="max-w-[1200px] w-full mx-auto px-5 md:px-8 pt-14">
+        <View className="flex-row flex-wrap justify-center gap-[8px]">
+          {TOPIC_CHIPS.map((chip) => (
+            <View
+              key={chip}
+              className="rounded-full bg-white/[0.07] border border-white/[0.10] px-[13px] py-[7px]"
+            >
+              <Text className={`${BODY} [font-weight:600] text-[12px] text-white/[0.72]`}>
+                {chip}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View className="max-w-[1200px] w-full mx-auto px-5 md:px-8 pt-12 pb-10 flex-col md:flex-row gap-10 md:gap-12">
         <View className="flex-1 md:max-w-[280px]">
-          <Pressable onPress={onLogoPress}>
+          <Pressable onPress={onLogoPress} className={FOCUS}>
             <BrandLockup size="md" />
           </Pressable>
-          <Typography className="text-[15.5px] text-white/[0.70] mt-[18px] leading-[1.7]">
+          <Text className={`${BODY} text-[15px] leading-[1.7] text-white/[0.70] mt-[18px]`}>
             Lead capture, enrichment and follow-up for teams that sell at exhibitions and in the
             field.
-          </Typography>
-          <Typography className="text-[11.5px] font-semibold tracking-[0.14em] text-white/[0.70] mt-4">
+          </Text>
+          <Text
+            className={`${BODY} [font-weight:600] text-[11.5px] tracking-[0.14em] text-white/[0.55] mt-4`}
+          >
             IOS · ANDROID · WEB
-          </Typography>
+          </Text>
           <SocialRow />
         </View>
 
@@ -129,33 +187,39 @@ export function WebFooter({ onLogoPress }: Props) {
         <FooterColumn title="Company" links={COMPANY_LINKS} />
 
         <View className="flex-1 min-w-[160px]">
-          <Typography className="text-[11.5px] font-bold tracking-[0.16em] uppercase text-white">
+          <Text
+            className={`${BODY} [font-weight:800] text-[11.5px] tracking-[0.1em] uppercase text-white/[0.45]`}
+          >
             Contact
-          </Typography>
+          </Text>
           <View className="gap-[14px] mt-[18px]">
             <View>
-              <Typography className="text-[12.5px] text-white/[0.70]">Support and sales</Typography>
-              <Typography className="text-base font-semibold text-gold">care@yieldd.co</Typography>
+              <Text className={`${BODY} text-[12.5px] text-white/[0.70]`}>Support and sales</Text>
+              <Text className={`${BODY} [font-weight:600] text-[16px] text-gold`}>
+                care@yieldd.co
+              </Text>
             </View>
             <View className="pt-[6px]">
-              <Typography className="text-[15px] font-semibold text-white leading-[1.45]">
+              <Text
+                className={`${BODY} [font-weight:600] text-[15px] leading-[1.45] text-white`}
+              >
                 Find Yieldd on Google Play
-              </Typography>
+              </Text>
               <PlayBadge />
-              <Typography className="text-[12.5px] text-white/[0.70] mt-[10px]">
+              <Text className={`${BODY} text-[12.5px] text-white/[0.70] mt-[10px]`}>
                 iOS coming shortly
-              </Typography>
+              </Text>
             </View>
           </View>
         </View>
       </View>
 
       <View className="border-t border-white/[0.12]">
-        <View className="max-w-[1200px] w-full mx-auto px-8 py-[22px] flex-col md:flex-row items-center justify-between gap-5">
-          <Typography className="text-[12.5px] text-white/[0.70]">
-            Yieldd is a product by Growth Saga. © 2026 Growth Saga. All rights reserved.
-          </Typography>
-          <Typography className="text-[12.5px] text-white/[0.70]">care@yieldd.co</Typography>
+        <View className="max-w-[1200px] w-full mx-auto px-5 md:px-8 py-[22px] flex-col md:flex-row items-center justify-between gap-5">
+          <Text className={`${BODY} text-[12.5px] text-white/[0.55] text-center`}>
+            Yieldd is a product by Growth Saga. © {year} Growth Saga. All rights reserved.
+          </Text>
+          <Text className={`${BODY} text-[12.5px] text-white/[0.55]`}>care@yieldd.co</Text>
         </View>
       </View>
     </View>

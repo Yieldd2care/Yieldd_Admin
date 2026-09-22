@@ -1,8 +1,23 @@
-import { View, type LayoutChangeEvent } from 'react-native';
-import { MotiView } from 'moti';
+import { Text, View, type LayoutChangeEvent } from 'react-native';
 
-import { Typography } from '../ui/Typography';
-import { RadialGlow } from '../ui/RadialGlow';
+import { AutoGrid } from './primitives/AutoGrid';
+import { ComparisonTable } from './primitives/ComparisonTable';
+import { Mark } from './primitives/Mark';
+import { Section } from './primitives/Section';
+import { SectionHeader } from './primitives/SectionHeader';
+import { WebCard } from './primitives/WebCard';
+
+/**
+ * What an event actually returned.
+ *
+ * This band used to be navy. It is light now because the page follows the
+ * reference's rhythm: one dark hero, one dark panel in the middle, one dark
+ * close. Three dark bands in the first half made the page feel like it kept
+ * starting over.
+ *
+ * The comparison table is the reference's device for this section, and it is
+ * the one place the page states the alternative plainly.
+ */
 
 const STATS = [
   { value: '30 sec', label: 'card to saved lead', accent: false },
@@ -11,63 +26,80 @@ const STATS = [
   { value: '₹684', label: 'cost per lead, live', accent: false },
 ];
 
+const ROWS = [
+  {
+    label: 'Capturing a lead',
+    before: 'A minute of typing, if the pen still works',
+    after: 'About thirty seconds, by camera or voice',
+  },
+  {
+    label: 'First follow-up',
+    before: 'Days after the show has closed',
+    after: 'Before they have left the stall',
+  },
+  {
+    label: 'The data itself',
+    before: 'Retyped by hand, duplicated, guessed at',
+    after: 'Read off the card, duplicates flagged',
+  },
+  {
+    label: 'Cost per lead',
+    before: 'Worked out weeks later, if at all',
+    after: 'Live, for the event you are standing in',
+  },
+  {
+    label: 'With no signal',
+    before: 'Nothing gets recorded',
+    after: 'Captures offline and syncs when it can',
+  },
+];
+
+const BODY = '[font-family:Figtree,system-ui,sans-serif]';
+
 interface Props {
   onLayout?: (e: LayoutChangeEvent) => void;
 }
 
 export function ROISection({ onLayout }: Props) {
   return (
-    <View onLayout={onLayout} className="relative bg-navy overflow-hidden px-8 py-28">
-      <RadialGlow color="#1D3F8A" size={460} className="left-0 bottom-0" />
-      <View className="max-w-[1200px] w-full mx-auto flex-col lg:flex-row gap-16 items-center">
-        <View className="flex-1 w-full">
-          <View className="flex-row items-center gap-[11px]">
-            <MotiView
-              className="w-2 h-2 rounded-full bg-gold"
-              from={{ scale: 1, opacity: 1 }}
-              animate={{ scale: 1.3, opacity: 0.6 }}
-              transition={{ type: 'timing', duration: 1200, loop: true, repeatReverse: true }}
-            />
-            <Typography variant="caption" className="text-gold">
-              Built for business leaders
-            </Typography>
-          </View>
-          <Typography variant="display-lg" className="text-white mt-[18px]">
-            You paid to get the lead. Know what it was{' '}
-            <Typography variant="display-lg" className="text-gold">
-              worth
-            </Typography>
-            .
-          </Typography>
-          <Typography variant="body-lg" className="text-white/[0.76] mt-[22px] max-w-[520px]">
-            Every event holds its own venue, stall, dates, organiser and cost. Leads, lists and
-            fields sit inside it, so the report writes itself. Next year you book the show that
-            paid for itself and skip the one that didn&apos;t.
-          </Typography>
-        </View>
-        <View className="flex-1 w-full gap-px rounded-lg overflow-hidden bg-white/[0.16]">
-          <View className="flex-row gap-px">
-            {STATS.slice(0, 2).map((s) => (
-              <View key={s.label} className="flex-1 bg-navy px-6 py-[26px]">
-                <Typography className={`text-[34px] font-extrabold tracking-tight leading-none ${s.accent ? 'text-gold' : 'text-white'}`}>
-                  {s.value}
-                </Typography>
-                <Typography className="text-sm text-white/[0.60] mt-2">{s.label}</Typography>
-              </View>
-            ))}
-          </View>
-          <View className="flex-row gap-px">
-            {STATS.slice(2, 4).map((s) => (
-              <View key={s.label} className="flex-1 bg-navy px-6 py-[26px]">
-                <Typography className={`text-[34px] font-extrabold tracking-tight leading-none ${s.accent ? 'text-gold' : 'text-white'}`}>
-                  {s.value}
-                </Typography>
-                <Typography className="text-sm text-white/[0.60] mt-2">{s.label}</Typography>
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
-    </View>
+    <Section tone="section" pad="lg" onLayout={onLayout}>
+      <SectionHeader
+        tone="onLight"
+        eyebrow="Built for business leaders"
+        title={
+          <>
+            You paid to get the lead. Know <Mark>what it was worth</Mark>.
+          </>
+        }
+        lede="Every event holds its own venue, stall, dates, organiser and cost. Leads, lists and fields sit inside it, so the report writes itself. Next year you book the show that paid for itself and skip the one that didn't."
+      />
+
+      <AutoGrid min={210} gap={16} className="mt-10">
+        {STATS.map((stat) => (
+          <WebCard key={stat.label} pad="md" className="h-full">
+            <Text
+              className={`${BODY} [font-weight:800] text-[clamp(26px,2.6vw,36px)] leading-[1.05] tracking-[-0.02em] ${
+                stat.accent ? 'text-gold' : 'text-navy'
+              }`}
+            >
+              {stat.value}
+            </Text>
+            <Text className={`${BODY} text-[14px] leading-[1.5] text-slate mt-[8px]`}>
+              {stat.label}
+            </Text>
+          </WebCard>
+        ))}
+      </AutoGrid>
+
+      <ComparisonTable
+        columns={['', 'Cards and a spreadsheet', 'With Yieldd']}
+        rows={ROWS}
+        className="mt-[18px]"
+      />
+
+      <Text className={`${BODY} text-[13px] text-label mt-[14px]`}>
+        Figures are what the product is built to do, measured on a four-day show.
+      </Text>
+    </Section>
   );
 }

@@ -30,6 +30,13 @@ const PADS: Record<Pad, string> = {
 interface Props {
   tone: Tone;
   pad?: Pad;
+  /**
+   * The content column's cap. A prop rather than something to pass through
+   * `innerClassName`, because a second `max-w-*` there would be the same
+   * specificity as this one and the winner would be decided by stylesheet
+   * order, not by the call site.
+   */
+  max?: string;
   onLayout?: (e: LayoutChangeEvent) => void;
   className?: string;
   innerClassName?: string;
@@ -39,6 +46,7 @@ interface Props {
 export function Section({
   tone,
   pad = 'lg',
+  max = 'max-w-[1200px]',
   onLayout,
   className = '',
   innerClassName = '',
@@ -49,7 +57,7 @@ export function Section({
       onLayout={onLayout}
       className={`${TONES[tone]} ${PADS[pad]} px-5 md:px-8 ${className}`}
     >
-      <View className={`max-w-[1200px] w-full mx-auto ${innerClassName}`}>{children}</View>
+      <View className={`${max} w-full mx-auto ${innerClassName}`}>{children}</View>
     </View>
   );
 }

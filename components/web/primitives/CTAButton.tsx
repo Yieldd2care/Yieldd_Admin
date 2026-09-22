@@ -34,8 +34,28 @@ interface Props extends Omit<PressableProps, 'children'> {
   /** Draw the rotating sheen. */
   spin?: boolean;
   icon?: ReactNode;
+  /**
+   * Applied to the OUTER wrapper, which is what a caller almost always means:
+   * margins and alignment have to sit outside the ring, or the ring is offset
+   * from the button it is meant to trace.
+   */
   className?: string;
+  /**
+   * How the button sits in its parent. Explicit, because a hardcoded
+   * `self-start` quietly left-aligns the button inside any centred column -
+   * and `self-center` passed through className would be the same specificity,
+   * so which one won would come down to stylesheet order.
+   */
+  align?: 'start' | 'center' | 'stretch';
+  /** Rare: extra classes for the Pressable itself. */
+  buttonClassName?: string;
 }
+
+const ALIGN = {
+  start: 'self-start',
+  center: 'self-center',
+  stretch: 'self-stretch',
+} as const;
 
 const BUTTON_VARIANT = {
   gold: 'primary',
@@ -62,11 +82,13 @@ export function CTAButton({
   variant = 'gold',
   spin = true,
   icon,
+  align = 'start',
   className = '',
+  buttonClassName = '',
   ...rest
 }: Props) {
   return (
-    <View className="relative self-start">
+    <View className={`relative ${ALIGN[align]} ${className}`}>
       {spin ? (
         <View
           pointerEvents="none"
@@ -83,7 +105,7 @@ export function CTAButton({
         variant={BUTTON_VARIANT[variant]}
         shape="pill"
         icon={icon}
-        className={`relative z-10 h-[52px] px-[26px] ${EXTRA[variant]} ${className}`}
+        className={`relative z-10 h-[52px] px-[26px] ${EXTRA[variant]} ${buttonClassName}`}
         {...rest}
       />
     </View>
