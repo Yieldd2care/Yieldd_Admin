@@ -1,5 +1,8 @@
 import '../global.css';
 import '../lib/nativewind-interop';
+// Side-effect import: appends the website's Google Fonts <link> on web,
+// no-ops on native. Must run before first paint, hence module scope.
+import '../lib/webFonts';
 
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';

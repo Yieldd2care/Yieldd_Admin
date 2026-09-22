@@ -1,6 +1,20 @@
-import { View } from 'react-native';
+import { Text } from 'react-native';
 
-import { Typography } from '../ui/Typography';
+import { AutoGrid } from './primitives/AutoGrid';
+import { Section } from './primitives/Section';
+import { WebCard } from './primitives/WebCard';
+
+/**
+ * Four claims, as separate lifted cards.
+ *
+ * Previously one bordered four-cell bar pulled up over the hero with `-mt-11`.
+ * That overlap is gone: the hero now ends with its own light strip, with the
+ * product mock hanging into it, and a card pulled upward would land on top of
+ * the mock.
+ *
+ * The tone is `section` rather than white so the band continues the strip the
+ * hero finishes on without a seam appearing underneath the mock.
+ */
 
 const STATS = [
   { value: '10x faster', label: 'lead capture at the booth' },
@@ -11,22 +25,19 @@ const STATS = [
 
 export function StatStrip() {
   return (
-    <View className="bg-white px-8">
-      <View className="max-w-[1200px] w-full mx-auto -mt-11 border border-hairline rounded-lg bg-white shadow-[0_18px_40px_rgba(11,19,43,0.10)] flex-col md:flex-row">
-        {STATS.map((stat, i) => (
-          <View
-            key={stat.value}
-            className={`flex-1 px-[30px] py-[26px] ${
-              i < STATS.length - 1 ? 'border-b md:border-b-0 md:border-r border-surface' : ''
-            }`}
-          >
-            <Typography className="text-[19px] font-extrabold tracking-tight text-navy">
+    <Section tone="section" pad="md">
+      <AutoGrid min={210} gap={16}>
+        {STATS.map((stat) => (
+          <WebCard key={stat.value} pad="md" className="h-full">
+            <Text className="[font-family:Figtree,system-ui,sans-serif] [font-weight:800] text-[clamp(24px,2.4vw,32px)] leading-[1.1] tracking-[-0.02em] text-navy">
               {stat.value}
-            </Typography>
-            <Typography className="text-[14.5px] text-slate mt-[3px]">{stat.label}</Typography>
-          </View>
+            </Text>
+            <Text className="[font-family:Figtree,system-ui,sans-serif] text-[14px] leading-[1.5] text-slate mt-[8px]">
+              {stat.label}
+            </Text>
+          </WebCard>
         ))}
-      </View>
-    </View>
+      </AutoGrid>
+    </Section>
   );
 }

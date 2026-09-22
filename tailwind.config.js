@@ -48,6 +48,20 @@ module.exports = {
         semibold: ['Inter_600SemiBold'],
         bold: ['Inter_700Bold'],
         extrabold: ['Inter_800ExtraBold'],
+        /**
+         * Website-only faces, loaded by the browser via app/+html.tsx.
+         * The mobile app never references them and stays on Inter.
+         *
+         * Careful: the five Inter entries above are fontFamily keys, so
+         * `font-bold` and `font-extrabold` already set font-FAMILY here,
+         * not just weight. Pairing one of them with `font-urbanist` puts
+         * two font-family rules of equal specificity on one element and
+         * document order decides. On web headings set both together as
+         * arbitrary properties instead:
+         *   [font-family:Urbanist,Figtree,sans-serif] [font-weight:800]
+         */
+        figtree: ['Figtree', 'system-ui', 'sans-serif'],
+        urbanist: ['Urbanist', 'Figtree', 'system-ui', 'sans-serif'],
       },
     },
   },
