@@ -1,124 +1,89 @@
-import type { ReactNode } from 'react';
-import { View, type LayoutChangeEvent } from 'react-native';
+import { Image, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
-import { Typography } from '../ui/Typography';
+import { AutoGrid } from './primitives/AutoGrid';
+import { Display } from './primitives/Display';
+import { Mark } from './primitives/Mark';
+import { Reveal } from './primitives/Reveal';
+import { Section } from './primitives/Section';
+import { SectionHeader } from './primitives/SectionHeader';
 
-function Arrow() {
-  return (
-    <View className="hidden lg:flex self-center w-[34px] h-[34px] rounded-full bg-gold items-center justify-center">
-      <Typography className="text-navy text-base font-bold">→</Typography>
-    </View>
-  );
-}
+/**
+ * Capture, enrich, convert.
+ *
+ * Each step is a navy gradient tile with a floating white card of product UI
+ * on top — the reference's arrangement. The gold arrows between the steps are
+ * gone; the reference has none, and they were doing no work that the numbered
+ * pills do not.
+ *
+ * The old StepCard also carried `shadow-[...]` on its highlighted branch and
+ * `hover:shadow-[...]` on the other, which is exactly the shape AGENTS.md
+ * warns about: a component that gains its first shadow class mid-life makes
+ * react-native-css-interop try to upgrade it and throws a bogus "Couldn't find
+ * a navigation context" red screen. There is no conditional branch here now —
+ * every tile is styled identically.
+ *
+ * Each tile shows a photograph of the step actually happening - scanning a
+ * card on a stand, the enriched lead on a laptop, the handshake that follows.
+ * They replace three mini-UIs drawn out of Views, which looked plausible and
+ * showed nothing real.
+ *
+ * The source files are 1456x1080 PNGs of 1.6-2MB each. They ship as 900px
+ * JPEGs, 250KB for all three rather than 5.3MB, which is still 2x for the
+ * ~370px they are displayed at.
+ *
+ * The wrapper owns the aspect ratio and the image absolutely fills it with an
+ * explicit 100%/100%. react-native-web writes a require()d asset's intrinsic
+ * pixel size onto the element as a hard width/height, and that beats both
+ * `aspectRatio` and `inset: 0` - the same trap the hero screenshot hit.
+ */
 
-function StepCard({
-  highlighted,
-  bottomAnchor,
-  mock,
-  step,
-  title,
-  description,
-}: {
-  highlighted?: boolean;
-  bottomAnchor?: boolean;
-  mock: ReactNode;
+const STEP_IMAGES = {
+  capture: require('../../assets/product/step-capture.jpg'),
+  enrich: require('../../assets/product/step-enrich.jpg'),
+  convert: require('../../assets/product/step-convert.jpg'),
+} as const;
+
+const STEP_ASPECT = 900 / 668;
+
+const BODY = '[font-family:Figtree,system-ui,sans-serif]';
+
+interface StepProps {
   step: string;
   title: string;
   description: string;
-}) {
+  image: keyof typeof STEP_IMAGES;
+  alt: string;
+}
+
+function Step({ step, title, description, image, alt }: StepProps) {
   return (
-    <View
-      className={`flex-1 rounded-lg bg-white overflow-hidden ${
-        highlighted
-          ? 'border border-gold shadow-[0_18px_40px_rgba(244,176,0,0.18)]'
-          : 'border border-hairline hover:shadow-[0_20px_40px_rgba(11,19,43,0.12)]'
-      }`}
-    >
-      <View className={`h-[184px] bg-navy items-center p-5 ${bottomAnchor ? 'justify-end' : 'justify-center'}`}>
-        {mock}
+    <View className="h-full rounded-[22px] p-[18px] pb-[24px] border border-white/[0.10] [background-image:linear-gradient(180deg,#101C3E_0%,#0B132B_100%)] shadow-[0_18px_44px_rgba(4,12,30,0.30)]">
+      <View
+        className="rounded-[14px] overflow-hidden bg-navy shadow-[0_14px_30px_rgba(4,12,30,0.34)]"
+        style={{ aspectRatio: STEP_ASPECT }}
+      >
+        <Image
+          source={STEP_IMAGES[image]}
+          style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+          resizeMode="cover"
+          accessibilityLabel={alt}
+        />
       </View>
-      <View className="px-7 pt-[26px] pb-[30px]">
-        <Typography
-          className={`font-bold tracking-[0.16em] ${highlighted ? 'text-gold' : 'text-slate'}`}
-          style={{ fontSize: 13 }}
+
+      <View className="self-start rounded-full bg-white/[0.12] border border-white/[0.18] px-[11px] py-[5px] mt-[20px]">
+        <Text
+          className={`${BODY} [font-weight:700] text-[10.5px] tracking-[0.12em] uppercase text-white/[0.78]`}
         >
           {step}
-        </Typography>
-        <Typography variant="heading-lg" className="text-navy mt-[10px]">
-          {title}
-        </Typography>
-        <Typography className="text-slate mt-[10px]" style={{ fontSize: 16, lineHeight: 27 }}>
-          {description}
-        </Typography>
+        </Text>
       </View>
-    </View>
-  );
-}
 
-function CaptureMock() {
-  return (
-    <View className="w-[196px] rounded-md bg-white p-4" style={{ transform: [{ rotate: '-7deg' }] }}>
-      <View className="w-8 h-8 rounded-[9px] bg-gold" />
-      <View className="h-[6px] w-[76%] rounded bg-[#C7CEDA] mt-[14px]" />
-      <View className="h-[5px] w-[52%] rounded bg-[#C7CEDA] mt-[7px]" />
-      <Typography className="font-bold tracking-[0.14em] text-blue mt-[14px]" style={{ fontSize: 9.5 }}>
-        SCANNING
-      </Typography>
-    </View>
-  );
-}
-
-function EnrichMock() {
-  const rows: [string, string][] = [
-    ['PHONE', '+91 98204 41720'],
-    ['EMAIL', 'rajesh@northline.co.in'],
-    ['COMPANY', 'Northline Engineering'],
-  ];
-  return (
-    <View className="w-[200px] rounded-md bg-white px-3 py-[10px] shadow-[0_10px_24px_rgba(11,19,43,0.16)]">
-      {rows.map(([label, value]) => (
-        <View key={label} className="flex-row items-center justify-between border-b border-surface py-[7px]">
-          <Typography className="font-semibold tracking-[0.06em] text-slate" style={{ fontSize: 8.5 }}>
-            {label}
-          </Typography>
-          <Typography className="font-medium text-navy ml-2" style={{ fontSize: 9.5 }} numberOfLines={1}>
-            {value}
-          </Typography>
-        </View>
-      ))}
-      <View className="flex-row items-center justify-between mt-[7px]">
-        <Typography className="font-semibold tracking-[0.06em] text-slate" style={{ fontSize: 8.5 }}>
-          SCORE
-        </Typography>
-        <View className="bg-gold rounded-[6px] px-[7px] py-[2px]">
-          <Typography className="font-bold text-navy" style={{ fontSize: 10 }}>
-            82
-          </Typography>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function ConvertMock() {
-  return (
-    <View className="w-[190px] gap-[8px]">
-      <View className="self-end max-w-[148px] bg-gold rounded-tl-xl rounded-tr-xl rounded-bl-xl rounded-br-[4px] px-[12px] py-[9px]">
-        <Typography className="font-bold text-navy" style={{ fontSize: 12, lineHeight: 15.5 }}>
-          Great meeting you at IMTEX. Brochure attached.
-        </Typography>
-      </View>
-      <Typography
-        className="self-end font-bold tracking-[0.08em] text-white/[0.60]"
-        style={{ fontSize: 8.5 }}
-      >
-        DELIVERED · LINK OPENED
-      </Typography>
-      <View className="self-start max-w-[128px] bg-white rounded-tl-xl rounded-tr-xl rounded-br-xl rounded-bl-[4px] px-[12px] py-[9px]">
-        <Typography className="font-semibold text-navy" style={{ fontSize: 12, lineHeight: 15.5 }}>
-          Please share the quote
-        </Typography>
-      </View>
+      <Display step="h3" className="text-white mt-[12px]">
+        {title}
+      </Display>
+      <Text className={`${BODY} text-[14.5px] leading-[1.6] text-white/[0.68] mt-[8px]`}>
+        {description}
+      </Text>
     </View>
   );
 }
@@ -129,36 +94,43 @@ interface Props {
 
 export function HowItWorks({ onLayout }: Props) {
   return (
-    <View onLayout={onLayout} className="bg-section border-t border-b border-hairline px-8 py-[104px]">
-      <View className="max-w-[1200px] w-full mx-auto">
-        <Typography variant="caption" className="text-gold">
-          One simple workflow
-        </Typography>
-        <Typography variant="display-lg" className="text-navy mt-4">
-          Three steps. About thirty seconds.
-        </Typography>
+    <Section tone="section" pad="lg" onLayout={onLayout}>
+      <Reveal>
+      <SectionHeader
+        tone="onLight"
+        eyebrow="One simple workflow"
+        title={
+          <>
+            Three steps. <Mark>About thirty seconds.</Mark>
+          </>
+        }
+        align="center"
+      />
+      </Reveal>
 
-        <View className="flex-col lg:flex-row gap-4 items-stretch mt-[52px]">
-          <StepCard mock={<CaptureMock />} step="STEP 1" title="Capture" description="Scan a card, type a walk-in, or just talk. No signal needed." />
-          <Arrow />
-          <StepCard
-            highlighted
-            bottomAnchor
-            mock={<EnrichMock />}
-            step="STEP 2"
-            title="Enrich"
-            description="Yieldd fixes the scan, checks the details, summarises the company and scores the lead."
-          />
-          <Arrow />
-          <StepCard
-            bottomAnchor
-            mock={<ConvertMock />}
-            step="STEP 3"
-            title="Convert"
-            description="Brochure goes out on its own. Your reply lands the same day, tracked."
-          />
-        </View>
-      </View>
-    </View>
+      <AutoGrid min={260} gap={18} reveal className="mt-11">
+        <Step
+          step="Step 1"
+          title="Capture"
+          description="Scan a card, type a walk-in, or just talk. No signal needed."
+          image="capture"
+          alt="A business card being scanned with the Yieldd app on a phone, at an exhibition stand"
+        />
+        <Step
+          step="Step 2"
+          title="Enrich"
+          description="Yieldd fixes the scan, checks the details, summarises the company and scores the lead."
+          image="enrich"
+          alt="The enriched lead open on a laptop, showing the company summary and a lead score"
+        />
+        <Step
+          step="Step 3"
+          title="Convert"
+          description="Brochure goes out on its own. Your reply lands the same day, tracked."
+          image="convert"
+          alt="A handshake over a signed client onboarding checklist"
+        />
+      </AutoGrid>
+    </Section>
   );
 }

@@ -1,122 +1,129 @@
-import { View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { Image, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { router } from 'expo-router';
 import { MotiView } from 'moti';
 
-import { Typography } from '../ui/Typography';
-import { Button } from '../ui/Button';
-import { RadialGlow } from '../ui/RadialGlow';
+import { ConcentricRings } from './primitives/ConcentricRings';
+import { CTAButton } from './primitives/CTAButton';
+import { Display } from './primitives/Display';
+import { Eyebrow } from './primitives/Eyebrow';
+import { GrainOverlay } from './primitives/GrainOverlay';
 
-const TAGS = ['WORKS OFFLINE', 'IOS · ANDROID · WEB', 'EXCEL EXPORT'];
+/**
+ * The hero: a navy gradient panel with a rounded bottom, centred copy, and a
+ * product mock that hangs off the bottom edge onto the light section below.
+ *
+ * The overhang is built by INSETTING the navy panel, not by giving the mock a
+ * negative margin. Two reasons:
+ *
+ *   - The panel needs `overflow-hidden` so its 44px bottom radius actually
+ *     clips the gradient, the rings and the grain. Anything inside it is
+ *     clipped too, so a mock with `-mb-80` in there would simply be cut off.
+ *   - A negative margin would also put the mock underneath the next section,
+ *     since later siblings paint on top. Fixing that needs a z-index, which
+ *     then fights whatever overlap the next section wants.
+ *
+ * So the section itself is light, the navy panel is an absolutely-positioned
+ * layer that stops short of the bottom, and the mock simply sits in normal
+ * flow crossing that edge. No clipping, no stacking, no negative margins.
+ */
+
+/** Distance the mock hangs past the navy panel. */
+const PANEL_INSET = 120;
+const CONTENT_PAD = 40;
 
 function PulseDot() {
   return (
     <MotiView
-      className="w-2 h-2 rounded-full bg-gold"
+      className="w-[9px] h-[9px] rounded-full bg-gold"
       from={{ scale: 1, opacity: 1 }}
-      animate={{ scale: 1.3, opacity: 0.6 }}
+      animate={{ scale: 1.35, opacity: 0.55 }}
       transition={{ type: 'timing', duration: 1200, loop: true, repeatReverse: true }}
     />
   );
 }
 
-function HeroArt() {
+const TRUST = [
+  'Works offline on the stall floor',
+  'iOS, Android and web',
+  'Export to Excel any time',
+];
+
+function Tick() {
   return (
-    <View className="h-[460px] items-center justify-center hidden lg:flex">
-      <View style={{ position: 'relative', width: 300 }}>
-        <MotiView
-          className="rounded-full border border-gold/[0.10]"
-          style={{ position: 'absolute', width: 420, height: 420, left: 150 - 210, top: 162 - 210 }}
-          from={{ rotate: '0deg' }}
-          animate={{ rotate: '360deg' }}
-          transition={{ type: 'timing', duration: 70000, loop: true, easing: (t) => t }}
-        />
-        <MotiView
-          className="rounded-full border border-white/[0.06]"
-          style={{ position: 'absolute', width: 330, height: 330, left: 150 - 165, top: 162 - 165 }}
-          from={{ rotate: '0deg' }}
-          animate={{ rotate: '-360deg' }}
-          transition={{ type: 'timing', duration: 90000, loop: true, easing: (t) => t }}
-        />
-        <RadialGlow color="#1D3F8A" size={230} style={{ left: 150 - 115, top: 162 - 115 }} />
+    <View className="w-[15px] h-[15px] rounded-full bg-success/[0.18] items-center justify-center">
+      <View className="w-[5px] h-[5px] rounded-full bg-success" />
+    </View>
+  );
+}
 
-        <MotiView
-          className="border border-hairline rounded-lg bg-white p-3 shadow-[0_20px_44px_rgba(0,0,0,0.55)]"
-          style={{ position: 'absolute', zIndex: 1, left: -65, top: 137, width: 108 }}
-          from={{ translateY: 0, rotate: '-7deg' }}
-          animate={{ translateY: 9, rotate: '-7deg' }}
-          transition={{ type: 'timing', duration: 2100, loop: true, repeatReverse: true }}
-        >
-          <View className="w-6 h-6 rounded-[7px] bg-gold" />
-          <View className="h-[6px] w-[76%] rounded bg-[#C7CEDA] mt-[10px]" />
-          <View className="h-[5px] w-[52%] rounded bg-[#C7CEDA] mt-[6px]" />
-          <Typography className="text-[9px] font-bold tracking-[0.12em] text-blue mt-[10px]">
-            SCANNING
-          </Typography>
-        </MotiView>
+/* -------------------------------------------------------------------------
+ * The product shot.
+ *
+ * A real screenshot of the Yieldd web dashboard, not a drawn approximation.
+ * An earlier version of this file rebuilt a fake dashboard out of Views - it
+ * looked plausible and showed nothing the product actually does.
+ *
+ * The asset is rendered and cropped AT BUILD TIME from the HTML source in
+ * design/dash-home-redesign, not trimmed at render: 1891x963, cut just above
+ * the "Team today" row so the shot stays shallow and every card in it is
+ * whole. Cropping the file rather than the layout is what keeps this
+ * component simple - the frame and the image share one aspect ratio, so
+ * nothing overflows and nothing is clipped.
+ *
+ * Doing it the other way round is a trap worth recording. react-native-web
+ * renders Image as <div><img>, moves an `aspectRatio` style onto that wrapper,
+ * and - for a require()d asset - also writes the intrinsic pixel size out as
+ * an explicit width/height. That explicit height beats both the aspect ratio
+ * and `inset: 0`, so the element keeps its natural height inside a shorter
+ * frame and resizeMode="cover" crops the SIDES to compensate, quietly cutting
+ * off the sidebar and the search field. Absolute positioning plus an explicit
+ * 100%/100% is what finally overrides it.
+ * ---------------------------------------------------------------------- */
 
-        <MotiView
-          className="w-[300px] rounded-lg bg-navy-elevated border border-white/[0.32] p-[22px] shadow-[0_26px_60px_rgba(0,0,0,0.5)]"
-          style={{ position: 'relative', zIndex: 10 }}
-          from={{ translateY: 0 }}
-          animate={{ translateY: -10 }}
-          transition={{ type: 'timing', duration: 2500, loop: true, repeatReverse: true }}
-        >
-          <View className="flex-row items-center justify-between">
-            <Typography className="text-[11px] font-semibold tracking-[0.1em] text-white/[0.70]">
-              IMTEX 2026 · B-42
-            </Typography>
-            <Typography className="text-[11px] font-bold tracking-[0.1em] text-gold">DAY 2</Typography>
+const DASHBOARD = require('../../assets/product/dashboard-home.jpg');
+const DASHBOARD_ASPECT = 1891 / 963;
+
+function ProductShot() {
+  return (
+    /* A slight backward tilt. Written as a raw `transform` property rather
+       than Tailwind's rotate-x/perspective utilities: those compile to
+       --tw-* variables, and AGENTS.md records that a component gaining a
+       variable-backed class trips react-native-css-interop. A plain CSS
+       transform carries no variables. The origin is the top edge so the shot
+       leans away from the reader rather than sinking into the page. */
+    <View className="[transform:perspective(2200px)_rotateX(3deg)] [transform-origin:50%_0%]">
+      {/* Bezel. A translucent outer shell with its own hairline, so the white
+          screenshot has something to sit in instead of ending abruptly
+          against the navy. */}
+      <View className="rounded-[20px] bg-white/[0.07] border border-white/[0.16] p-[7px] shadow-[0_2px_6px_rgba(4,12,30,0.22),0_20px_44px_rgba(4,12,30,0.38),0_64px_120px_rgba(4,12,30,0.46)]">
+        {/* The window itself. */}
+        <View className="rounded-[14px] overflow-hidden bg-white">
+          {/* A one-pixel highlight along the top edge. This is what sells the
+              bevel - a lit edge reads as a raised surface where a flat border
+              reads as a sticker. */}
+          <View pointerEvents="none" className="absolute top-0 left-0 right-0 h-px bg-white/[0.55] z-10" />
+
+          <View className="flex-row items-center gap-[7px] px-4 py-[11px] border-b border-hairline bg-white">
+            <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
+            <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
+            <View className="w-[9px] h-[9px] rounded-full bg-hairline" />
+            <Text className="[font-family:Figtree,system-ui,sans-serif] text-[11.5px] text-label ml-[10px]">
+              app.yieldd.co
+            </Text>
           </View>
-          <View className="flex-row gap-[10px] mt-4">
-            <View className="flex-1 border border-white/[0.14] rounded-md bg-white/[0.04] px-[14px] py-3">
-              <Typography className="text-[26px] font-extrabold text-white leading-none">248</Typography>
-              <Typography className="text-[11.5px] text-white/[0.62] mt-[5px]">Leads captured</Typography>
-            </View>
-            <View className="flex-1 border border-gold/[0.35] rounded-md bg-gold/[0.10] px-[14px] py-3">
-              <Typography className="text-[26px] font-extrabold text-gold leading-none">61</Typography>
-              <Typography className="text-[11.5px] text-white/[0.62] mt-[5px]">Marked hot</Typography>
-            </View>
-          </View>
-          <View className="mt-4 border-t border-white/[0.12] pt-[14px] gap-3">
-            <View className="flex-row items-center gap-[10px]">
-              <View className="w-[34px] h-[34px] rounded-[9px] bg-gold" />
-              <View className="flex-1">
-                <Typography className="text-[13.5px] font-semibold text-white">Rajesh Menon</Typography>
-                <Typography className="text-[11.5px] text-white/[0.58]">Purchase Head · Northline</Typography>
-              </View>
-              <Typography className="text-[12px] font-bold text-gold">82</Typography>
-            </View>
-            <View className="flex-row items-center gap-[10px]">
-              <View className="w-[34px] h-[34px] rounded-[9px] bg-white/[0.07] border border-white/[0.14]" />
-              <View className="flex-1">
-                <Typography className="text-[13.5px] font-semibold text-white">Sneha Kulkarni</Typography>
-                <Typography className="text-[11.5px] text-white/[0.58]">Plant Manager · Vertex</Typography>
-              </View>
-              <Typography className="text-[12px] font-bold text-white/[0.60]">64</Typography>
-            </View>
-          </View>
-        </MotiView>
 
-        <MotiView
-          className="border border-white/[0.32] rounded-lg bg-navy-elevated px-[18px] py-[14px] shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
-          style={{ position: 'absolute', zIndex: 3, left: 210, top: 322, width: 168 }}
-          from={{ translateY: 0 }}
-          animate={{ translateY: -10 }}
-          transition={{ type: 'timing', duration: 2300, loop: true, repeatReverse: true }}
-        >
-          <Typography className="text-[9.5px] font-bold tracking-[0.1em] text-white/[0.70]" numberOfLines={1}>
-            FIRST FOLLOW-UP
-          </Typography>
-          <Typography className="text-[26px] font-extrabold text-white mt-[6px] leading-none">
-            4 min
-          </Typography>
-          <Typography className="text-[11.5px] text-gold">brochure delivered</Typography>
-        </MotiView>
-
-        <View
-          className="rounded-lg bg-gold shadow-[0_10px_26px_rgba(244,176,0,0.34)]"
-          style={{ position: 'absolute', zIndex: 9, left: -37, top: 413, width: 36, height: 36 }}
-        />
+          {/* The wrapper owns the aspect ratio; the image fills it absolutely
+              with explicit 100%/100%, which is what overrides the intrinsic
+              size react-native-web writes onto a require()d asset. */}
+          <View className="w-full overflow-hidden" style={{ aspectRatio: DASHBOARD_ASPECT }}>
+            <Image
+              source={DASHBOARD}
+              style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+              resizeMode="cover"
+              accessibilityLabel="The Yieldd dashboard showing leads captured, cost per lead and return on spend for a live event"
+            />
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -124,48 +131,88 @@ function HeroArt() {
 
 interface Props {
   onLayout?: (e: LayoutChangeEvent) => void;
+  onNavigate: (key: string) => void;
 }
 
-export function Hero({ onLayout }: Props) {
-  const { width } = useWindowDimensions();
-  const isWide = width > 1080;
-
+export function Hero({ onLayout, onNavigate }: Props) {
   return (
-    <View onLayout={onLayout} className="relative bg-navy overflow-hidden px-8 pt-24 pb-32">
-      <RadialGlow color="#1D3F8A" size={520} className="right-0 top-0" />
-      <View className="max-w-[1200px] w-full mx-auto flex-col lg:flex-row gap-14 items-center">
-        <View className="flex-1 w-full">
-          <View className="flex-row items-center gap-[11px]">
-            <PulseDot />
-            <Typography variant="caption" className="text-gold">
-              Lead management, without the wait
-            </Typography>
-          </View>
-          <Typography variant="display-xl" className="text-white mt-[22px] max-w-2xl">
-            You spent ₹12 lakh on that stall. <Typography variant="display-xl" className="text-gold">Can you say what came back?</Typography>
-          </Typography>
-          <Typography variant="body-lg" className="text-white/[0.76] mt-[26px] max-w-[520px]">
+    <View onLayout={onLayout} className="relative bg-section pt-[94px]">
+      {/* The navy panel. Clipped and rounded, and stopping PANEL_INSET short of
+          the section's bottom so the mock can cross the edge. */}
+      <View
+        pointerEvents="none"
+        className="absolute top-0 left-0 right-0 rounded-b-[44px] overflow-hidden [background-image:linear-gradient(170deg,#0B132B_0%,#101C3E_54%,#0B132B_100%)]"
+        style={{ bottom: PANEL_INSET }}
+      >
+        <ConcentricRings sizes={[1100, 820, 560]} originY={0.04} />
+        {/* A soft top glow. Written as a real radial-gradient rather than with
+            RadialGlow, whose stacked flat circles show their edges at this
+            size — a limitation already noted in components/dash/hero.tsx. */}
+        <View className="absolute inset-0 [background-image:radial-gradient(62%_46%_at_50%_4%,rgba(255,255,255,0.12),transparent_70%)]" />
+        <GrainOverlay opacity={0.26} />
+      </View>
+
+      <View
+        className="px-5 md:px-8 pt-[52px] md:pt-[68px]"
+        style={{ paddingBottom: CONTENT_PAD }}
+      >
+        <View className="max-w-[1080px] w-full mx-auto items-center">
+          <Eyebrow tone="onDark" align="center" icon={<PulseDot />}>
+            Lead management, without the wait
+          </Eyebrow>
+
+          {/* Exactly two lines. Each sentence is its own block, so the
+              structure never depends on where the text happens to wrap.
+
+              [display:block] also fixes the gradient: react-native-web leaves
+              a nested Text inline, and a clipped gradient on a wrapping inline
+              box runs its ramp once per line fragment — which made the second
+              line of the white sentence render grey. One block per line means
+              one ramp per line. */}
+          <Display step="hero" className="text-center mt-[22px] max-w-[1060px]">
+            <Text className="text-gradient [display:block] [background-image:linear-gradient(180deg,#FFFFFF_10%,rgba(255,255,255,0.82)_100%)]">
+              You spent ₹12 lakh on that stall.
+            </Text>
+            <Text className="text-gradient [display:block] [background-image:linear-gradient(180deg,#FFC53D_8%,#F4B000_100%)]">
+              Can you say what came back?
+            </Text>
+          </Display>
+
+          <Text className="[font-family:Figtree,system-ui,sans-serif] text-[17px] leading-[1.6] text-white/[0.74] text-center mt-[20px] max-w-[660px]">
             Your team meets hundreds of people at an exhibition. Most of those cards never become
             conversations. Yieldd captures every lead in seconds, cleans it up automatically, and
             sends the first follow-up before anyone leaves the stall.
-          </Typography>
-          <View className="flex-row flex-wrap items-center gap-[14px] mt-9">
-            <Button label="Start capturing leads free" onPress={() => router.push('/(auth)')} />
-            <Button label="See how it works" variant="secondary" onPress={() => {}} />
+          </Text>
+
+          <View className="flex-row flex-wrap items-center justify-center gap-[12px] mt-[28px]">
+            <CTAButton
+              label="Start capturing leads free"
+              onPress={() => router.push('/(auth)')}
+            />
+            {/* Was a no-op in the previous hero; now it goes somewhere. */}
+            <CTAButton
+              label="See how it works"
+              variant="outline"
+              spin={false}
+              onPress={() => onNavigate('how')}
+            />
           </View>
-          <View className="flex-row flex-wrap gap-[20px] mt-[28px]">
-            {TAGS.map((tag) => (
-              <Typography key={tag} className="text-[10.5px] font-semibold tracking-[0.1em] text-white/[0.70]">
-                {tag}
-              </Typography>
+
+          <View className="flex-row flex-wrap items-center justify-center gap-x-[22px] gap-y-[10px] mt-[24px]">
+            {TRUST.map((item) => (
+              <View key={item} className="flex-row items-center gap-[8px]">
+                <Tick />
+                <Text className="[font-family:Figtree,system-ui,sans-serif] text-[13.5px] text-white/[0.76]">
+                  {item}
+                </Text>
+              </View>
             ))}
           </View>
         </View>
-        {isWide ? (
-          <View className="flex-1 w-full">
-            <HeroArt />
-          </View>
-        ) : null}
+
+        <View className="max-w-[1000px] w-full mx-auto mt-[48px] md:mt-[56px]">
+          <ProductShot />
+        </View>
       </View>
     </View>
   );

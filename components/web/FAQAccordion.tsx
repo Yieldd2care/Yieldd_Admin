@@ -1,9 +1,33 @@
 import { useEffect, useState } from 'react';
-import { Pressable, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Line } from 'react-native-svg';
 
-import { Typography } from '../ui/Typography';
+import { FOCUS } from './primitives/focus';
+import { Mark } from './primitives/Mark';
+import { Reveal } from './primitives/Reveal';
+import { Section } from './primitives/Section';
+import { SectionHeader } from './primitives/SectionHeader';
+
+/**
+ * The questions, one open at a time.
+ *
+ * Numbered badges and a circular toggle, on an 880px column — the reference's
+ * FAQ shape.
+ *
+ * One real bug fixed on the way. The toggle's
+ * `className="w-8 h-8 rounded-full ..."` used to sit on an Animated.View,
+ * where it was silently dropped: Reanimated's Animated.View is not registered
+ * in lib/nativewind-interop, and it ships pre-compiled jsx calls the babel
+ * transform never rewrites, so the classes never reached the DOM. The circle
+ * only looked round because the SVG inside it happened to be small. The
+ * Animated.View now carries the rotation and nothing else; a plain child View
+ * carries the shape.
+ *
+ * The background swaps between two flat colours by className, which is safe —
+ * AGENTS.md's rule is about variable-backed families (shadow, transform, ring,
+ * gradient), and a plain `bg-*` carries no variables.
+ */
 
 const FAQS = [
   {
@@ -24,12 +48,16 @@ const FAQS = [
   },
 ];
 
+const BODY = '[font-family:Figtree,system-ui,sans-serif]';
+
 function FAQItem({
+  n,
   q,
   a,
   isOpen,
   onToggle,
 }: {
+  n: string;
   q: string;
   a: string;
   isOpen: boolean;
@@ -47,31 +75,65 @@ function FAQItem({
     opacity: progress.value,
   }));
 
+  // Rotation only. Anything that needs a class goes on the child View.
   const iconStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${progress.value * 45}deg` }],
-    backgroundColor: isOpen ? '#F4B000' : '#EEF1F7',
   }));
 
   return (
-    <View className="border border-hairline hover:border-gold/[0.50] rounded-lg bg-white shadow-[0_2px_6px_rgba(11,19,43,0.05)] overflow-hidden transition-all duration-200">
+    <View className="rounded-[18px] border border-hairline bg-white overflow-hidden shadow-[0_2px_6px_rgba(11,19,43,0.05)]">
       <Pressable
         onPress={onToggle}
-        className="w-full flex-row items-center justify-between gap-6 px-[26px] py-5"
+        className={`w-full flex-row items-center gap-[14px] px-[20px] py-[18px] ${FOCUS}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
       >
-        <Typography className="flex-1 text-xl font-bold tracking-tight text-navy">{q}</Typography>
-        <Animated.View style={iconStyle} className="w-8 h-8 rounded-full items-center justify-center">
-          <Svg width={16} height={16} viewBox="0 0 24 24">
-            <Line x1="12" y1="5" x2="12" y2="19" stroke={isOpen ? '#0B132B' : '#5A6B87'} strokeWidth={2.6} strokeLinecap="round" />
-            <Line x1="5" y1="12" x2="19" y2="12" stroke={isOpen ? '#0B132B' : '#5A6B87'} strokeWidth={2.6} strokeLinecap="round" />
-          </Svg>
+        <View className="w-[30px] h-[30px] rounded-[9px] bg-[#EAF2FF] items-center justify-center">
+          <Text className={`${BODY} [font-weight:800] text-[12px] leading-none text-blue`}>
+            {n}
+          </Text>
+        </View>
+
+        <Text className={`${BODY} flex-1 [font-weight:700] text-[17px] leading-[1.4] text-navy`}>
+          {q}
+        </Text>
+
+        <Animated.View style={iconStyle}>
+          <View
+            className={`w-[28px] h-[28px] rounded-full items-center justify-center ${
+              isOpen ? 'bg-gold' : 'bg-surface'
+            }`}
+          >
+            <Svg width={15} height={15} viewBox="0 0 24 24">
+              <Line
+                x1="12"
+                y1="5"
+                x2="12"
+                y2="19"
+                stroke={isOpen ? '#0B132B' : '#5A6B87'}
+                strokeWidth={2.6}
+                strokeLinecap="round"
+              />
+              <Line
+                x1="5"
+                y1="12"
+                x2="19"
+                y2="12"
+                stroke={isOpen ? '#0B132B' : '#5A6B87'}
+                strokeWidth={2.6}
+                strokeLinecap="round"
+              />
+            </Svg>
+          </View>
         </Animated.View>
       </Pressable>
+
       <Animated.View style={[{ overflow: 'hidden' }, panelStyle]}>
         <View
-          className="absolute w-full px-[26px] pb-[22px]"
+          className="absolute w-full border-t border-hairline bg-[#F9FBFF] px-[20px] pt-[16px] pb-[18px] pl-[64px]"
           onLayout={(e: LayoutChangeEvent) => setContentHeight(e.nativeEvent.layout.height)}
         >
-          <Typography className="text-[16.5px] text-slate leading-[1.7] max-w-[760px]">{a}</Typography>
+          <Text className={`${BODY} text-[15.5px] leading-[1.7] text-slate max-w-[700px]`}>{a}</Text>
         </View>
       </Animated.View>
     </View>
@@ -86,23 +148,32 @@ export function FAQAccordion({ onLayout }: Props) {
   const [openIndex, setOpenIndex] = useState(0);
 
   return (
-    <View onLayout={onLayout} className="bg-section border-t border-hairline px-8 py-24">
-      <View className="max-w-[1200px] w-full mx-auto">
-        <Typography variant="display-lg" className="text-navy">
-          Frequently asked questions
-        </Typography>
-        <View className="gap-3 mt-10">
-          {FAQS.map((item, i) => (
-            <FAQItem
-              key={item.q}
-              q={item.q}
-              a={item.a}
-              isOpen={openIndex === i}
-              onToggle={() => setOpenIndex((prev) => (prev === i ? -1 : i))}
-            />
-          ))}
-        </View>
+    <Section tone="section" pad="lg" onLayout={onLayout} max="max-w-[880px]">
+      <Reveal>
+      <SectionHeader
+        tone="onLight"
+        eyebrow="Questions"
+        title={
+          <>
+            What teams <Mark>ask us first.</Mark>
+          </>
+        }
+        align="center"
+      />
+      </Reveal>
+
+      <View className="gap-3 mt-10">
+        {FAQS.map((item, i) => (
+          <FAQItem
+            key={item.q}
+            n={String(i + 1).padStart(2, '0')}
+            q={item.q}
+            a={item.a}
+            isOpen={openIndex === i}
+            onToggle={() => setOpenIndex((prev) => (prev === i ? -1 : i))}
+          />
+        ))}
       </View>
-    </View>
+    </Section>
   );
 }

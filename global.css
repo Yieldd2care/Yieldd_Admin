@@ -1,3 +1,112 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+ * Web-only utilities for the marketing site (components/web/**, app/(web)/**).
+ *
+ * These exist because NativeWind's *web* output is real CSS: react-native-css-
+ * interop's web cssInterop emits { $$css: true, "<class>": "<class>" } and
+ * styleq concatenates those values onto the DOM node's class attribute. The
+ * declarations below therefore reach the browser untouched.
+ *
+ * They live here rather than as Tailwind arbitrary values because each is
+ * awkward to express as a class: a data URI with quotes, a -webkit- prefix
+ * with a leading dash, or a @keyframes rule.
+ *
+ * Deliberately NOT inside `@layer utilities`. Tailwind tree-shakes a layer
+ * against the scanned content, and an earlier version of this file lost every
+ * one of these rules in `expo export` because no component referenced them
+ * yet. Plain top-level CSS always ships. It also sits after @tailwind
+ * utilities, so where one of these overlaps a Tailwind class of equal
+ * specificity, this wins - which is what .text-gradient relies on.
+ *
+ * The native Tailwind pass hands these to css-to-rn, which does not understand
+ * them and skips them with a warning. That is expected. Nothing under
+ * components/web/ ever renders on a device - app/index.tsx only routes to
+ * /(web) when Platform.OS === 'web'.
+ * ------------------------------------------------------------------------- */
+
+@keyframes tg-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* The rotating sheen behind a CTA. A conic-gradient arc chases the button's
+   perimeter; the element carrying this sits inside an `overflow-hidden
+   rounded-full` wrapper and is sized well past it so the arc never shows a
+   corner. Must be pointerEvents="none" or it swallows the press.
+
+   Two tones: .tg-ring reads as a gold glint on navy, .tg-ring-ink as a navy
+   one on a light surface. Never swap these classes conditionally - they are
+   gradient-backed, and AGENTS.md's rule is that such a class must be present
+   from the first render. */
+.tg-ring {
+  background-image: conic-gradient(
+    from 0deg,
+    transparent 0deg 206deg,
+    rgba(244, 176, 0, 0.55) 260deg,
+    rgba(255, 197, 61, 0.98) 286deg,
+    rgba(255, 255, 255, 0.85) 298deg,
+    transparent 318deg 360deg
+  );
+  animation: tg-spin 3.6s linear infinite;
+}
+
+.tg-ring-ink {
+  background-image: conic-gradient(
+    from 0deg,
+    transparent 0deg 206deg,
+    rgba(11, 19, 43, 0.35) 260deg,
+    rgba(29, 63, 138, 0.95) 288deg,
+    transparent 318deg 360deg
+  );
+  animation: tg-spin 3.6s linear infinite;
+}
+
+/* Film grain over the hero gradient. An feTurbulence tile blended at
+   soft-light, which stops the large flat gradient banding on wide displays.
+
+   mix-blend-mode resolves against the nearest stacking context, so this must
+   live inside the hero's own overflow-hidden background layer - that is what
+   makes it blend against the gradient rather than the page. */
+.web-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  mix-blend-mode: soft-light;
+}
+
+/* Fades a horizontally scrolling strip out at both edges instead of cutting it
+   off. Written here for the -webkit- prefix, which Tailwind v3's candidate
+   parser handles inconsistently inside brackets. */
+.edge-fade {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+}
+
+/* Two-tone headline text: the background gradient is clipped to the glyphs.
+   Pair with a [background-image:...] class.
+
+   Deliberately does NOT set `display`. react-native-web leaves a nested <Text>
+   inline, and a clipped gradient on a wrapping INLINE box repaints per line
+   fragment, running the ramp once per line. So the call site must add either
+   [display:block] (a headline line of its own) or [display:inline-block] (a
+   phrase inside a sentence). Setting it here instead would put two
+   same-specificity display rules on the element and let document order pick. */
+.text-gradient {
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Users who ask for less motion get the geometry without the movement. The
+   ring keeps its static arc - it is a sheen, not an affordance - and nothing
+   carrying content is animated here. */
+@media (prefers-reduced-motion: reduce) {
+  .tg-ring,
+  .tg-ring-ink {
+    animation: none;
+  }
+}
