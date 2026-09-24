@@ -23,8 +23,14 @@ import { formatRelative } from '../../../lib/dates';
  * nothing. Making it real would need a SECOND security-definer write-door into
  * another rep's data — leads_update_own_or_admin blocks the write and
  * enforce_lead_update_rules() makes captured_by immutable. `duplicate_of_lead_id`
- * exists on the leads table for a link-not-merge feature to use later; it is
- * deliberately unused for now.
+ * is now written at capture and read by the DUPLICATE badge on the lead row and
+ * the lead detail screen, which is what pushes this sheet.
+ *
+ * This sheet is read-only and stays that way. Removing a duplicate is offered
+ * once, on the saved screen immediately after the capture, and nowhere else —
+ * no delete control belongs on the leads list, the lead detail screen, the edit
+ * screen, or here. By the time someone is looking at this sheet from a lead,
+ * that moment has passed and the answer was Keep.
  */
 export default function DuplicateDetailModal() {
   const params = useLocalSearchParams<{

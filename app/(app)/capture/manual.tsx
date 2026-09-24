@@ -28,20 +28,11 @@ import type { CustomFieldValue } from '../../../data/leads';
 import { KeyboardSafe } from '../../../components/app/KeyboardSafe';
 import { primeCaptureLocation } from '../../../lib/location';
 import { CaptureLocationNotice } from '../../../components/capture/CaptureLocationNotice';
+import { DuplicateSaveConfirm } from '../../../components/capture/DuplicateSaveConfirm';
 
 /** The surface the fields sit on. The floated labels paint this behind
  *  themselves so they notch the border instead of smearing over it. */
 const CARD = '#FFFFFF';
-
-/** How many of these actually hold something, for the tab badge. */
-function filledCount(...values: (string | string[])[]): number {
-  let n = 0;
-  for (const value of values) {
-    if (Array.isArray(value)) n += value.filter((v) => v.trim()).length;
-    else if (value.trim()) n += 1;
-  }
-  return n;
-}
 
 export default function ManualEntryScreen() {
   const [tab, setTab] = useState<LeadFormTab>('person');
@@ -71,6 +62,8 @@ export default function ManualEntryScreen() {
   const user = useSessionStore((s) => s.user);
   const { event } = useCurrentEvent();
   const [isSaving, setIsSaving] = useState(false);
+  /** The duplicate confirmation is up and the save is waiting on its answer. */
+  const [pendingSave, setPendingSave] = useState(false);
 
   /**
    * The first row only.
@@ -83,7 +76,9 @@ export default function ManualEntryScreen() {
    */
   const primaryPhone = phones[0] ?? '';
 
-  // Information, not a gate: `canSave` below is untouched by this.
+  // Information, plus a confirmation before the write — still never a refusal.
+  // `canSave` below stays untouched: the duplicate gates the ACTION, not the
+  // button, so the rep is never left staring at a Save they cannot press.
   const duplicate = useDuplicateLead(event?.id, primaryPhone);
 
   /**
@@ -139,6 +134,64 @@ export default function ManualEntryScreen() {
   const missingRequired = customFields.some(
     (f) => f.required && !isCustomFieldFilled(f, customValues[f.id])
   );
+  /**
+   * Everything the Save button used to do inline.
+   *
+   * Lifted out verbatim so the duplicate confirmation can call it from two
+   * places — straight through when there is no match, and from "Save anyway"
+   * when there is.
+   */
+  const doSave = async () => {
+    if (!event || !user) return;
+    setIsSaving(true);
+    // The same cleaning the edit form's patch does, from the same
+    // function: blanks dropped, repeats dropped, [0] is the primary.
+    const phone = splitLeadList(phones);
+    const email = splitLeadList(emails);
+    const designation = splitLeadList(designations);
+    const lead = await useLeadsStore.getState().addLead({
+      organizationId: user.organizationId,
+      eventId: event.id,
+      capturedBy: user.id,
+      source: 'manual',
+      consentGiven: consent,
+      name,
+      phone: phone.primary,
+      extraPhones: phone.extras,
+      company,
+      email: email.primary,
+      extraEmails: email.extras,
+      designation: designation.primary,
+      extraDesignations: designation.extras,
+      note,
+      companyLandline,
+      companyWebsite,
+      companyAddress,
+      branchAddress,
+      companySummary,
+      hasVoice,
+      voiceUri: voiceUri ?? undefined,
+      voiceDurationSeconds,
+      voiceExtension,
+      customFieldValues: customValues,
+      /**
+       * Record the match the rep was just shown and chose to save through.
+       *
+       * Until now the manual path rendered the warning and stored nothing, so a
+       * duplicate typed in by hand was invisible everywhere afterwards. It also
+       * makes this lead removable under `leads_delete_own_duplicate` — which is
+       * consistent: the rep was warned and said yes.
+       */
+      duplicateOfLeadId: duplicate.match?.leadId,
+      duplicateMatch: duplicate.match ?? undefined,
+    });
+    useCaptureDraftStore.getState().reset();
+    router.replace({
+      pathname: '/(app)/capture/saved',
+      params: { leadId: lead.id },
+    });
+  };
+
   const canSave =
     name.trim().length > 0 &&
     primaryPhone.trim().length > 0 &&
@@ -190,18 +243,7 @@ export default function ManualEntryScreen() {
           <SyncIndicator className="mb-3" />
 
           <View className="bg-white rounded-[18px] border border-hairline px-4 pt-4 pb-5">
-            <FormTabs
-              tab={tab}
-              onChange={setTab}
-              personFilled={filledCount(name, phones, emails, designations, note)}
-              companyFilled={filledCount(
-                company,
-                companyLandline,
-                companyWebsite,
-                companyAddress,
-                branchAddress
-              )}
-            />
+            <FormTabs tab={tab} onChange={setTab} />
 
             {/*
               gap-[22px], not 10. A floated label rises out of its box and needs
@@ -416,45 +458,23 @@ export default function ManualEntryScreen() {
         <View className="bg-white border-t border-hairline px-5 pt-[14px] pb-6">
           <Pressable
             disabled={!canSave}
-            onPress={async () => {
+            onPress={() => {
               if (!event || !user) return;
-              setIsSaving(true);
-              // The same cleaning the edit form's patch does, from the same
-              // function: blanks dropped, repeats dropped, [0] is the primary.
-              const phone = splitLeadList(phones);
-              const email = splitLeadList(emails);
-              const designation = splitLeadList(designations);
-              const lead = await useLeadsStore.getState().addLead({
-                organizationId: user.organizationId,
-                eventId: event.id,
-                capturedBy: user.id,
-                source: 'manual',
-                consentGiven: consent,
-                name,
-                phone: phone.primary,
-                extraPhones: phone.extras,
-                company,
-                email: email.primary,
-                extraEmails: email.extras,
-                designation: designation.primary,
-                extraDesignations: designation.extras,
-                note,
-                companyLandline,
-                companyWebsite,
-                companyAddress,
-                branchAddress,
-                companySummary,
-                hasVoice,
-                voiceUri: voiceUri ?? undefined,
-                voiceDurationSeconds,
-                voiceExtension,
-                customFieldValues: customValues,
-              });
-              useCaptureDraftStore.getState().reset();
-              router.replace({
-                pathname: '/(app)/capture/saved',
-                params: { leadId: lead.id },
-              });
+              /**
+               * The gate, and it sits exactly here for a reason: after the last
+               * precondition and before the first side effect.
+               *
+               * That is what makes Cancel correct by DOING NOTHING rather than
+               * by undoing anything. `isSaving` never went true, the lists were
+               * never split, `addLead` never ran, the draft store was never
+               * reset and nothing navigated — so the form is still intact by
+               * construction. There is no state to restore.
+               */
+              if (duplicate.match) {
+                setPendingSave(true);
+                return;
+              }
+              void doSave();
             }}
             className={`h-[54px] rounded-md items-center justify-center ${
               canSave
@@ -477,6 +497,16 @@ export default function ManualEntryScreen() {
           opening one inside KeyboardSafe with the keyboard up forces the whole
           form to reflow. */}
       <CaptureLocationNotice />
+      <DuplicateSaveConfirm
+        visible={pendingSave}
+        match={duplicate.match}
+        isSelf={duplicate.isSelf}
+        onConfirm={() => {
+          setPendingSave(false);
+          void doSave();
+        }}
+        onCancel={() => setPendingSave(false)}
+      />
     </SafeAreaView>
   );
 }

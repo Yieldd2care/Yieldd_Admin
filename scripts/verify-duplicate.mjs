@@ -16,6 +16,14 @@
  * revoke is re-applied. This project has hit that trap three times. Asserting
  * the refusal is the only way to know the revoke actually ran.
  *
+ * It also covers removal (migration 20260923100000). A rep may delete their own
+ * FLAGGED duplicate and nothing else, which is what keeps the keep-or-remove
+ * prompt from being a general delete. Two of those assertions carry most of the
+ * weight: that a rep cannot set duplicate_of_lead_id themselves (otherwise the
+ * policy authorises anything they captured), and that an unflagged delete comes
+ * back as zero rows WITHOUT an error — the shape deleteLead() detects, and the
+ * one that would otherwise let the app report a removal that never happened.
+ *
  * Needs SUPABASE_ACCESS_TOKEN for cleanup. Safe to re-run.
  */
 import { createClient } from '@supabase/supabase-js';
@@ -119,7 +127,15 @@ try {
   // active_event_count() = 0`, so the database itself refuses a Free org a
   // second show. Flipped here rather than worked around, because plan_tier is
   // deliberately not client-writable and this org is thrown away at the end.
-  await adminSql(`update public.organizations set plan_tier = 'pro' where id = '${orgId}';`);
+  // Pro AND seats. `enforce_invite_seats` (migration 20260910100000) counts
+  // seats_included + seats_purchased, not the plan tier, so raising the tier
+  // alone still leaves this org on one seat and the invite below is refused.
+  await adminSql(`
+    update public.organizations
+       set plan_tier = 'pro',
+           seats_purchased = greatest(seats_purchased, 4)
+     where id = '${orgId}';
+  `);
   const otherEvent = await mkEvent('Dup Expo North');
 
   const leadId = randomUUID();
@@ -220,6 +236,121 @@ try {
     (await call(outsider, event.id, '9820441720')).length,
     0
   );
+
+  // ---- 9. removal: the policy shape ----
+  // Cheap, and it catches a migration that did not deploy before anything
+  // behavioural below has a chance to fail confusingly.
+  const policies = await adminSql(`
+    select policyname, qual from pg_policies
+    where schemaname = 'public' and tablename = 'leads' and cmd = 'DELETE'
+    order by policyname;
+  `);
+  const names = policies.map((r) => r.policyname);
+  ok('leads_delete_own_duplicate exists', names.includes('leads_delete_own_duplicate'));
+  ok('leads_delete_admin_only still exists', names.includes('leads_delete_admin_only'));
+  const dupQual = policies.find((r) => r.policyname === 'leads_delete_own_duplicate')?.qual ?? '';
+  ok('  ...narrowed on duplicate_of_lead_id', /duplicate_of_lead_id IS NOT NULL/i.test(dupQual));
+  ok('  ...and on captured_by', /captured_by = auth\.uid\(\)/i.test(dupQual));
+
+  // ---- 10. B captures the same person, and the flag lands ----
+  const bDupId = randomUUID();
+  const { error: bDupError } = await b.from('leads').insert({
+    id: bDupId,
+    organization_id: orgId,
+    event_id: event.id,
+    captured_by: bId,
+    full_name: 'Priya Sharma',
+    phone: '98204 41720',
+    source: 'card_scan',
+    consent_given: true,
+    custom_field_values: {},
+    duplicate_of_lead_id: leadId,
+  });
+  if (bDupError) throw new Error(`b duplicate lead: ${bDupError.message}`);
+
+  // A second B lead that is NOT a duplicate, for the refusal cases below.
+  const bPlainId = randomUUID();
+  const { error: bPlainError } = await b.from('leads').insert({
+    id: bPlainId,
+    organization_id: orgId,
+    event_id: event.id,
+    captured_by: bId,
+    full_name: 'Someone Else',
+    phone: '9000011111',
+    source: 'manual',
+    consent_given: true,
+    custom_field_values: {},
+  });
+  if (bPlainError) throw new Error(`b plain lead: ${bPlainError.message}`);
+
+  // ---- 11. a rep CANNOT self-authorise by setting the flag ----
+  // The whole delete policy rests on duplicate_of_lead_id being insert-only.
+  // If this PATCH succeeded, "remove a duplicate" would become "delete
+  // anything I captured".
+  const { error: selfAuthError } = await b
+    .from('leads')
+    .update({ duplicate_of_lead_id: leadId })
+    .eq('id', bPlainId);
+  ok('a rep cannot set duplicate_of_lead_id after capture', selfAuthError);
+
+  // ---- 12. THE SHAPE THE CLIENT DEPENDS ON ----
+  // An RLS-filtered DELETE is not an error — it removes zero rows and reports
+  // success. deleteLead() adds .select('id') precisely so it can tell the two
+  // apart. If this ever came back as an error instead, that code would be
+  // wrong in the other direction, so assert the exact shape.
+  const plainDelete = await b.from('leads').delete().eq('id', bPlainId).select('id');
+  eq('deleting an unflagged lead is not an error', plainDelete.error, null);
+  eq('  ...it silently removes zero rows', plainDelete.data?.length ?? 0, 0);
+
+  // ---- 13. B cannot delete A's lead, flagged or not ----
+  const aDelete = await b.from('leads').delete().eq('id', leadId).select('id');
+  eq("B cannot delete A's lead", aDelete.data?.length ?? 0, 0);
+
+  // ---- 14. the original is never REP-deletable ----
+  // Asserted through B, deliberately. A created the organisation and is
+  // therefore an ADMIN, so A deletes their own lead under the untouched
+  // leads_delete_admin_only — testing the guarantee through A would be
+  // measuring the wrong policy, and the cascade from that delete would null
+  // B's flag and quietly disarm the tests below.
+  //
+  // Every original has a null duplicate_of_lead_id, so case 12 above — B's own
+  // unflagged lead, zero rows removed — IS this guarantee: a rep can never
+  // reach the first copy of anyone, only a redundant second one.
+  eq('the original is untouched so far', (await adminSql(
+    `select count(*)::int as n from public.leads where id = '${leadId}';`
+  ))[0]?.n, 1);
+
+  // ---- 15. and the one thing that IS allowed ----
+  const goodDelete = await b.from('leads').delete().eq('id', bDupId).select('id');
+  eq('B CAN delete their own flagged duplicate', goodDelete.data?.map((r) => r.id) ?? [], [bDupId]);
+  const stillThere = await adminSql(
+    `select count(*)::int as n from public.leads where id = '${bDupId}';`
+  );
+  eq('  ...and the row is really gone', stillThere[0]?.n, 0);
+
+  // ---- 16. the cascade trap ----
+  // duplicate_of_lead_id is a self-reference with ON DELETE SET NULL, and
+  // Postgres runs that as an UPDATE, which fires the immutability trigger. A
+  // blanket "is distinct from" guard would make this fail.
+  const cascadeChild = randomUUID();
+  await adminSql(`
+    insert into public.leads (id, organization_id, event_id, captured_by, full_name, phone,
+                              source, consent_given, custom_field_values, duplicate_of_lead_id)
+    values ('${cascadeChild}', '${orgId}', '${event.id}', '${bId}', 'Cascade Child',
+            '98204 41720', 'card_scan', true, '{}', '${leadId}');
+  `);
+  let cascadeOk = true;
+  try {
+    await adminSql(`delete from public.leads where id = '${leadId}';`);
+  } catch (e) {
+    cascadeOk = false;
+    console.log(`        cascade delete threw: ${e.message}`);
+  }
+  ok('deleting an original with a live duplicate succeeds', cascadeOk);
+  const cleared = await adminSql(
+    `select duplicate_of_lead_id from public.leads where id = '${cascadeChild}';`
+  );
+  eq("  ...and the duplicate's flag was cleared", cleared[0]?.duplicate_of_lead_id, null);
 
   // ---- 8. THE ONE THAT GUARDS THE DROP+CREATE ----
   // A recreated SECURITY DEFINER function is granted to PUBLIC by default. If

@@ -412,3 +412,43 @@ export async function updateLead(id: string, patch: LeadPatch): Promise<UpdateOu
   }
   return { ok: true, lead: toLead(data as LeadRow) };
 }
+
+export type DeleteOutcome = { ok: true } | { ok: false; message: string };
+
+/**
+ * Remove one lead.
+ *
+ * Reachable from exactly one place — the keep-or-remove prompt shown straight
+ * after a duplicate capture. There is no delete control on the leads list, the
+ * lead detail screen or the edit screen, and there is not meant to be one. The
+ * database agrees independently: `leads_delete_own_duplicate` (migration
+ * 20260923100000) permits only the caller's OWN lead carrying a
+ * `duplicate_of_lead_id`, so the first capture of a contact can never be
+ * deleted this way no matter what the app asks for.
+ *
+ * ---------------------------------------------------------------------------
+ * `.select('id')` is the whole mechanism, not decoration
+ *
+ * Row-level security FILTERS a DELETE rather than raising on it. Without the
+ * select, PostgREST answers 204 No Content and supabase-js reports
+ * `{ data: null, error: null }` — a refusal is then byte-for-byte identical to
+ * a success, and the app would cheerfully tell a rep their duplicate was
+ * removed while it sat in their list. With the select, a filtered delete comes
+ * back as `[]` and a real one as `[{ id }]`.
+ *
+ * So the empty array is the one case this function exists to catch, and the
+ * message it returns must never claim anything was removed.
+ */
+export async function deleteLead(id: string): Promise<DeleteOutcome> {
+  const { data, error } = await supabase
+    .from('leads')
+    .delete()
+    .eq('id', id)
+    .select('id');
+
+  if (error) return { ok: false, message: describeLeadError(error) };
+  if (!data || data.length === 0) {
+    return { ok: false, message: "That lead couldn't be removed. It's still in your leads." };
+  }
+  return { ok: true };
+}

@@ -14,6 +14,13 @@ import { readAsBytes } from '../files';
  *
  * That is exactly the order the outbox drains in — the row goes first, the
  * file follows — so an offline capture works without any special handling.
+ *
+ * Removal runs the same contract in reverse, and it is the half that is easy to
+ * get wrong: `card_images_delete` and `voice_notes_delete` both authorise by
+ * joining back to `public.leads`, so the row must STILL EXIST when its objects
+ * are deleted. Delete the row first and nothing can ever reach the files again
+ * — the only actor left with a path to them is the service-role sweep in the
+ * delete-account function, which works at whole-organisation scale.
  */
 
 export const CARD_IMAGES_BUCKET = 'card-images';
@@ -195,4 +202,25 @@ export async function signedUrl(
     return null;
   }
   return data?.signedUrl ?? null;
+}
+
+/**
+ * Delete objects, best effort.
+ *
+ * Swallows its errors like `signedUrls` above, and for a sharper reason: the
+ * only caller deletes a lead's files immediately BEFORE deleting the lead row
+ * (see the ordering contract at the top of this file). Throwing here would
+ * abort that sequence half way, leaving the rep told nothing and the lead still
+ * in their list. An object that survives is a storage-cost problem; a row that
+ * survives a removal the rep was shown as done is a trust problem.
+ *
+ * Keys that do not exist are not an error — `remove` treats them as a no-op —
+ * so callers may pass every key a lead could own without checking first.
+ */
+export async function removeObjects(bucket: string, paths: string[]): Promise<void> {
+  const unique = Array.from(new Set(paths.filter(Boolean)));
+  if (unique.length === 0) return;
+
+  const { error } = await supabase.storage.from(bucket).remove(unique);
+  if (error && __DEV__) console.warn('[storage] removeObjects', bucket, error.message);
 }

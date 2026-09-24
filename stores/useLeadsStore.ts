@@ -11,14 +11,22 @@ import {
   type LeadPatch,
 } from '../lib/api/leads';
 import { captureTimeLabel, initialOf, needsNoteFor } from '../lib/mappers/lead';
-import { cardImagePath, extraPhotoPath, uploadCardImage, uploadExtraPhoto } from '../lib/api/storage';
+import {
+  CARD_IMAGES_BUCKET,
+  VOICE_NOTES_BUCKET,
+  cardImagePath,
+  extraPhotoPath,
+  removeObjects,
+  uploadCardImage,
+  uploadExtraPhoto,
+} from '../lib/api/storage';
 import { claimCaptureFiles, discardCaptureFiles } from '../lib/captureFiles';
 import { scanCard } from '../lib/api/cardScan';
 import { isOnline } from '../lib/connectivity';
 import { currentCaptureFix, settledCaptureLocation } from '../lib/location';
-import { findDuplicateLead } from '../lib/api/leads';
+import { deleteLead, findDuplicateLead, type DuplicateMatch } from '../lib/api/leads';
 import { fetchSentLeadIds } from '../lib/api/messageSends';
-import { attachVoiceNote, requestTranscription } from '../lib/api/voiceNotes';
+import { attachVoiceNote, fetchVoiceNotes, requestTranscription } from '../lib/api/voiceNotes';
 import { queryClient } from '../lib/queryClient';
 import { eventKeys } from '../hooks/useEvents';
 import { statsKeys } from '../hooks/useEventStats';
@@ -131,6 +139,26 @@ export type StoredLead = Lead & {
    * stays `pending`, which is what the "Read the card again" action picks up.
    */
   extractionAttempts?: number;
+  /**
+   * Who this lead duplicates, in full — device-only, never a column.
+   *
+   * `duplicateOfLeadId` on the Lead itself records THAT there was a match; this
+   * records what it was, so the keep-or-remove prompt can name the earlier rep
+   * and time without a round trip while the rep is standing in front of a
+   * customer.
+   *
+   * Kept rather than re-derived, because re-deriving is wrong. The only door to
+   * another rep's lead is `find_duplicate_lead`, which is keyed on event+phone
+   * and returns the OLDEST match — and once this lead exists it is a candidate
+   * in that same query. `created_at` is the device clock (an offline capture
+   * lands at the time it happened), so a skewed phone can sort ahead of the
+   * original and win. At the moment the drain sets this, the new lead is not in
+   * the table yet, so the answer is unambiguous. Take it while it is true.
+   *
+   * Dropped by `refresh` on the first rebuild from the server, which is fine —
+   * the prompt fires seconds after capture. Later readers fall back to the RPC.
+   */
+  duplicateMatch?: DuplicateMatch;
 };
 
 export type NewLeadInput = {
@@ -164,6 +192,16 @@ export type NewLeadInput = {
   voiceExtension?: string;
   consentGiven?: boolean;
   source?: 'card_scan' | 'manual';
+  /**
+   * Set when this capture was flagged as a duplicate before it was saved.
+   *
+   * Only the manual screen passes these: it is the one path that knows while
+   * the rep is still typing. The scan path cannot — its phone number arrives
+   * from the card reader long after `addLead` has returned — so it fills the
+   * same two fields itself, from inside the drain.
+   */
+  duplicateOfLeadId?: string;
+  duplicateMatch?: DuplicateMatch;
 };
 
 type LeadsState = {
@@ -222,6 +260,23 @@ type LeadsState = {
    * Pass the signed-in user's id to skip captures belonging to anyone else.
    */
   syncDrafts: (currentUserId?: string) => Promise<void>;
+  /**
+   * Removes one duplicate, files first, then the row.
+   *
+   * NOT a general delete, and deliberately awkward to turn into one: the only
+   * caller is the keep-or-remove prompt shown straight after a duplicate
+   * capture, and `leads_delete_own_duplicate` refuses anything that is not the
+   * caller's own flagged lead regardless of what the app asks. No screen in the
+   * app offers a delete control, and none should gain one.
+   *
+   * Returns its outcome rather than setting store state, because the caller has
+   * to choose between dismissing and showing the failure where the rep is
+   * looking.
+   */
+  removeLead: (
+    leadId: string,
+    currentUserId?: string
+  ) => Promise<{ ok: boolean; message?: string }>;
   /** Wipes the cache — called on sign-out so the next account starts clean. */
   clear: () => void;
 };
@@ -450,6 +505,11 @@ export const useLeadsStore = create<LeadsState>()(
           branchAddress: input.branchAddress,
           companySummary: input.companySummary,
           customFieldValues: input.customFieldValues,
+          // Only the manual screen supplies these — it is the one path that
+          // knows before the lead is written. The scan path fills the same two
+          // from inside the drain, once the card has been read.
+          duplicateOfLeadId: input.duplicateOfLeadId,
+          duplicateMatch: input.duplicateMatch,
           imageUri: rebase(input.imageUri),
           localImageUri: rebase(input.imageUri),
           localBackImageUri: rebase(input.backImageUri),
@@ -637,6 +697,13 @@ export const useLeadsStore = create<LeadsState>()(
         try {
           for (const lead of [...get().leads]) {
             if (lead.syncError) continue; // Needs attention, not another attempt.
+
+            // Removed while this pass was running. The loop walks a snapshot
+            // taken before the first await, so `lead` is still here even though
+            // it has left the store — and everything below would then act on a
+            // lead that no longer exists, including the BILLED card read at
+            // step 0, which reads its photo from this stale object.
+            if (!get().leads.some((l) => l.id === lead.id)) continue;
             // Row-level security pins captured_by to auth.uid(). Sending
             // someone else's queued capture would be refused anyway, and
             // attributing it to whoever is signed in now would be worse.
@@ -716,9 +783,16 @@ export const useLeadsStore = create<LeadsState>()(
                  * duplicate is information, not a refusal.
                  */
                 let duplicateOfLeadId: string | undefined;
+                let duplicateMatch: DuplicateMatch | undefined;
                 if (phone) {
                   const match = await findDuplicateLead(lead.eventId, phone);
-                  if (match) duplicateOfLeadId = match.leadId;
+                  if (match) {
+                    duplicateOfLeadId = match.leadId;
+                    // The whole match, not just the id: this is the only moment
+                    // it can be known for certain, because the new lead is not
+                    // in the table yet. See `duplicateMatch` on StoredLead.
+                    duplicateMatch = match;
+                  }
                 }
 
                 /**
@@ -749,6 +823,7 @@ export const useLeadsStore = create<LeadsState>()(
                           companyAddress: fill(l.companyAddress, f.companyAddress),
                           branchAddress: fill(l.branchAddress, f.branchAddress),
                           duplicateOfLeadId,
+                          duplicateMatch,
                           // `read: false` means the call worked and the photo
                           // held nothing legible - a photo of a badge, a thumb
                           // over the card. Not retryable, and not an error the
@@ -814,7 +889,15 @@ export const useLeadsStore = create<LeadsState>()(
 
             // Re-read: step 0 above may have just filled in the name and the
             // number this insert is about to send.
-            const forInsert = get().leads.find((l) => l.id === lead.id) ?? lead;
+            // No `?? lead` fallback. That fallback could only ever fire for a
+            // lead that had left the array, and re-inserting one of those was
+            // always wrong: before removeLead existed the only two ways out
+            // were sign-out (`clear`) — pushing the previous account's capture
+            // — and `refresh` dropping a row the server no longer has. Both
+            // cases want the lead left alone, so this is a fix, not a
+            // concession to the removal path.
+            const forInsert = get().leads.find((l) => l.id === lead.id);
+            if (!forInsert) continue;
 
             if (forInsert.syncStatus === 'draft') {
               // Every field below comes from `forInsert`, never `lead`: the
@@ -1086,6 +1169,83 @@ export const useLeadsStore = create<LeadsState>()(
       // `whatsappSentIds` goes with the leads: it is a list of lead ids from an
       // account that is signing out, and leaving it behind would carry one
       // person's sends into the next person's counts.
+      removeLead: async (leadId, currentUserId) => {
+        const lead = get().leads.find((l) => l.id === leadId);
+        // Already gone is success, which is what makes a double-tap harmless.
+        if (!lead) return { ok: true };
+
+        /**
+         * The policy's two discretionary terms, checked here as well.
+         *
+         * Not belt-and-braces: storage has to go first (below), so by the time
+         * the server could refuse the row, the files are already deleted.
+         * Checking here means the only remaining cause of a refusal is the
+         * migration not being deployed — which then fails identically on the
+         * very first tap, rather than intermittently, in the middle of a show.
+         */
+        if (!lead.duplicateOfLeadId) {
+          return { ok: false, message: 'Only a lead flagged as a duplicate can be removed.' };
+        }
+        if (currentUserId && lead.capturedBy && lead.capturedBy !== currentUserId) {
+          return { ok: false, message: 'Only the person who captured a lead can remove it.' };
+        }
+
+        /**
+         * Never synced: there is no row and there are no objects, so this is
+         * purely local and cannot fail. In the shipped flow a draft never
+         * reaches the prompt — the flag is only known once the card has been
+         * read — but this branch is three lines and is what keeps the action
+         * safe if it is ever reached another way.
+         */
+        if (lead.syncStatus === 'draft') {
+          set((state) => ({ leads: state.leads.filter((l) => l.id !== leadId) }));
+          void discardCaptureFiles(leadId);
+          return { ok: true };
+        }
+
+        /**
+         * Files BEFORE the row. Not a preference — `card_images_delete` and
+         * `voice_notes_delete` both authorise by joining back to public.leads,
+         * so once the row is gone nothing can reach these objects again.
+         */
+        const notes = await fetchVoiceNotes(leadId);
+        await removeObjects(
+          VOICE_NOTES_BUCKET,
+          notes.map((n) => n.audioPath)
+        );
+        await removeObjects(CARD_IMAGES_BUCKET, [
+          cardImagePath(lead.organizationId, leadId),
+          extraPhotoPath(lead.organizationId, leadId),
+        ]);
+
+        const outcome = await deleteLead(leadId);
+
+        /**
+         * Touch nothing locally on failure. The lead stays exactly where it
+         * was, and the caller shows the message rather than navigating away.
+         *
+         * The objects are gone by now, which is accepted and is the right
+         * direction to fail in: the alternative ordering orphans files
+         * permanently and unrecoverably, whereas a lost card photo on a lead
+         * the rep keeps can be photographed again.
+         */
+        if (!outcome.ok) return { ok: false, message: outcome.message };
+
+        set((state) => ({
+          // A `.filter` in a SETTER, which is fine. The rule this looks like it
+          // breaks — never filter inside a zustand SELECTOR — is about
+          // selectors returning a fresh array every render and looping. This
+          // runs once, on a tap.
+          leads: state.leads.filter((l) => l.id !== leadId),
+        }));
+        // The drain's own call is keyed on finding the lead, so it will never
+        // run for this one. Without this the capture directory leaks on disk.
+        void discardCaptureFiles(leadId);
+        eventCountsChanged();
+
+        return { ok: true };
+      },
+
       clear: () => set({ leads: [], whatsappSentIds: [], loadError: null, lastSyncedAt: null }),
     }),
     {
