@@ -9,6 +9,7 @@ import { AlertCircleIcon, CheckIcon, ClockIcon, SparkleIcon, ContactsIcon, EditI
 import { STATUS_CLASSES, STATUS_TEXT } from '../../../data/leads';
 import { cardNeedsAttention, displayCompany, displayInitial, displayName } from '../../../lib/leadDisplay';
 import { useLeadsStore } from '../../../stores/useLeadsStore';
+import { findDuplicateLead } from '../../../lib/api/leads';
 import { useTeam } from '../../../hooks/useTeam';
 import { useSessionStore } from '../../../stores/useSessionStore';
 import { useEvent } from '../../../hooks/useEvents';
@@ -296,6 +297,43 @@ export default function LeadDetailScreen() {
     return value !== undefined && value !== '' && value !== false;
   });
 
+  /**
+   * Show who this lead duplicates.
+   *
+   * Prefers the match the capture already stashed on the device. When that has
+   * been dropped - `refresh` rebuilds a synced lead from the server row, and
+   * `duplicateMatch` is device-only - fall back to the RPC, which is the only
+   * door to another rep's lead that row-level security leaves open.
+   *
+   * The `leadId !== lead.id` guard matters: `find_duplicate_lead` is keyed on
+   * event+phone and returns the OLDEST match, and this lead is a candidate in
+   * that same query. `created_at` is the device clock, so an offline capture or
+   * a skewed phone can sort ahead of the original and the RPC would hand back
+   * the very lead being asked about.
+   *
+   * Fired on tap, not in an effect: the column is null on almost every lead, so
+   * an RPC on every detail open would be pure waste, and 200ms on a deliberate
+   * tap is invisible.
+   */
+  const openDuplicatePeek = async () => {
+    if (!lead) return;
+    let match = lead.duplicateMatch;
+    if (!match && lead.phone) {
+      const found = await findDuplicateLead(lead.eventId, lead.phone);
+      if (found && found.leadId !== lead.id) match = found;
+    }
+    router.push({
+      pathname: '/(app)/(modals)/duplicate-detail',
+      params: {
+        capturedByName: match?.capturedByName ?? '',
+        capturedAt: match?.capturedAt ?? '',
+        note: match?.note ?? '',
+        voiceSummary: match?.voiceSummary ?? '',
+        isSelf: match && match.capturedById === userId ? '1' : '0',
+      },
+    });
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-section" edges={['top', 'bottom']}>
       <ScreenHeader
@@ -422,6 +460,25 @@ export default function LeadDetailScreen() {
             <View className="rounded-full px-3 py-[6px] bg-gold/[0.16]">
               <Typography className="text-[11.5px] font-bold text-[#8A6100]">Not synced yet</Typography>
             </View>
+          ) : null}
+          {/*
+            A chip rather than the full-width notice card above, because this
+            is not something the rep has to act on — the notice card is
+            reserved for that. Tapping opens the same read-only peek the
+            capture flow uses.
+
+            There is NO remove here, and there must not be one. Removal exists
+            only in the prompt shown straight after the capture; by the time a
+            lead is being looked at on this screen, that moment has passed.
+          */}
+          {lead.duplicateOfLeadId ? (
+            <Pressable
+              onPress={() => void openDuplicatePeek()}
+              className="flex-row items-center gap-[5px] rounded-full px-3 py-[6px] bg-gold/[0.16]"
+            >
+              <AlertCircleIcon size={11} color="#8A6100" strokeWidth={2} />
+              <Typography className="text-[11.5px] font-bold text-[#8A6100]">Duplicate</Typography>
+            </Pressable>
           ) : null}
         </View>
 

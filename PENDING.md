@@ -210,6 +210,68 @@ to entering the URL in the Data Safety form. **Read the page before writing anyt
 
 ## Open
 
+### 76. Duplicate leads: built and tested, but the app code is not committed — built 2026-09-23 `[~]`
+
+**Reported by the user:** duplicates were being captured in silence. Scanning a card for someone
+already at the event flagged nothing, said nothing, and stored the lead anyway.
+
+**The cause was not missing detection.** Detection worked, and the card-scan path was already
+writing `duplicate_of_lead_id` during the sync drain. Nothing in the app ever read the column
+back. The manual path had the opposite defect: it drew the yellow warning strip and never recorded
+the flag at all. So one path saw and did not record, the other recorded and did not show.
+
+**What was built and tested.** Manual entry now confirms before writing — "Already captured by
+Amit, 2 hours ago. Save anyway / Cancel" — where Cancel is correct by doing nothing, because the
+gate sits after the last precondition and before the first side effect. The scan path cannot ask
+first (the number arrives from the card reader after the lead is queued), so it holds the saved
+screen and asks Keep or Remove, with a second tap to confirm a removal. A `DUPLICATE` badge on the
+leads list and the lead detail opens the existing read-only peek.
+
+**Tested by the user 2026-09-23 on Expo Go and an APK:** remove with no internet (keeps the lead
+and says so, does not navigate), Keep it, a normal non-duplicate capture (unchanged), the same card
+scanned twice by one rep, the badge, and that no delete control exists anywhere else.
+
+---
+
+**What is actually pending, and it is the risky half:**
+
+1. **The app code is committed nowhere.** All 11 files are uncommitted in the working tree on
+   `sdk-57-upgrade`. Two are untracked and would not survive a clean checkout:
+   `components/capture/DuplicateSaveConfirm.tsx` and the migration.
+2. **The database change is already live.** `20260923100000_duplicate_removal.sql` was pushed and
+   verified on 2026-09-23. So the server already permits a rep to delete their own flagged
+   duplicate while the only code that uses that permission sits on one laptop. That asymmetry is
+   the reason this is `[~]` and not `[x]`.
+3. **Merging to master publishes yieldd.co.** Same rule as always; this is a website release, not
+   just an app change.
+4. **Never opened in a browser.** `/capture/` is deliberately kept on web, and `Alert.alert` is a
+   silent no-op there — which is exactly why the confirmation is a `Modal` and not an Alert. The
+   reasoning is sound but nobody has run `npm run web` and watched the dialog appear.
+
+**Three things a later pass must not "fix":**
+
+- **A duplicate captured offline can never be removed**, only badged. The flag lands after the
+  saved screen is gone. This is the accepted cost of the user's explicit decision to confine
+  removal to that one prompt, and there must be **no delete control** on the leads list, the lead
+  detail screen, or the edit screen.
+- **`duplicate_of_lead_id` is insert-only**, enforced in `enforce_lead_update_rules()`. The delete
+  policy is gated on it, so a writable flag would turn "remove a duplicate" into "delete anything I
+  captured". The trigger must keep allowing the column to be **cleared** — the self-FK is
+  `on delete set null`, which Postgres runs as an UPDATE through that same trigger, so a blanket
+  immutability check breaks an admin deleting an original.
+- **Never re-derive the original through `find_duplicate_lead`** for display. It returns the oldest
+  match and `created_at` is the device clock, so an offline or skewed capture can sort ahead of the
+  real original. The match is stashed at detection time instead.
+
+Covered by `npm run verify:duplicate` — 44 checks against the live database, including that a rep
+cannot set the flag themselves and that an unflagged delete returns zero rows **without** an error,
+which is the shape `deleteLead()` detects so the app can never report a removal that did not
+happen.
+
+**Fixed on the way, unrelated to the request:** `verify-duplicate.mjs` had been broken since the
+seat-limit trigger landed on 2026-09-10 — it raised the plan tier but never bought seats, so the
+invite was refused and the script could not run at all.
+
 ### 71. Lead detail never shows the deal value that was entered — reported 2026-09-18, DONE 2026-09-21
 
 **Reported by the user:** open a lead and there is no money on the screen. If that lead is Won,

@@ -90,6 +90,15 @@ export function LeadRow({ lead, cardUri = null }: { lead: StoredLead; cardUri?: 
               <Typography className="text-[9px] font-bold text-[#8A6100]">CARD NOT READ</Typography>
             </View>
           ) : null}
+          {/* Somebody at this event already had this number. A marker only —
+              the row is already a Pressable into the detail screen, and there
+              is no remove here or anywhere else in the list. */}
+          {lead.duplicateOfLeadId ? (
+            <View className="flex-row items-center gap-[3px] bg-gold/[0.16] rounded-full px-[6px] py-[2px]">
+              <AlertCircleIcon size={9} color="#8A6100" strokeWidth={2.5} />
+              <Typography className="text-[9px] font-bold text-[#8A6100]">DUPLICATE</Typography>
+            </View>
+          ) : null}
         </View>
         <View className="flex-row items-center gap-[6px] mt-[3px]">
           <Typography className={`text-[11px] font-bold flex-shrink-0 ${STATUS_TEXT[lead.status]}`} numberOfLines={1}>
