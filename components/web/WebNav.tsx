@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Linking, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { FOCUS } from './primitives/focus';
 import { CloseIcon } from '../ui/icons';
+import { DEMO_BOOKING_URL } from '../../lib/booking';
 
 /**
  * The floating pill header.
@@ -80,6 +81,11 @@ export function WebNav({ onNavigate }: Props) {
     onNavigate(key);
   };
 
+  const bookDemo = () => {
+    setOpen(false);
+    void Linking.openURL(DEMO_BOOKING_URL);
+  };
+
   return (
     <View className="w-full items-center px-4 md:px-8 pt-[14px]">
       <View className="w-full max-w-[1200px]">
@@ -122,11 +128,11 @@ export function WebNav({ onNavigate }: Props) {
               <Text className={BTN_TEXT}>Sign in</Text>
             </Pressable>
             <Pressable
-              onPress={() => router.push('/(auth)')}
+              onPress={bookDemo}
               className={`rounded-full bg-gold hover:bg-gold-hover px-[20px] py-[11px] transition-colors duration-200 ${FOCUS}`}
               accessibilityRole="link"
             >
-              <Text className={BTN_TEXT}>Get started</Text>
+              <Text className={BTN_TEXT}>Book a demo</Text>
             </Pressable>
           </View>
 
@@ -172,11 +178,11 @@ export function WebNav({ onNavigate }: Props) {
                 <Text className={BTN_TEXT}>Sign in</Text>
               </Pressable>
               <Pressable
-                onPress={() => router.push('/(auth)')}
+                onPress={bookDemo}
                 className={`flex-1 rounded-full bg-gold py-[13px] items-center ${FOCUS}`}
                 accessibilityRole="link"
               >
-                <Text className={BTN_TEXT}>Get started</Text>
+                <Text className={BTN_TEXT}>Book a demo</Text>
               </Pressable>
             </View>
           </View>

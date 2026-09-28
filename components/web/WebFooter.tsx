@@ -5,6 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 import { FOCUS } from './primitives/focus';
 import { BrandLockup } from '../ui/BrandLockup';
 import { FacebookIcon, InstagramIcon, LinkedInIcon } from '../ui/icons';
+import { DEMO_BOOKING_URL } from '../../lib/booking';
 import { SOCIAL_ACCOUNTS } from '../../lib/social';
 
 /**
@@ -41,7 +42,17 @@ const LINK_TARGETS: Record<string, string> = {
   'Sign in': '/(auth)',
   'Privacy policy': '/privacy',
   'Terms of use': '/terms',
+  'Book a demo': DEMO_BOOKING_URL,
 };
+
+/** An outside page opens in a new tab; our own pages stay in this one. */
+function openTarget(target: string) {
+  if (target.startsWith('https://')) {
+    void Linking.openURL(target);
+  } else {
+    router.push(target);
+  }
+}
 
 const BODY = '[font-family:Figtree,system-ui,sans-serif]';
 
@@ -49,7 +60,7 @@ function FooterLink({ label }: { label: string }) {
   const target = LINK_TARGETS[label];
   return (
     <Pressable
-      onPress={target ? () => router.push(target) : undefined}
+      onPress={target ? () => openTarget(target) : undefined}
       className={target ? FOCUS : undefined}
       accessibilityRole={target ? 'link' : undefined}
     >

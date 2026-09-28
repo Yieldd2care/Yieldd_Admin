@@ -1,6 +1,8 @@
-import { Image, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Image, Linking, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { router } from 'expo-router';
 import { MotiView } from 'moti';
+
+import { DEMO_BOOKING_URL } from '../../lib/booking';
 
 import { ConcentricRings } from './primitives/ConcentricRings';
 import { CTAButton } from './primitives/CTAButton';
@@ -131,10 +133,9 @@ function ProductShot() {
 
 interface Props {
   onLayout?: (e: LayoutChangeEvent) => void;
-  onNavigate: (key: string) => void;
 }
 
-export function Hero({ onLayout, onNavigate }: Props) {
+export function Hero({ onLayout }: Props) {
   return (
     <View onLayout={onLayout} className="relative bg-section pt-[94px]">
       {/* The navy panel. Clipped and rounded, and stopping PANEL_INSET short of
@@ -189,12 +190,20 @@ export function Hero({ onLayout, onNavigate }: Props) {
               label="Start capturing leads free"
               onPress={() => router.push('/(auth)')}
             />
-            {/* Was a no-op in the previous hero; now it goes somewhere. */}
+            {/* A still gold outline, no sheen: the spinning edge stays the
+                primary button's alone.
+
+                The colour is an inline style, not `border-gold`. The outline
+                variant already carries `border-white/[0.30]`, and between two
+                border-color classes the stylesheet order decides — measured in
+                the browser, the white one won. */}
             <CTAButton
-              label="See how it works"
+              label="Book a demo"
               variant="outline"
               spin={false}
-              onPress={() => onNavigate('how')}
+              style={{ borderColor: '#F4B000' }}
+              onPress={() => void Linking.openURL(DEMO_BOOKING_URL)}
+              accessibilityRole="link"
             />
           </View>
 

@@ -73,7 +73,7 @@ export default function LandingScreen() {
         </View>
 
         <ScrollView ref={scrollRef} className="flex-1" showsVerticalScrollIndicator={false}>
-          <Hero onLayout={registerSection('top')} onNavigate={scrollToSection} />
+          <Hero onLayout={registerSection('top')} />
           <StatStrip />
           <ProblemSection />
           <HowItWorks onLayout={registerSection('how')} />
