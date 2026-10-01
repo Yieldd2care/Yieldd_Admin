@@ -34,10 +34,23 @@ const PRODUCT_LINKS = ['How it works', 'Features', 'Event ROI', 'Industries', 'F
 const COMPANY_LINKS = ['About Yieldd', 'Book a demo', 'Privacy policy', 'Terms of use'];
 
 /**
- * Where each footer label goes. Labels not listed here have no page yet, and
- * are left inert rather than pointed at a URL that would 404 — a legal link
- * that 404s is an App Store rejection under 5.1.1, and was one until the
- * privacy and terms pages were added.
+ * Labels that are sections of the landing page, keyed the same way as the
+ * nav's links. "About Yieldd" has no page of its own, so it goes to the hero,
+ * which is the part of the site that says what Yieldd is.
+ */
+const SECTION_TARGETS: Record<string, string> = {
+  'How it works': 'how',
+  Features: 'features',
+  'Event ROI': 'roi',
+  Industries: 'industries',
+  FAQ: 'faq',
+  'About Yieldd': 'top',
+};
+
+/**
+ * Where each other footer label goes. Never point one at a URL that would 404
+ * — a legal link that 404s is an App Store rejection under 5.1.1, and was one
+ * until the privacy and terms pages were added.
  */
 const LINK_TARGETS: Record<string, string> = {
   'Sign in': '/(auth)',
@@ -57,13 +70,19 @@ function openTarget(target: string) {
 
 const BODY = '[font-family:Figtree,system-ui,sans-serif]';
 
-function FooterLink({ label }: { label: string }) {
+function FooterLink({ label, onNavigate }: { label: string; onNavigate: (key: string) => void }) {
+  const section = SECTION_TARGETS[label];
   const target = LINK_TARGETS[label];
+  const onPress = section
+    ? () => onNavigate(section)
+    : target
+      ? () => openTarget(target)
+      : undefined;
   return (
     <Pressable
-      onPress={target ? () => openTarget(target) : undefined}
-      className={target ? FOCUS : undefined}
-      accessibilityRole={target ? 'link' : undefined}
+      onPress={onPress}
+      className={onPress ? FOCUS : undefined}
+      accessibilityRole={onPress ? 'link' : undefined}
     >
       <Text
         className={`${BODY} text-[14px] text-white/[0.70] hover:text-white transition-colors duration-200`}
@@ -74,7 +93,15 @@ function FooterLink({ label }: { label: string }) {
   );
 }
 
-function FooterColumn({ title, links }: { title: string; links: string[] }) {
+function FooterColumn({
+  title,
+  links,
+  onNavigate,
+}: {
+  title: string;
+  links: string[];
+  onNavigate: (key: string) => void;
+}) {
   return (
     <View className="flex-1 min-w-[140px]">
       <Text
@@ -84,7 +111,7 @@ function FooterColumn({ title, links }: { title: string; links: string[] }) {
       </Text>
       <View className="gap-[11px] mt-[18px]">
         {links.map((l) => (
-          <FooterLink key={l} label={l} />
+          <FooterLink key={l} label={l} onNavigate={onNavigate} />
         ))}
       </View>
     </View>
@@ -154,9 +181,16 @@ function SocialRow() {
 
 interface Props {
   onLogoPress?: () => void;
+  /**
+   * Scrolls the landing page to a section. The legal pages have no sections,
+   * so without it a section link goes home instead, as their nav does.
+   */
+  onNavigate?: (key: string) => void;
 }
 
-export function WebFooter({ onLogoPress }: Props) {
+const goHome = () => router.push('/(web)');
+
+export function WebFooter({ onLogoPress, onNavigate = goHome }: Props) {
   // Computed, not written down. A hardcoded year is correct for exactly one
   // year and then quietly wrong on every page of the site.
   const year = new Date().getFullYear();
@@ -195,8 +229,8 @@ export function WebFooter({ onLogoPress }: Props) {
           <SocialRow />
         </View>
 
-        <FooterColumn title="Product" links={PRODUCT_LINKS} />
-        <FooterColumn title="Company" links={COMPANY_LINKS} />
+        <FooterColumn title="Product" links={PRODUCT_LINKS} onNavigate={onNavigate} />
+        <FooterColumn title="Company" links={COMPANY_LINKS} onNavigate={onNavigate} />
 
         <View className="flex-1 min-w-[160px]">
           <Text

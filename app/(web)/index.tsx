@@ -82,7 +82,7 @@ export default function LandingScreen() {
           <IndustryGrid onLayout={registerSection('industries')} />
           <FAQAccordion onLayout={registerSection('faq')} />
           <CTABanner />
-          <WebFooter onLogoPress={() => scrollToSection('top')} />
+          <WebFooter onLogoPress={() => scrollToSection('top')} onNavigate={scrollToSection} />
         </ScrollView>
       </View>
     </View>
