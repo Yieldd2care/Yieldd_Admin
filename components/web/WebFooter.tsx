@@ -6,6 +6,7 @@ import { FOCUS } from './primitives/focus';
 import { BrandLockup } from '../ui/BrandLockup';
 import { FacebookIcon, InstagramIcon, LinkedInIcon } from '../ui/icons';
 import { DEMO_BOOKING_URL } from '../../lib/booking';
+import { COMPANY } from '../../lib/company';
 import { SOCIAL_ACCOUNTS } from '../../lib/social';
 
 /**
@@ -227,9 +228,18 @@ export function WebFooter({ onLogoPress }: Props) {
 
       <View className="border-t border-white/[0.12]">
         <View className="max-w-[1200px] w-full mx-auto px-5 md:px-8 py-[22px] flex-col md:flex-row items-center justify-between gap-5">
-          <Text className={`${BODY} text-[12.5px] text-white/[0.55] text-center`}>
-            Yieldd is a product by Growth Saga. © {year} Growth Saga. All rights reserved.
-          </Text>
+          {/* The legal name and GSTIN tie Yieldd to the registered business for
+              anyone verifying it (Meta's business verification, among others).
+              The street address is kept to the legal pages on purpose. */}
+          <View className="flex-shrink gap-[6px]">
+            <Text className={`${BODY} text-[12.5px] leading-[1.6] text-white/[0.55] text-center md:text-left`}>
+              Yieldd is a product of {COMPANY.tradeName}, a {COMPANY.constitution} of{' '}
+              {COMPANY.legalName} · GSTIN {COMPANY.gstin}
+            </Text>
+            <Text className={`${BODY} text-[12.5px] text-white/[0.55] text-center md:text-left`}>
+              © {year} {COMPANY.tradeName}. All rights reserved.
+            </Text>
+          </View>
           <Text className={`${BODY} text-[12.5px] text-white/[0.55]`}>care@yieldd.co</Text>
         </View>
       </View>

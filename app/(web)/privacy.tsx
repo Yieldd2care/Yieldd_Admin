@@ -1,6 +1,7 @@
 import {
   LegalBullet,
   LegalCallout,
+  LegalCompany,
   LegalHeading,
   LegalLink,
   LegalMail,
@@ -21,14 +22,23 @@ export default function PrivacyScreen() {
   return (
     <LegalPage
       title="Privacy policy"
-      updated="8 September 2026"
+      updated="1 October 2026"
       intro="Yieldd captures leads at exhibitions. That means we hold information about two different groups of people: the people who use Yieldd, and the people whose business cards they scan. This policy covers both, and is specific about which is which."
     >
       <LegalHeading>Who we are</LegalHeading>
       <LegalText>
-        Yieldd is a product by Growth Saga. Anything in this policy, and any request about your
-        information, can be raised with us at <LegalMail />. That address is also our contact for
-        grievances under India&apos;s Digital Personal Data Protection Act.
+        Yieldd is a product of Growth Saga, a sole proprietorship of Yash Jaykumar Agarwal, based in
+        Surat, Gujarat. Growth Saga is responsible for the information this policy describes. Under
+        India&apos;s Digital Personal Data Protection Act it is the data fiduciary for information
+        about users, and it processes information about leads on behalf of the organisation that
+        captured them. &ldquo;We&rdquo;, &ldquo;us&rdquo; and &ldquo;our&rdquo; in this policy mean
+        Growth Saga.
+      </LegalText>
+      <LegalCompany />
+      <LegalText>
+        Anything in this policy, and any request about your information, can be raised with us at{' '}
+        <LegalMail />. That address is also our contact for grievances under the Digital Personal
+        Data Protection Act.
       </LegalText>
 
       <LegalHeading>The two groups of people in this policy</LegalHeading>
@@ -271,7 +281,9 @@ export default function PrivacyScreen() {
 
       <LegalHeading>Contact</LegalHeading>
       <LegalText>
-        Questions, requests and complaints all go to <LegalMail />. A real person reads it.
+        Questions, requests and complaints all go to <LegalMail />. A real person reads it. Post can
+        be sent to Growth Saga at the address under &ldquo;Who we are&rdquo; at the top of this
+        policy.
       </LegalText>
     </LegalPage>
   );

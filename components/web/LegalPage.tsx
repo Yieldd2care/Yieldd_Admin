@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Typography } from '../ui/Typography';
 import { WebNav } from './WebNav';
 import { WebFooter } from './WebFooter';
+import { COMPANY } from '../../lib/company';
 
 /**
  * The shell both legal pages sit in.
@@ -94,6 +95,61 @@ export function LegalLink({ href, children }: { href: string; children: ReactNod
     >
       {children}
     </Typography>
+  );
+}
+
+function CompanyRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <View className="flex-col md:flex-row gap-[2px] md:gap-4">
+      <Typography className="md:w-[120px] text-[13px] font-semibold uppercase tracking-[0.08em] text-white/[0.50] leading-[1.75]">
+        {label}
+      </Typography>
+      <View className="flex-1">{children}</View>
+    </View>
+  );
+}
+
+/**
+ * Who stands behind Yieldd, as registered. Shared by the privacy and terms
+ * pages so the two can never name the business differently. Reads lib/company,
+ * which is copied from the GST certificate.
+ */
+export function LegalCompany() {
+  const value = 'text-[15px] text-white/[0.86] leading-[1.75]';
+  return (
+    <View className="border border-white/[0.12] bg-white/[0.04] rounded-md px-5 py-4 my-5 gap-[10px]">
+      <CompanyRow label="Legal name">
+        <Typography className={value}>
+          {COMPANY.legalName}, trading as {COMPANY.tradeName}
+        </Typography>
+      </CompanyRow>
+      <CompanyRow label="Business">
+        <Typography className={value}>Sole {COMPANY.constitution}</Typography>
+      </CompanyRow>
+      <CompanyRow label="GSTIN">
+        <Typography className={value}>{COMPANY.gstin}</Typography>
+      </CompanyRow>
+      <CompanyRow label="Address">
+        {COMPANY.addressLines.map((line) => (
+          <Typography key={line} className={value}>
+            {line}
+          </Typography>
+        ))}
+      </CompanyRow>
+      {COMPANY.phone ? (
+        <CompanyRow label="Phone">
+          <Typography
+            onPress={() => Linking.openURL(`tel:${COMPANY.phone!.replace(/\s/g, '')}`)}
+            className={`${value} font-semibold text-gold`}
+          >
+            {COMPANY.phone}
+          </Typography>
+        </CompanyRow>
+      ) : null}
+      <CompanyRow label="Email">
+        <LegalMail />
+      </CompanyRow>
+    </View>
   );
 }
 

@@ -1,6 +1,7 @@
 import {
   LegalBullet,
   LegalCallout,
+  LegalCompany,
   LegalHeading,
   LegalMail,
   LegalPage,
@@ -17,15 +18,18 @@ export default function TermsScreen() {
   return (
     <LegalPage
       title="Terms of use"
-      updated="8 September 2026"
+      updated="1 October 2026"
       intro="These are the terms you agree to when you use Yieldd. We have kept them short and in plain English, because terms nobody can read protect nobody."
     >
       <LegalHeading>Who this agreement is with</LegalHeading>
       <LegalText>
-        Yieldd is a product by Growth Saga. &ldquo;We&rdquo; and &ldquo;us&rdquo; mean Growth Saga.
-        &ldquo;You&rdquo; means the person using Yieldd, and the organisation they use it for. By
-        creating an account you accept these terms on behalf of that organisation.
+        Yieldd is a product of Growth Saga, a sole proprietorship of Yash Jaykumar Agarwal, based in
+        Surat, Gujarat. This agreement is with Growth Saga. &ldquo;We&rdquo; and &ldquo;us&rdquo;
+        mean Growth Saga. &ldquo;You&rdquo; means the person using Yieldd, and the organisation
+        they use it for. By creating an account you accept these terms on behalf of that
+        organisation.
       </LegalText>
+      <LegalCompany />
 
       <LegalHeading>Your account</LegalHeading>
       <LegalBullet>
