@@ -233,8 +233,7 @@ export function WebFooter({ onLogoPress }: Props) {
               The street address is kept to the legal pages on purpose. */}
           <View className="flex-shrink gap-[6px]">
             <Text className={`${BODY} text-[12.5px] leading-[1.6] text-white/[0.55] text-center md:text-left`}>
-              Yieldd is a product of {COMPANY.tradeName}, a {COMPANY.constitution} of{' '}
-              {COMPANY.legalName} · GSTIN {COMPANY.gstin}
+              Yieldd is a product of {COMPANY.tradeName} · GSTIN {COMPANY.gstin}
             </Text>
             <Text className={`${BODY} text-[12.5px] text-white/[0.55] text-center md:text-left`}>
               © {year} {COMPANY.tradeName}. All rights reserved.

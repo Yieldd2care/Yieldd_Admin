@@ -7,9 +7,11 @@
  * certificate rather than paraphrased. Change them here only when the
  * certificate changes.
  *
- * Growth Saga is a proprietorship, so it has no legal name of its own: the
- * legal name is the proprietor's, and "Growth Saga" is the trade name. Write
- * "Yash Jaykumar Agarwal, trading as Growth Saga", never "Growth Saga Pvt Ltd".
+ * Growth Saga is a proprietorship, so its registered legal name is the
+ * proprietor's personal name. The owner does not want that name on the
+ * website, so it is deliberately left out: the site names the business by its
+ * trade name, and the GSTIN ties it to the registration. Never "Growth Saga
+ * Pvt Ltd" either; it is not a company.
  *
  * Read by the website footer and the privacy and terms pages. The footer
  * deliberately shows no street address; the full address appears only on the
@@ -17,7 +19,6 @@
  */
 export const COMPANY = {
   tradeName: 'Growth Saga',
-  legalName: 'Yash Jaykumar Agarwal',
   constitution: 'proprietorship',
   gstin: '24AHHPA6524B1Z1',
   addressLines: [

@@ -23,8 +23,7 @@ export default function TermsScreen() {
     >
       <LegalHeading>Who this agreement is with</LegalHeading>
       <LegalText>
-        Yieldd is a product of Growth Saga, a sole proprietorship of Yash Jaykumar Agarwal, based in
-        Surat, Gujarat. This agreement is with Growth Saga. &ldquo;We&rdquo; and &ldquo;us&rdquo;
+        Yieldd is a product of Growth Saga, a sole proprietorship based in Surat, Gujarat. This agreement is with Growth Saga. &ldquo;We&rdquo; and &ldquo;us&rdquo;
         mean Growth Saga. &ldquo;You&rdquo; means the person using Yieldd, and the organisation
         they use it for. By creating an account you accept these terms on behalf of that
         organisation.

@@ -27,8 +27,8 @@ export default function PrivacyScreen() {
     >
       <LegalHeading>Who we are</LegalHeading>
       <LegalText>
-        Yieldd is a product of Growth Saga, a sole proprietorship of Yash Jaykumar Agarwal, based in
-        Surat, Gujarat. Growth Saga is responsible for the information this policy describes. Under
+        Yieldd is a product of Growth Saga, a sole proprietorship based in Surat, Gujarat. Growth
+        Saga is responsible for the information this policy describes. Under
         India&apos;s Digital Personal Data Protection Act it is the data fiduciary for information
         about users, and it processes information about leads on behalf of the organisation that
         captured them. &ldquo;We&rdquo;, &ldquo;us&rdquo; and &ldquo;our&rdquo; in this policy mean

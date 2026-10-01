@@ -101,7 +101,7 @@ export function LegalLink({ href, children }: { href: string; children: ReactNod
 function CompanyRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View className="flex-col md:flex-row gap-[2px] md:gap-4">
-      <Typography className="md:w-[120px] text-[13px] font-semibold uppercase tracking-[0.08em] text-white/[0.50] leading-[1.75]">
+      <Typography className="md:w-[150px] text-[13px] font-semibold uppercase tracking-[0.08em] text-white/[0.50] leading-[1.75]">
         {label}
       </Typography>
       <View className="flex-1">{children}</View>
@@ -118,12 +118,10 @@ export function LegalCompany() {
   const value = 'text-[15px] text-white/[0.86] leading-[1.75]';
   return (
     <View className="border border-white/[0.12] bg-white/[0.04] rounded-md px-5 py-4 my-5 gap-[10px]">
-      <CompanyRow label="Legal name">
-        <Typography className={value}>
-          {COMPANY.legalName}, trading as {COMPANY.tradeName}
-        </Typography>
+      <CompanyRow label="Business name">
+        <Typography className={value}>{COMPANY.tradeName}</Typography>
       </CompanyRow>
-      <CompanyRow label="Business">
+      <CompanyRow label="Business type">
         <Typography className={value}>Sole {COMPANY.constitution}</Typography>
       </CompanyRow>
       <CompanyRow label="GSTIN">
